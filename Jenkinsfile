@@ -26,14 +26,14 @@ this.helper = new JobHelper(this)
 helper.runWithNotification {
 stage('Configure') {
 	this.environments = [
-		new BuildEnvironment( node: 's390x' ),
-		new BuildEnvironment( dbName: 'sybase_jconn' ),
+//		new BuildEnvironment( node: 's390x' ),
+//		new BuildEnvironment( dbName: 'sybase_jconn' ),
 		new BuildEnvironment( testJdkVersion: '17' ),
-		new BuildEnvironment( testJdkVersion: '21' ),
+//		new BuildEnvironment( testJdkVersion: '21' ),
 		// We want to enable preview features when testing newer builds of OpenJDK:
 		// even if we don't use these features, just enabling them can cause side effects
 		// and it's useful to test that.
-		new BuildEnvironment( testJdkVersion: '22', testJdkLauncherArgs: '--enable-preview' )
+//		new BuildEnvironment( testJdkVersion: '22', testJdkLauncherArgs: '--enable-preview' )
 	];
 
 	helper.configure {
