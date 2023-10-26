@@ -53,7 +53,7 @@ stage('Configure') {
 			// If two builds are about the same branch or pull request,
 			// the older one will be aborted when the newer one starts.
 			disableConcurrentBuilds(abortPrevious: true),
-			helper.generateNotificationProperty()
+			// helper.generateNotificationProperty()
 	])
 }
 
@@ -152,7 +152,7 @@ stage('Build') {
 		})
 	}
 	executions.put('Hibernate Search Update Dependency', {
-		build job: '/hibernate-search-dependency-update/6.2', propagate: true, parameters: [string(name: 'UPDATE_JOB', value: 'orm6.2'), string(name: 'ORM_REPOSITORY', value: helper.scmSource.remoteUrl), string(name: 'ORM_BRANCH', value: helper.scmSource.branch.name)]
+		build job: '/hibernate-search-personal-marko/build%2Fupdate-update-job-6-2', propagate: true, parameters: [string(name: 'UPDATE_JOB', value: 'orm6.2'), string(name: 'ORM_REPOSITORY', value: helper.scmSource.remoteUrl), string(name: 'ORM_PULL_REQUEST_ID', value: helper.scmSource.pullRequest.id)]
 	})
 	parallel(executions)
 }
@@ -247,7 +247,7 @@ void handleNotifications(currentBuild, buildEnv) {
 		emailext(
 				subject: subject,
 				body: body,
-				to: buildEnv.notificationRecipients
+				to: 'marko@hibernate.org'
 		)
 	}
 }
