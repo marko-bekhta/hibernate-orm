@@ -227,3 +227,4 @@ E.g., to stop the mariadb container
 ----
 docker stop mariadb
 ----
+
