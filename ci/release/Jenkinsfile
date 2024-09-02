@@ -136,7 +136,7 @@ pipeline {
 								// tags the version
 								// changes the version to the provided development version
 								withEnv(["BRANCH=${env.GIT_BRANCH}"]) {
-									sh ".release/scripts/prepare-release.sh ${env.PROJECT} ${env.RELEASE_VERSION} ${env.DEVELOPMENT_VERSION}"
+									sh ".release/scripts/prepare-release.sh ${env.PROJECT} ${env.RELEASE_VERSION} \"\" ${env.DEVELOPMENT_VERSION}"
 								}
 							}
 						}
