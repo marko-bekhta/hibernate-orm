@@ -3653,7 +3653,12 @@ public abstract class Dialect implements ConversionContext, TypeContributor, Fun
 	 * make use of the Java 1.7 {@link Connection#getSchema()} method.
 	 *
 	 * @return The current schema retrieval SQL
+	 *
+	 * @deprecated Since Hibernate now baselines on Java 17,
+	 * {@link Connection#getSchema()} is always available directly.
+	 * Never used internally.
 	 */
+	@Deprecated
 	public String getCurrentSchemaCommand() {
 		return null;
 	}
@@ -3663,7 +3668,12 @@ public abstract class Dialect implements ConversionContext, TypeContributor, Fun
 	 * {@link Connection}, usually {@link DefaultSchemaNameResolver}.
 	 *
 	 * @return The schema name resolver strategy
+	 *
+	 * @deprecated Since Hibernate now baselines on Java 17,
+	 * {@link Connection#getSchema()} is always available directly.
+	 * Never used internally.
 	 */
+	@Deprecated
 	public SchemaNameResolver getSchemaNameResolver() {
 		return DefaultSchemaNameResolver.INSTANCE;
 	}
