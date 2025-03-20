@@ -4,14 +4,8 @@
  */
 package org.hibernate.dialect;
 
-import java.sql.DatabaseMetaData;
-import java.sql.SQLException;
-import java.sql.Types;
-import java.time.temporal.TemporalAccessor;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.TimeZone;
-
+import jakarta.persistence.TemporalType;
+import org.hibernate.HibernateException;
 import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.TypeContributions;
 import org.hibernate.dialect.function.CommonFunctionFactory;
@@ -24,20 +18,22 @@ import org.hibernate.dialect.identity.SybaseJconnIdentityColumnSupport;
 import org.hibernate.dialect.unique.SkipNullableUniqueDelegate;
 import org.hibernate.dialect.unique.UniqueDelegate;
 import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
+import org.hibernate.engine.jdbc.env.internal.DefaultSchemaNameResolver;
 import org.hibernate.engine.jdbc.env.spi.IdentifierCaseStrategy;
 import org.hibernate.engine.jdbc.env.spi.IdentifierHelper;
 import org.hibernate.engine.jdbc.env.spi.IdentifierHelperBuilder;
 import org.hibernate.engine.jdbc.env.spi.NameQualifierSupport;
+import org.hibernate.engine.jdbc.env.spi.SchemaNameResolver;
 import org.hibernate.engine.spi.LoadQueryInfluencers;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.procedure.internal.JTDSCallableStatementSupport;
 import org.hibernate.procedure.internal.SybaseCallableStatementSupport;
 import org.hibernate.procedure.spi.CallableStatementSupport;
+import org.hibernate.query.common.TemporalUnit;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.spi.QueryParameterBindings;
 import org.hibernate.query.sqm.CastType;
 import org.hibernate.query.sqm.IntervalType;
-import org.hibernate.query.common.TemporalUnit;
 import org.hibernate.query.sqm.internal.DomainParameterXref;
 import org.hibernate.query.sqm.sql.SqmTranslator;
 import org.hibernate.query.sqm.sql.SqmTranslatorFactory;
@@ -63,7 +59,15 @@ import org.hibernate.type.descriptor.jdbc.ObjectNullAsBinaryTypeJdbcType;
 import org.hibernate.type.descriptor.jdbc.TinyIntAsSmallIntJdbcType;
 import org.hibernate.type.descriptor.jdbc.spi.JdbcTypeRegistry;
 
-import jakarta.persistence.TemporalType;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
+import java.time.temporal.TemporalAccessor;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.TimeZone;
 
 import static org.hibernate.type.descriptor.DateTimeUtils.appendAsDate;
 import static org.hibernate.type.descriptor.DateTimeUtils.appendAsLocalTime;
@@ -91,6 +95,8 @@ public class SybaseDialect extends AbstractTransactSQLDialect {
 	@Deprecated(forRemoval = true)
 	protected final boolean jtdsDriver;
 
+	private final SchemaNameResolver schemaNameResolver;
+
 	public SybaseDialect() {
 		this( MINIMUM_VERSION );
 	}
@@ -99,12 +105,20 @@ public class SybaseDialect extends AbstractTransactSQLDialect {
 		super(version);
 		this.driverKind = SybaseDriverKind.OTHER;
 		this.jtdsDriver = true;
+		this.schemaNameResolver = determineSchemaNameResolver( driverKind );
+	}
+
+	private static SchemaNameResolver determineSchemaNameResolver(SybaseDriverKind driverKind) {
+		return driverKind == SybaseDriverKind.JTDS
+				? new JTDSSchemaNameResolver()
+				: DefaultSchemaNameResolver.INSTANCE;
 	}
 
 	public SybaseDialect(DialectResolutionInfo info) {
 		super(info);
 		this.driverKind = SybaseDriverKind.determineKind( info );
 		this.jtdsDriver = driverKind == SybaseDriverKind.JTDS;
+		this.schemaNameResolver = determineSchemaNameResolver( driverKind );
 	}
 
 	@Override
@@ -322,6 +336,11 @@ public class SybaseDialect extends AbstractTransactSQLDialect {
 	}
 
 	@Override
+	public SchemaNameResolver getSchemaNameResolver() {
+		return schemaNameResolver;
+	}
+
+	@Override
 	public String getCurrentSchemaCommand() {
 		return "select user_name()";
 	}
@@ -534,5 +553,27 @@ public class SybaseDialect extends AbstractTransactSQLDialect {
 	@Override
 	public boolean supportsFromClauseInUpdate() {
 		return true;
+	}
+
+	private static class JTDSSchemaNameResolver implements SchemaNameResolver {
+		@Override
+		public String resolveSchemaName(Connection connection, Dialect dialect) throws SQLException {
+			//noinspection deprecation
+			final String command = dialect.getCurrentSchemaCommand();
+			if ( command == null ) {
+				throw new HibernateException(
+						"Use of DefaultSchemaNameResolver requires Dialect to provide the " +
+						"proper SQL statement/command but provided Dialect [" +
+						dialect.getClass().getName() + "] did not return anything " +
+						"from Dialect#getCurrentSchemaCommand"
+				);
+			}
+
+			try (final java.sql.Statement statement = connection.createStatement()) {
+				try (ResultSet resultSet = statement.executeQuery( command )) {
+					return resultSet.next() ? resultSet.getString( 1 ) : null;
+				}
+			}
+		}
 	}
 }

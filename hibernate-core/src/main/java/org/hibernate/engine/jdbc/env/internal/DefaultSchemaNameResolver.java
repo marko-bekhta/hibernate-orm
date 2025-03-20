@@ -11,14 +11,11 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 /**
- * Default implementation of {@link SchemaNameResolver}.
- *
- * @deprecated Since Hibernate now baselines on Java 17,
- * {@link Connection#getSchema()} is always available directly.
+ * Default implementation of {@link SchemaNameResolver}
+ * using {@link Connection#getSchema()}.
  *
  * @author Steve Ebersole
  */
-@Deprecated
 public class DefaultSchemaNameResolver implements SchemaNameResolver {
 	public static final DefaultSchemaNameResolver INSTANCE = new DefaultSchemaNameResolver();
 

@@ -12,12 +12,12 @@ import org.hibernate.dialect.Dialect;
 /**
  * Contract for resolving the schema of a {@link Connection}.
  *
- * @deprecated Since Hibernate now baselines on Java 17,
- * {@link Connection#getSchema()} is always available directly.
+ * @implNote Since Hibernate baselines on Java 17+, this should no longer be
+ * needed as we should be able to rely on {@link Connection#getSchema()}.
+ * However, some drivers still do not implement this or implement it "properly".
  *
  * @author Steve Ebersole
  */
-@Deprecated
 public interface SchemaNameResolver {
 	/**
 	 * Given a JDBC {@link Connection}, resolve the name of the schema (if one) to which it connects.

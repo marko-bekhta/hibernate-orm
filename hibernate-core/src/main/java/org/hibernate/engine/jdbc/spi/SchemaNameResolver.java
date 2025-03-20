@@ -9,6 +9,12 @@ import java.sql.Connection;
 /**
  * Contract for resolving the schema of a {@link Connection}.
  *
+ * @apiNote Exists mainly for historical reasons when Hibernate
+ * baselines on Java versions before 8 when {@linkplain Connection#getSchema()}
+ * was introduced.  We still use it at the moment because some drivers do not
+ * implement it (jTDS) and/or some databases do not support schemas and
+ * their drivers don't DoTheRightThing.
+ *
  * @author Steve Ebersole
  */
 public interface SchemaNameResolver {

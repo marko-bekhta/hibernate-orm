@@ -48,6 +48,8 @@ public interface JdbcEnvironment extends Service {
 	 * {@link java.sql.Connection#getSchema()} or
 	 * {@value org.hibernate.cfg.AvailableSettings#DEFAULT_SCHEMA}.
 	 *
+	 * @see org.hibernate.engine.jdbc.spi.SchemaNameResolver
+	 *
 	 * @return The current schema
 	 */
 	Identifier getCurrentSchema();

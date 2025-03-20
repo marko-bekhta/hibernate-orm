@@ -8,6 +8,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 
 import org.hibernate.boot.model.naming.Identifier;
+import org.hibernate.boot.registry.selector.spi.StrategySelector;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.config.spi.ConfigurationService;
@@ -21,6 +22,7 @@ import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
 import org.hibernate.engine.jdbc.env.spi.LobCreatorBuilder;
 import org.hibernate.engine.jdbc.env.spi.NameQualifierSupport;
 import org.hibernate.engine.jdbc.env.spi.QualifiedObjectNameFormatter;
+import org.hibernate.engine.jdbc.env.spi.SchemaNameResolver;
 import org.hibernate.engine.jdbc.spi.SqlExceptionHelper;
 import org.hibernate.exception.internal.SQLExceptionTypeDelegate;
 import org.hibernate.exception.internal.SQLStateConversionDelegate;
@@ -292,7 +294,7 @@ public class JdbcEnvironmentImpl implements JdbcEnvironment {
 		this.extractedMetaDataSupport =
 				new ExtractedDatabaseMetaDataImpl.Builder( this, true, jdbcConnectionAccess )
 						.apply( databaseMetaData )
-						.setConnectionSchemaName( determineCurrentSchemaName( databaseMetaData ) )
+						.setConnectionSchemaName( determineCurrentSchemaName( databaseMetaData, serviceRegistry, dialect ) )
 						.setSupportsNamedParameters( dialect.supportsNamedParameters( databaseMetaData ) )
 						.build();
 
@@ -328,14 +330,35 @@ public class JdbcEnvironmentImpl implements JdbcEnvironment {
 		return identifierHelperBuilder.build();
 	}
 
-	private String determineCurrentSchemaName(DatabaseMetaData databaseMetaData) {
+	public static final String SCHEMA_NAME_RESOLVER = "hibernate.schema_name_resolver";
+
+	/**
+	 * @deprecated Only needed any longer for Sybase + jTDS driver combo
+	 */
+	@Deprecated
+	private String determineCurrentSchemaName(
+			DatabaseMetaData databaseMetaData,
+			ServiceRegistry serviceRegistry,
+			Dialect dialect) {
+		final SchemaNameResolver resolver = getSchemaNameResolver( serviceRegistry, dialect );
 		try {
-			return databaseMetaData.getConnection().getSchema();
+			return resolver.resolveSchemaName( databaseMetaData.getConnection(), dialect );
 		}
 		catch (Exception e) {
 			log.debug( "Unable to resolve connection default schema", e );
 			return null;
 		}
+	}
+
+	private static SchemaNameResolver getSchemaNameResolver(ServiceRegistry serviceRegistry, Dialect dialect) {
+		final Object setting =
+				serviceRegistry.requireService( ConfigurationService.class )
+						.getSettings().get( SCHEMA_NAME_RESOLVER );
+		return setting == null
+				? dialect.getSchemaNameResolver()
+				: serviceRegistry.requireService( StrategySelector.class )
+						.resolveDefaultableStrategy( SchemaNameResolver.class, setting,
+								dialect.getSchemaNameResolver() );
 	}
 
 	private static SqlExceptionHelper buildSqlExceptionHelper(Dialect dialect, boolean logWarnings) {
