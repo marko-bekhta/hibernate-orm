@@ -79,159 +79,9 @@ stage('Build') {
 			return
 		}
 		state[buildEnv.tag] = [:]
-		executions.put(buildEnv.tag, {
-			runBuildOnNode(buildEnv.node ?: NODE_PATTERN_BASE) {
-				def testJavaHome
-				if ( buildEnv.testJdkVersion ) {
-					testJavaHome = tool(name: "OpenJDK ${buildEnv.testJdkVersion} Latest", type: 'jdk')
-				}
-				def javaHome = tool(name: DEFAULT_JDK_TOOL, type: 'jdk')
-				// Use withEnv instead of setting env directly, as that is global!
-				// See https://github.com/jenkinsci/pipeline-plugin/blob/master/TUTORIAL.md
-				withEnv(["JAVA_HOME=${javaHome}", "PATH+JAVA=${javaHome}/bin"]) {
-					state[buildEnv.tag]['additionalOptions'] = ''
-					if ( testJavaHome ) {
-						state[buildEnv.tag]['additionalOptions'] = state[buildEnv.tag]['additionalOptions'] +
-								" -Ptest.jdk.version=${buildEnv.testJdkVersion} -Porg.gradle.java.installations.paths=${javaHome},${testJavaHome}"
-					}
-					if ( buildEnv.testJdkLauncherArgs ) {
-						state[buildEnv.tag]['additionalOptions'] = state[buildEnv.tag]['additionalOptions'] +
-								" -Ptest.jdk.launcher.args=${buildEnv.testJdkLauncherArgs}"
-					}
-					state[buildEnv.tag]['containerName'] = null;
-					stage('Checkout') {
-						checkout scm
-					}
-					tryFinally({
-						stage('Start database') {
-							switch (buildEnv.dbName) {
-								case "hsqldb_2_6":
-									state[buildEnv.tag]['additionalOptions'] = state[buildEnv.tag]['additionalOptions'] +
-										" -Pgradle.libs.versions.hsqldb=2.6.1"
-									break;
-								case "mysql_8_0":
-									docker.withRegistry('https://index.docker.io/v1/', 'hibernateci.hub.docker.com') {
-										docker.image('mysql:8.0.31').pull()
-									}
-									sh "./docker_db.sh mysql_8_0"
-									state[buildEnv.tag]['containerName'] = "mysql"
-									break;
-								case "mariadb_10_5":
-									docker.withRegistry('https://index.docker.io/v1/', 'hibernateci.hub.docker.com') {
-										docker.image('mariadb:10.5.25').pull()
-									}
-									sh "./docker_db.sh mariadb_10_5"
-									state[buildEnv.tag]['containerName'] = "mariadb"
-									break;
-								case "postgresql_12":
-									// use the postgis image to enable the PGSQL GIS (spatial) extension
-									docker.withRegistry('https://index.docker.io/v1/', 'hibernateci.hub.docker.com') {
-										docker.image('postgis/postgis:12-3.4').pull()
-									}
-									sh "./docker_db.sh postgresql_12"
-									state[buildEnv.tag]['containerName'] = "postgres"
-									break;
-								case "edb_12":
-									docker.image('quay.io/enterprisedb/edb-postgres-advanced:12.16-3.3-postgis').pull()
-									sh "./docker_db.sh edb_12"
-									state[buildEnv.tag]['containerName'] = "edb"
-									break;
-								case "db2_10_5":
-									docker.withRegistry('https://index.docker.io/v1/', 'hibernateci.hub.docker.com') {
-										docker.image('ibmoms/db2express-c@sha256:a499afd9709a1f69fb41703e88def9869955234c3525547e2efc3418d1f4ca2b').pull()
-									}
-									sh "./docker_db.sh db2_10_5"
-									state[buildEnv.tag]['containerName'] = "db2"
-									break;
-								case "mssql_2017":
-									docker.image('mcr.microsoft.com/mssql/server@sha256:7d194c54e34cb63bca083542369485c8f4141596805611e84d8c8bab2339eede').pull()
-									sh "./docker_db.sh mssql_2017"
-									state[buildEnv.tag]['containerName'] = "mssql"
-									break;
-								case "sybase_jconn":
-									docker.withRegistry('https://index.docker.io/v1/', 'hibernateci.hub.docker.com') {
-										docker.image('nguoianphu/docker-sybase').pull()
-									}
-									sh "./docker_db.sh sybase"
-									state[buildEnv.tag]['containerName'] = "sybase"
-									break;
-								case "cockroachdb":
-									docker.withRegistry('https://index.docker.io/v1/', 'hibernateci.hub.docker.com') {
-										docker.image('cockroachdb/cockroach:v23.1.12').pull()
-									}
-									sh "./docker_db.sh cockroachdb"
-									state[buildEnv.tag]['containerName'] = "cockroach"
-									break;
-							}
-						}
-						stage('Test') {
-							String args = "${buildEnv.additionalOptions ?: ''} ${state[buildEnv.tag]['additionalOptions'] ?: ''}"
-							withEnv(["RDBMS=${buildEnv.dbName}"]) {
-								tryFinally({
-									if (buildEnv.dbLockableResource == null) {
-										withCredentials([file(credentialsId: 'sybase-jconnect-driver', variable: 'jconnect_driver')]) {
-											sh 'cp -f $jconnect_driver ./drivers/jconn4.jar'
-											timeout( [time: buildEnv.longRunning ? 480 : 120, unit: 'MINUTES'] ) {
-												ciBuild buildEnv, args
-											}
-										}
-									}
-									else {
-										lock(label: buildEnv.dbLockableResource, quantity: 1, variable: 'LOCKED_RESOURCE') {
-											if ( buildEnv.dbLockResourceAsHost ) {
-												args += " -DdbHost=${LOCKED_RESOURCE}"
-											}
-											timeout( [time: buildEnv.longRunning ? 480 : 120, unit: 'MINUTES'] ) {
-												ciBuild buildEnv, args
-											}
-										}
-									}
-								}, { // Finally
-									junit '**/target/test-results/test/*.xml,**/target/test-results/testKitTest/*.xml'
-								})
-							}
-						}
-					}, { // Finally
-						if ( state[buildEnv.tag]['containerName'] != null ) {
-							sh "docker rm -f ${state[buildEnv.tag]['containerName']}"
-						}
-						// Skip this for PRs
-						if ( !env.CHANGE_ID && buildEnv.notificationRecipients != null ) {
-							handleNotifications(currentBuild, buildEnv)
-						}
-					})
-				}
-			}
-		})
 	}
 	// Don't run additional checks when this is a PR
 	if ( !helper.scmSource.pullRequest ) {
-		executions.put('Reproducible build check', {
-			runBuildOnNode(NODE_PATTERN_BASE) {
-				def javaHome = tool(name: DEFAULT_JDK_TOOL, type: 'jdk')
-				// Use withEnv instead of setting env directly, as that is global!
-				// See https://github.com/jenkinsci/pipeline-plugin/blob/master/TUTORIAL.md
-				withEnv(["JAVA_HOME=${javaHome}", "PATH+JAVA=${javaHome}/bin"]) {
-					stage('Checkout') {
-						checkout scm
-					}
-					stage('Test') {
-						withGradle {
-							def tempDir = pwd(tmp: true)
-							def repo1 = tempDir + '/repo1'
-							def repo2 = tempDir + '/repo2'
-							// build Hibernate ORM two times without any cache and "publish" the resulting artifacts to different maven repositories
-							// so that we can compare them afterwards:
-							sh "./gradlew --no-daemon clean publishToMavenLocal --no-build-cache -Dmaven.repo.local=${repo1}"
-							sh "./gradlew --no-daemon clean publishToMavenLocal --no-build-cache -Dmaven.repo.local=${repo2}"
-
-							sh "sh ci/compare-build-results.sh ${repo1} ${repo2}"
-							sh "cat .buildcompare"
-						}
-					}
-				}
-			}
-		})
 		executions.put('Strict JAXP configuration', {
 			runBuildOnNode(NODE_PATTERN_BASE) {
 				// we want to test with JDK 23 where the strict settings were introduced
@@ -245,6 +95,18 @@ stage('Build') {
 					}
 					stage('Test') {
 						withGradle {
+						    def lastCommitter = sh(script: 'git show -s --format=\'%an\'', returnStdout: true).trim()
+                            def secondLastCommitter = sh(script: 'git show -s --format=\'%an\' HEAD~1', returnStdout: true).trim()
+
+                            print "lastCommitter ${lastCommitter}"
+                            print "secondLastCommitter ${secondLastCommitter}"
+                            print "get class ${secondLastCommitter.getClass()}"
+                            print "test1 ${lastCommitter == 'marko-bekhta'}"
+                            print "test2 ${lastCommitter.equals('marko-bekhta')}"
+                            if (lastCommitter == 'marko-bekhta' && secondLastCommitter == 'marko-bekhta') {
+                                print "marko-bekhta == marko-bekhta"
+                            }
+
 							def tempDir = pwd(tmp: true)
 							def jaxpStrictProperties = tempDir + '/jaxp-strict.properties'
 							def jaxpStrictTemplate = testJavaHome + '/conf/jaxp-strict.properties.template'
