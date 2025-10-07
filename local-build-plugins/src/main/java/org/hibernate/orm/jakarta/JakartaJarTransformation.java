@@ -15,6 +15,7 @@ import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.process.ExecOperations;
 
 import static org.hibernate.orm.jakarta.JakartaPlugin.JAKARTA;
 
@@ -25,11 +26,13 @@ import static org.hibernate.orm.jakarta.JakartaPlugin.JAKARTA;
 public abstract class JakartaJarTransformation extends DefaultTask {
 	private final RegularFileProperty sourceJar;
 	private final RegularFileProperty targetJar;
+	private final ExecOperations execOperations;
 
 	@Inject
-	public JakartaJarTransformation(ObjectFactory objectFactory) {
-		sourceJar = objectFactory.fileProperty();
-		targetJar = objectFactory.fileProperty();
+	public JakartaJarTransformation(ObjectFactory objectFactory, ExecOperations execOperations) {
+		this.sourceJar = objectFactory.fileProperty();
+		this.targetJar = objectFactory.fileProperty();
+		this.execOperations = execOperations;
 
 		setGroup( JAKARTA );
 	}
@@ -47,10 +50,10 @@ public abstract class JakartaJarTransformation extends DefaultTask {
 
 	@TaskAction
 	void transform() {
-		getProject().javaexec(
+		execOperations.javaexec(
 				(javaExecSpec) -> {
 					javaExecSpec.classpath( getProject().getConfigurations().getByName( "jakartaeeTransformTool" ) );
-					javaExecSpec.setMain( "org.eclipse.transformer.jakarta.JakartaTransformer" );
+					javaExecSpec.getMainClass().set( "org.eclipse.transformer.jakarta.JakartaTransformer" );
 					javaExecSpec.args(
 							sourceJar.get().getAsFile().getAbsolutePath(),
 							targetJar.get().getAsFile().getAbsolutePath(),

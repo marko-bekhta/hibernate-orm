@@ -11,7 +11,7 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
-import org.gradle.api.plugins.JavaPluginConvention;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Copy;
 import org.gradle.api.tasks.SourceSet;
@@ -264,8 +264,8 @@ public class JakartaPlugin implements Plugin<Project> {
 	}
 
 	public static SourceSetContainer extractSourceSets(Project project) {
-		final JavaPluginConvention javaPluginConvention = project.getConvention().findPlugin( JavaPluginConvention.class );
-		assert javaPluginConvention != null;
-		return javaPluginConvention.getSourceSets();
+		final JavaPluginExtension javaPluginExtension = project.getExtensions().findByType( JavaPluginExtension.class );
+		assert javaPluginExtension != null;
+		return javaPluginExtension.getSourceSets();
 	}
 }

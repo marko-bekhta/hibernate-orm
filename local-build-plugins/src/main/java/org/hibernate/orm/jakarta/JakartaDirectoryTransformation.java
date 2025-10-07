@@ -16,6 +16,7 @@ import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.process.ExecOperations;
 
 import static org.hibernate.orm.jakarta.JakartaPlugin.JAKARTA;
 
@@ -26,11 +27,13 @@ import static org.hibernate.orm.jakarta.JakartaPlugin.JAKARTA;
 public abstract class JakartaDirectoryTransformation extends DefaultTask {
 	private final DirectoryProperty sourceDirectory;
 	private final DirectoryProperty targetDirectory;
+	private final ExecOperations execOperations;
 
 	@Inject
-	public JakartaDirectoryTransformation(ObjectFactory objectFactory) {
-		sourceDirectory = objectFactory.directoryProperty();
-		targetDirectory = objectFactory.directoryProperty();
+	public JakartaDirectoryTransformation(ObjectFactory objectFactory, ExecOperations execOperations) {
+		this.sourceDirectory = objectFactory.directoryProperty();
+		this.targetDirectory = objectFactory.directoryProperty();
+		this.execOperations = execOperations;
 
 		setGroup( JAKARTA );
 	}
@@ -64,10 +67,10 @@ public abstract class JakartaDirectoryTransformation extends DefaultTask {
 
 		targetDirAsFile.delete();
 
-		getProject().javaexec(
+		execOperations.javaexec(
 				(javaExecSpec) -> {
 					javaExecSpec.classpath( getProject().getConfigurations().getByName( "jakartaeeTransformTool" ) );
-					javaExecSpec.setMain( "org.eclipse.transformer.jakarta.JakartaTransformer" );
+					javaExecSpec.getMainClass().set( "org.eclipse.transformer.jakarta.JakartaTransformer" );
 					javaExecSpec.args(
 							sourceDirAsFile.getAbsolutePath(),
 							targetDirAsFile.getAbsolutePath(),

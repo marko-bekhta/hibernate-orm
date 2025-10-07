@@ -18,6 +18,7 @@ import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.process.ExecOperations;
 
 import static org.hibernate.orm.antlr.AntlrHelper.stripSillyGeneratedFromLines;
 
@@ -34,8 +35,10 @@ public abstract class SplitGrammarGenerationTask extends DefaultTask {
 	private final Provider<Directory> generationDirectory;
 	private final Provider<Directory> outputDirectory;
 
+	private final ExecOperations execOperations;
+
 	@Inject
-	public SplitGrammarGenerationTask(SplitGrammarDescriptor grammarDescriptor, AntlrSpec antlrSpec) {
+	public SplitGrammarGenerationTask(SplitGrammarDescriptor grammarDescriptor, AntlrSpec antlrSpec, ExecOperations execOperations) {
 		this.grammarDescriptor = grammarDescriptor;
 
 		lexerGrammarFile = getProject().provider( () -> {
@@ -59,6 +62,8 @@ public abstract class SplitGrammarGenerationTask extends DefaultTask {
 			final Directory outputBaseDirectory = antlrSpec.getOutputBaseDirectory().get();
 			return outputBaseDirectory.dir( grammarDescriptor.getPackageName().get().replace( '.', '/' ) );
 		} );
+
+		this.execOperations = execOperations;
 	}
 
 	@InputFile
@@ -109,9 +114,9 @@ public abstract class SplitGrammarGenerationTask extends DefaultTask {
 		);
 
 
-		getProject().javaexec(
+		execOperations.javaexec(
 				(javaExecSpec) -> {
-					javaExecSpec.setMain( "org.antlr.v4.Tool" );
+					javaExecSpec.getMainClass().set( "org.antlr.v4.Tool" );
 					javaExecSpec.classpath( getProject().getConfigurations().getByName( "antlr" ) );
 					javaExecSpec.args(
 							"-o", getProject().relativePath( outputDir.getAbsolutePath() ),
@@ -133,9 +138,9 @@ public abstract class SplitGrammarGenerationTask extends DefaultTask {
 		);
 
 
-		getProject().javaexec(
+		execOperations.javaexec(
 				(javaExecSpec) -> {
-					javaExecSpec.setMain( "org.antlr.v4.Tool" );
+					javaExecSpec.getMainClass().set( "org.antlr.v4.Tool" );
 					javaExecSpec.classpath( getProject().getConfigurations().named( "antlr" ) );
 					javaExecSpec.args(
 							"-o", getProject().relativePath( outputDir.getAbsolutePath() ),
