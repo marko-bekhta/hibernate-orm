@@ -26,8 +26,8 @@ helper.runWithNotification {
         requireApprovalForPullRequest 'hibernate'
 
         this.environments = [
-            new BuildEnvironment( testJdkVersion: '11', testJdkLauncherArgs: '--enable-preview', additionalOptions: '-PskipJacoco=true' ),
-            new BuildEnvironment( testJdkVersion: '17', testJdkLauncherArgs: '--enable-preview', additionalOptions: '-PskipJacoco=true' )
+            new BuildEnvironment( mainJdkVersion: '11', testJdkVersion: '11', testJdkLauncherArgs: '--enable-preview', additionalOptions: '-PskipJacoco=true' ),
+            new BuildEnvironment( mainJdkVersion: '17', testJdkVersion: '17', testJdkLauncherArgs: '--enable-preview', additionalOptions: '-PskipJacoco=true' )
         ];
 
         helper.configure {
