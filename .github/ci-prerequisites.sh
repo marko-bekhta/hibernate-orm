@@ -4,7 +4,7 @@ echo 'Before the cleanup:'
 df -h
 # Remove the container images for node:
 echo 'Docker images (available for possible removal):'
-docker images
+sudo docker images
 # That is 18 GB
 sudo rm -rf /usr/share/dotnet
 # That is 1.2 GB
