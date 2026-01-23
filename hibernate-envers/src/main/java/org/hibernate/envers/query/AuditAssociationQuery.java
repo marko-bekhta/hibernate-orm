@@ -7,12 +7,12 @@ package org.hibernate.envers.query;
 import jakarta.persistence.criteria.JoinType;
 
 import org.hibernate.CacheMode;
-import org.hibernate.FlushMode;
 import org.hibernate.Incubating;
 import org.hibernate.LockMode;
 import org.hibernate.envers.query.criteria.AuditCriterion;
 import org.hibernate.envers.query.order.AuditOrder;
 import org.hibernate.envers.query.projection.AuditProjection;
+import org.hibernate.query.QueryFlushMode;
 
 /**
  * @author Felix Feisst (feisst dot felix at gmail dot com)
@@ -52,7 +52,7 @@ public interface AuditAssociationQuery<Q extends AuditQuery> extends AuditQuery 
 	AuditAssociationQuery<Q> setComment(String comment);
 
 	@Override
-	AuditAssociationQuery<Q> setFlushMode(FlushMode flushMode);
+	AuditAssociationQuery<Q> setFlushMode(QueryFlushMode flushMode);
 
 	@Override
 	AuditAssociationQuery<Q> setCacheMode(CacheMode cacheMode);

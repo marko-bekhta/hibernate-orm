@@ -14,7 +14,6 @@ import jakarta.persistence.NonUniqueResultException;
 import jakarta.persistence.criteria.JoinType;
 
 import org.hibernate.CacheMode;
-import org.hibernate.FlushMode;
 import org.hibernate.Incubating;
 import org.hibernate.LockMode;
 import org.hibernate.envers.RevisionType;
@@ -35,6 +34,7 @@ import org.hibernate.envers.query.criteria.AuditCriterion;
 import org.hibernate.envers.query.criteria.internal.CriteriaTools;
 import org.hibernate.envers.query.order.AuditOrder;
 import org.hibernate.envers.query.projection.AuditProjection;
+import org.hibernate.query.QueryFlushMode;
 
 /**
  * An abstract base class for all {@link AuditAssociationQuery} implementations.
@@ -268,7 +268,7 @@ public abstract class AbstractAuditAssociationQuery<Q extends AuditQueryImplemen
 	}
 
 	@Override
-	public AbstractAuditAssociationQuery<Q> setFlushMode(FlushMode flushMode) {
+	public AbstractAuditAssociationQuery<Q> setFlushMode(QueryFlushMode flushMode) {
 		parent.setFlushMode( flushMode );
 		return this;
 	}

@@ -14,7 +14,6 @@ import jakarta.persistence.NonUniqueResultException;
 import jakarta.persistence.criteria.JoinType;
 
 import org.hibernate.CacheMode;
-import org.hibernate.FlushMode;
 import org.hibernate.LockMode;
 import org.hibernate.LockOptions;
 import org.hibernate.envers.boot.internal.EnversService;
@@ -32,6 +31,7 @@ import org.hibernate.envers.query.order.AuditOrder;
 import org.hibernate.envers.query.projection.AuditProjection;
 import org.hibernate.envers.tools.Pair;
 import org.hibernate.query.Query;
+import org.hibernate.query.QueryFlushMode;
 
 import static org.hibernate.envers.internal.entities.mapper.relation.query.QueryConstants.REFERENCED_ENTITY_ALIAS;
 
@@ -209,7 +209,7 @@ public abstract class AbstractAuditQuery implements AuditQueryImplementor {
 	private Boolean cacheable;
 	private String cacheRegion;
 	private String comment;
-	private FlushMode flushMode;
+	private QueryFlushMode flushMode;
 	private CacheMode cacheMode;
 	private Integer timeout;
 	private LockOptions lockOptions = new LockOptions( LockMode.NONE );
@@ -239,7 +239,7 @@ public abstract class AbstractAuditQuery implements AuditQueryImplementor {
 		return this;
 	}
 
-	public AuditQuery setFlushMode(FlushMode flushMode) {
+	public AuditQuery setFlushMode(QueryFlushMode flushMode) {
 		this.flushMode = flushMode;
 		return this;
 	}
@@ -298,7 +298,7 @@ public abstract class AbstractAuditQuery implements AuditQueryImplementor {
 			query.setComment( comment );
 		}
 		if ( flushMode != null ) {
-			query.setHibernateFlushMode( flushMode );
+			query.setQueryFlushMode( flushMode );
 		}
 		if ( cacheMode != null ) {
 			query.setCacheMode( cacheMode );
