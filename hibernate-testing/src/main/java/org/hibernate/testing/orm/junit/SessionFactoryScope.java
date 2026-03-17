@@ -24,6 +24,7 @@ public interface SessionFactoryScope {
 	StatementInspector getStatementInspector();
 	<T extends StatementInspector> T getStatementInspector(Class<T> type);
 	SQLStatementInspector getCollectingStatementInspector();
+	void releaseSessionFactory();
 
 	default void withSessionFactory(Consumer<SessionFactoryImplementor> action) {
 		action.accept( getSessionFactory() );
@@ -32,10 +33,12 @@ public interface SessionFactoryScope {
 	void inSession(Consumer<SessionImplementor> action);
 	void inTransaction(Consumer<SessionImplementor> action);
 	void inTransaction(SessionImplementor session, Consumer<SessionImplementor> action);
+	void inTransaction(Function<SessionFactoryImplementor,SessionImplementor> sessionProducer, Consumer<SessionImplementor> action);
 
 	<T> T fromSession(Function<SessionImplementor, T> action);
 	<T> T fromTransaction(Function<SessionImplementor, T> action);
 	<T> T fromTransaction(SessionImplementor session, Function<SessionImplementor, T> action);
+	<T> T fromTransaction(Function<SessionFactoryImplementor,SessionImplementor> sessionProducer, Function<SessionImplementor, T> action);
 
 	void inStatelessSession(Consumer<StatelessSessionImplementor> action);
 	void inStatelessTransaction(Consumer<StatelessSessionImplementor> action);

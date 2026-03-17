@@ -4,8 +4,8 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.hibernate.metamodel.mapping.ForeignKeyDescriptor;
-import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.metamodel.model.domain.IdentifiableDomainType;
 import org.hibernate.query.hql.spi.SqmCreationState;
@@ -15,6 +15,8 @@ import org.hibernate.query.sqm.TreatException;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
 import org.hibernate.query.sqm.tree.SqmRenderContext;
 import org.hibernate.spi.NavigablePath;
+
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 
 
 /**
@@ -34,20 +36,28 @@ public class SqmFkExpression<T> extends AbstractSqmPath<T> {
 			SqmPath<?> toOnePath) {
 		super(
 				navigablePath,
-				(SqmPathSource<T>) pathDomainType( toOnePath ).getIdentifierDescriptor(),
+				(SqmPathSource<T>)
+						castNonNull( pathDomainType( toOnePath )
+								.getIdentifierDescriptor() ),
 				toOnePath,
 				toOnePath.nodeBuilder()
 		);
 	}
 
 	private static IdentifiableDomainType<?> pathDomainType(SqmPath<?> toOnePath) {
-		final DomainType<?> domainType = toOnePath.getReferencedPathSource().getPathType();
-		if ( domainType instanceof IdentifiableDomainType<?> identifiableDomainType ) {
+		if ( toOnePath.getReferencedPathSource().getPathType()
+				instanceof IdentifiableDomainType<?> identifiableDomainType ) {
 			return identifiableDomainType;
 		}
 		else {
-			throw new IllegalArgumentException( "Invalid path provided to 'fk()' function: " + toOnePath.getNavigablePath() );
+			throw new IllegalArgumentException( "Invalid path provided to 'fk()' function: "
+												+ toOnePath.getNavigablePath() );
 		}
+	}
+
+	@Override
+	public @NonNull SqmPath<?> getLhs() {
+		return castNonNull( super.getLhs() );
 	}
 
 	@Override
@@ -64,11 +74,11 @@ public class SqmFkExpression<T> extends AbstractSqmPath<T> {
 
 	@Override
 	public SqmFkExpression<T> copy(SqmCopyContext context) {
-		final SqmFkExpression<T> existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
-		final SqmEntityValuedSimplePath<?> lhsCopy = (SqmEntityValuedSimplePath<?>) getLhs().copy( context );
+		final var lhsCopy = (SqmEntityValuedSimplePath<?>) getLhs().copy( context );
 		return context.registerCopy(
 				this,
 				new SqmFkExpression<>( getNavigablePathCopy( lhsCopy ), lhsCopy )
@@ -87,7 +97,7 @@ public class SqmFkExpression<T> extends AbstractSqmPath<T> {
 
 	@Override
 	public SqmPath<?> resolvePathPart(String name, boolean isTerminal, SqmCreationState creationState) {
-		final SqmPath<?> sqmPath = get( name, true );
+		final var sqmPath = get( name, true );
 		creationState.getProcessingStateStack().getCurrent().getPathRegistry().register( sqmPath );
 		return sqmPath;
 	}

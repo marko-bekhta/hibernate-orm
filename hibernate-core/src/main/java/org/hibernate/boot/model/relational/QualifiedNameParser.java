@@ -79,17 +79,19 @@ public class QualifiedNameParser {
 			if ( this == o ) {
 				return true;
 			}
-			if ( !(o instanceof NameParts that) ) {
+			else if ( !(o instanceof NameParts that) ) {
 				return false;
 			}
-			return Objects.equals( this.catalogName, that.catalogName )
-				&& Objects.equals( this.schemaName, that.schemaName )
-				&& Objects.equals( this.objectName, that.objectName );
+			else {
+				return Objects.equals( this.catalogName, that.catalogName )
+					&& Objects.equals( this.schemaName, that.schemaName )
+					&& Objects.equals( this.objectName, that.objectName );
+			}
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(  catalogName, schemaName, objectName );
+			return Objects.hash( catalogName, schemaName, objectName );
 		}
 	}
 
@@ -108,7 +110,7 @@ public class QualifiedNameParser {
 
 		if ( isQuotedInEntirety( text ) ) {
 			return new NameParts( defaultCatalog, defaultSchema,
-					Identifier.toIdentifier( unquote( text ), true ) );
+					Identifier.toIdentifier( unquote( text ), true, true, true ) );
 		}
 
 		String catalogName = null;
@@ -167,7 +169,7 @@ public class QualifiedNameParser {
 		return new NameParts(
 				Identifier.toIdentifier( catalogName, catalogWasQuoted ),
 				Identifier.toIdentifier( schemaName, schemaWasQuoted ),
-				Identifier.toIdentifier( name, nameWasQuoted )
+				Identifier.toIdentifier( name, nameWasQuoted, true, true )
 		);
 	}
 

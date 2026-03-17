@@ -4,6 +4,7 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.query.sqm.SemanticQueryWalker;
 import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
@@ -42,7 +43,7 @@ public class SqmCorrelatedDerivedJoin<T> extends SqmDerivedJoin<T> implements Sq
 			SqmSubQuery<T> subQuery,
 			boolean lateral,
 			SqmPathSource<T> pathSource,
-			String alias,
+			@Nullable String alias,
 			SqmJoinType joinType,
 			SqmRoot<T> sqmRoot,
 			SqmCorrelatedRootJoin<T> correlatedRootJoin,
@@ -54,11 +55,11 @@ public class SqmCorrelatedDerivedJoin<T> extends SqmDerivedJoin<T> implements Sq
 
 	@Override
 	public SqmCorrelatedDerivedJoin<T> copy(SqmCopyContext context) {
-		final SqmCorrelatedDerivedJoin<T> existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
-		final SqmCorrelatedDerivedJoin<T> path = context.registerCopy(
+		final var path = context.registerCopy(
 				this,
 				new SqmCorrelatedDerivedJoin<>(
 						getNavigablePath(),

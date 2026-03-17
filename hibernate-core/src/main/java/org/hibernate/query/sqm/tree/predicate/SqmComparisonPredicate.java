@@ -4,6 +4,7 @@
  */
 package org.hibernate.query.sqm.tree.predicate;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.query.sqm.ComparisonOperator;
 import org.hibernate.query.internal.QueryHelper;
 import org.hibernate.query.sqm.NodeBuilder;
@@ -13,7 +14,7 @@ import org.hibernate.query.sqm.tree.SqmCopyContext;
 import org.hibernate.query.sqm.tree.SqmRenderContext;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
 
-
+import static java.util.Objects.requireNonNull;
 import static org.hibernate.query.sqm.internal.TypecheckUtil.assertComparable;
 
 /**
@@ -39,6 +40,12 @@ public class SqmComparisonPredicate extends AbstractNegatableSqmPredicate {
 			boolean negated,
 			NodeBuilder nodeBuilder) {
 		super( negated, nodeBuilder );
+
+		// CriteriaBuilder does not check its arguments, so check these here instead
+		requireNonNull( operator, "Operator must not be null" );
+		requireNonNull( leftHandExpression, "Left expression must not be null" );
+		requireNonNull( rightHandExpression, "Right expression must not be null" );
+
 		this.leftHandExpression = leftHandExpression;
 		this.rightHandExpression = rightHandExpression;
 		this.operator = operator;
@@ -59,7 +66,7 @@ public class SqmComparisonPredicate extends AbstractNegatableSqmPredicate {
 		this.leftHandExpression = affirmativeForm.leftHandExpression;
 		this.rightHandExpression = affirmativeForm.rightHandExpression;
 		this.operator = affirmativeForm.operator;
-		assertComparable( leftHandExpression, rightHandExpression, nodeBuilder() );
+		assertComparable( leftHandExpression, rightHandExpression, affirmativeForm.nodeBuilder() );
 	}
 
 	@Override
@@ -119,7 +126,7 @@ public class SqmComparisonPredicate extends AbstractNegatableSqmPredicate {
 	}
 
 	@Override
-	public boolean equals(Object object) {
+	public boolean equals(@Nullable Object object) {
 		return object instanceof SqmComparisonPredicate that
 			&& this.isNegated() == that.isNegated()
 			&& this.operator == that.operator

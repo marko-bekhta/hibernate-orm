@@ -4,6 +4,7 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.query.sqm.NodeBuilder;
 import org.hibernate.query.sqm.SemanticQueryWalker;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
@@ -36,7 +37,7 @@ public class SqmCorrelatedSetJoin<O, T> extends SqmSetJoin<O, T> implements SqmC
 	private SqmCorrelatedSetJoin(
 			SqmFrom<?, O> lhs,
 			SqmSetPersistentAttribute<O, T> attribute,
-			String alias,
+			@Nullable String alias,
 			SqmJoinType sqmJoinType,
 			boolean fetched,
 			NodeBuilder nodeBuilder,
@@ -49,11 +50,11 @@ public class SqmCorrelatedSetJoin<O, T> extends SqmSetJoin<O, T> implements SqmC
 
 	@Override
 	public SqmCorrelatedSetJoin<O, T> copy(SqmCopyContext context) {
-		final SqmCorrelatedSetJoin<O, T> existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
-		final SqmCorrelatedSetJoin<O, T> path = context.registerCopy(
+		final var path = context.registerCopy(
 				this,
 				new SqmCorrelatedSetJoin<>(
 						getLhs().copy( context ),

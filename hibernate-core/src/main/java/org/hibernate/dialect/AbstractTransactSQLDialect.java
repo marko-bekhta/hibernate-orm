@@ -27,6 +27,7 @@ import org.hibernate.query.sqm.mutation.internal.temptable.LocalTemporaryTableMu
 import org.hibernate.query.sqm.mutation.spi.SqmMultiTableInsertStrategy;
 import org.hibernate.query.sqm.mutation.spi.SqmMultiTableMutationStrategy;
 import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
+import org.hibernate.sql.ast.internal.TransactSQLLockingClauseStrategy;
 import org.hibernate.sql.ast.spi.LockingClauseStrategy;
 import org.hibernate.sql.ast.spi.SqlAppender;
 import org.hibernate.sql.ast.tree.select.QuerySpec;
@@ -40,7 +41,6 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Map;
 
-import static org.hibernate.sql.ast.internal.NonLockingClauseStrategy.NON_CLAUSE_STRATEGY;
 import static org.hibernate.type.SqlTypes.BLOB;
 import static org.hibernate.type.SqlTypes.BOOLEAN;
 import static org.hibernate.type.SqlTypes.CLOB;
@@ -200,8 +200,7 @@ public abstract class AbstractTransactSQLDialect extends Dialect {
 
 	@Override
 	public LockingClauseStrategy getLockingClauseStrategy(QuerySpec querySpec, LockOptions lockOptions) {
-		// T-SQL uses table-based lock hints and thus does not support FOR UPDATE clause
-		return NON_CLAUSE_STRATEGY;
+		return new TransactSQLLockingClauseStrategy( lockOptions.getScope(), querySpec.getRootPathsForLocking() );
 	}
 
 	@Override
@@ -221,7 +220,7 @@ public abstract class AbstractTransactSQLDialect extends Dialect {
 		}
 
 		// TODO:  merge additional lock options support in Dialect.applyLocksToSql
-		final StringBuilder buffer = new StringBuilder( sql );
+		final var buffer = new StringBuilder( sql );
 		keyColumnNameMap.forEach( (tableAlias, keyColumnNames) -> {
 			int start = -1;
 			int end = -1;

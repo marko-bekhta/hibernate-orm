@@ -6,11 +6,13 @@ package org.hibernate.query.sqm.internal;
 
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.metamodel.EntityType;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.AssertionFailure;
 import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.model.domain.DomainType;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.ManagedDomainType;
+import org.hibernate.metamodel.model.domain.MappedSuperclassDomainType;
 import org.hibernate.query.sqm.SqmBindableType;
 import org.hibernate.query.sqm.tuple.TupleType;
 import org.hibernate.metamodel.model.domain.internal.EntityDiscriminatorSqmPathSource;
@@ -34,6 +36,7 @@ import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAmount;
 import java.util.Objects;
 
+import static org.hibernate.internal.util.type.PrimitiveWrappers.canonicalize;
 import static org.hibernate.type.descriptor.java.JavaTypeHelper.isUnknown;
 
 /**
@@ -102,8 +105,8 @@ public class TypecheckUtil {
 	 * @see #isTypeAssignable(SqmBindableType, SqmBindableType, BindingContext)
 	 */
 	public static boolean areTypesComparable(
-			SqmBindableType<?> lhsType,
-			SqmBindableType<?> rhsType,
+			@Nullable SqmBindableType<?> lhsType,
+			@Nullable SqmBindableType<?> rhsType,
 			BindingContext bindingContext) {
 		if ( lhsType == null || rhsType == null || lhsType == rhsType ) {
 			return true;
@@ -329,10 +332,13 @@ public class TypecheckUtil {
 		}
 
 		// entities can be assigned if they belong to the same inheritance hierarchy
-
 		if ( targetType instanceof EntityType<?> targetEntity
 				&& expressionType instanceof EntityType<?> expressionEntity ) {
-			return isEntityTypeAssignable( targetEntity, expressionEntity, bindingContext);
+			return isEntityTypeAssignable( targetEntity, expressionEntity, bindingContext );
+		}
+		if ( targetType instanceof MappedSuperclassDomainType<?> expressionMappedSuperclass
+				&& expressionType instanceof EntityType<?> expressionEntity ) {
+			return isMappedSuperclassTypeAssignable( expressionMappedSuperclass, expressionEntity, bindingContext );
 		}
 
 		// Treat the expression as assignable to the target path if they belong
@@ -378,20 +384,23 @@ public class TypecheckUtil {
 		return type.getSqmType() instanceof ConvertedBasicType<?>;
 	}
 
-	private static Class<?> canonicalize(Class<?> lhs) {
-		return switch (lhs.getCanonicalName()) {
-			case "boolean" -> Boolean.class;
-			case "byte" -> Byte.class;
-			case "short" -> Short.class;
-			case "int" -> Integer.class;
-			case "long" -> Long.class;
-			case "float" -> Float.class;
-			case "double" -> Double.class;
-			case "char" -> Character.class;
-			default -> lhs;
-		};
-	}
+	private static boolean isMappedSuperclassTypeAssignable(
+			MappedSuperclassDomainType<?> lhsType,
+			EntityType<?> rhsType,
+			BindingContext bindingContext) {
 
+		for ( var candidate : lhsType.getSubTypes() ) {
+			if ( candidate instanceof EntityType<?> candidateEntityType
+					&& isEntityTypeAssignable( candidateEntityType, rhsType, bindingContext ) ) {
+				return true;
+			}
+			else if ( candidate instanceof MappedSuperclassDomainType<?> candidateMappedSuperclass
+					&& isMappedSuperclassTypeAssignable( candidateMappedSuperclass, rhsType, bindingContext ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
 	private static boolean isEntityTypeAssignable(
 			EntityType<?> lhsType, EntityType<?> rhsType,
 			BindingContext bindingContext) {
@@ -456,7 +465,7 @@ public class TypecheckUtil {
 	 * @see TypecheckUtil#assertComparable(Expression, Expression, BindingContext)
 	 */
 	public static void assertAssignable(
-			String hqlString,
+			@Nullable String hqlString,
 			SqmPath<?> targetPath, SqmTypedNode<?> expression,
 			BindingContext bindingContext) {
 		// allow assigning literal null to things
@@ -592,7 +601,7 @@ public class TypecheckUtil {
 		}
 	}
 
-	public static boolean isNumberArray(SqmExpressible<?> expressible) {
+	public static boolean isNumberArray(@Nullable SqmExpressible<?> expressible) {
 		if ( expressible != null ) {
 			final var domainType = expressible.getSqmType();
 			if ( domainType != null ) {

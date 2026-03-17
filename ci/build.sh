@@ -3,9 +3,12 @@
 goal=
 if [ "$RDBMS" == "h2" ] || [ "$RDBMS" == "" ]; then
   # This is the default.
-  goal="preVerifyRelease"
-  # Settings needed for `preVerifyRelease` execution - for asciidoctor doc rendering
-	export GRADLE_OPTS=-Dorg.gradle.jvmargs='-Dlog4j2.disableJmx -Xmx4g -XX:MaxMetaspaceSize=768m -XX:+HeapDumpOnOutOfMemoryError -Duser.language=en -Duser.country=US -Duser.timezone=UTC -Dfile.encoding=UTF-8'
+  #   - special check for Jenkins CI jobs where we don't want to run preVerifyRelease
+  if [[ "$CI_SYSTEM" != "jenkins" ]]; then
+    goal="preVerifyRelease"
+    # Settings needed for `preVerifyRelease` execution - for asciidoctor doc rendering
+    export GRADLE_OPTS=-Dorg.gradle.jvmargs='-Dlog4j2.disableJmx -Xmx4g -XX:MaxMetaspaceSize=768m -XX:+HeapDumpOnOutOfMemoryError -Duser.language=en -Duser.country=US -Duser.timezone=UTC -Dfile.encoding=UTF-8'
+  fi
 elif [ "$RDBMS" == "hsqldb" ] || [ "$RDBMS" == "hsqldb_2_6" ]; then
   goal="-Pdb=hsqldb"
 elif [ "$RDBMS" == "mysql" ] || [ "$RDBMS" == "mysql_8_0" ]; then
@@ -53,11 +56,13 @@ elif [ "$RDBMS" == "oracle_db23c" ]; then
   export SERVICE=$(echo $INFO | jq -r '.database' | jq -r '.service')
   goal="-Pdb=oracle_cloud_db23c -DrunID=$RUNID -DdbHost=$HOST -DdbService=$SERVICE"
 # OTP
-elif [ "$RDBMS" == "autonomous-transaction-processing-serverless" ] || [ "$RDBMS" == "base-database-service-19c" ] || [ "$RDBMS" == "base-database-service-21c" ] || [ "$RDBMS" == "base-database-service-23ai" ]; then
+elif [ "$RDBMS" == "autonomous-transaction-processing-serverless-19c" ] || [ "$RDBMS" == "autonomous-transaction-processing-serverless-26ai" ] || [ "$RDBMS" == "autonomous-transaction-processing-serverless" ] || [ "$RDBMS" == "base-database-service-19c" ] || [ "$RDBMS" == "base-database-service-21c" ] || [ "$RDBMS" == "base-database-service-26ai" ]; then
   echo "Managing OTP Database..."
   goal="-Pdb=oracle_test_pilot_database -DrunID=$RUNID -DdbPassword=$TESTPILOT_PASSWORD -DdbConnectionStringSuffix=$TESTPILOT_CONNECTION_STRING_SUFFIX"
-elif [ "$RDBMS" == "db2" ] || [ "$RDBMS" == "db2_11_5" ]; then
+elif [ "$RDBMS" == "db2" ]; then
   goal="-Pdb=db2_ci"
+elif [ "$RDBMS" == "db2_11_5" ]; then
+  goal="-Pdb=db2_old_ci"
 elif [ "$RDBMS" == "mssql" ] || [ "$RDBMS" == "mssql_2017" ]; then
   goal="-Pdb=mssql_ci"
 # Exclude some Sybase tests on CI because they use `xmltable` function which has a memory leak on the DB version in CI

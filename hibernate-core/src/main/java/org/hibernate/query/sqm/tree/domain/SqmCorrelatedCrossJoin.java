@@ -4,8 +4,8 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.query.hql.spi.SqmCreationProcessingState;
-import org.hibernate.query.hql.spi.SqmPathRegistry;
 import org.hibernate.query.sqm.SemanticQueryWalker;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
 import org.hibernate.query.sqm.tree.from.SqmCrossJoin;
@@ -33,7 +33,7 @@ public class SqmCorrelatedCrossJoin<T> extends SqmCrossJoin<T> implements SqmCor
 
 	private SqmCorrelatedCrossJoin(
 			SqmEntityDomainType<T> joinedEntityDescriptor,
-			String alias,
+			@Nullable String alias,
 			SqmRoot<?> sqmRoot,
 			SqmCorrelatedRootJoin<T> correlatedRootJoin,
 			SqmCrossJoin<T> correlationParent) {
@@ -44,11 +44,11 @@ public class SqmCorrelatedCrossJoin<T> extends SqmCrossJoin<T> implements SqmCor
 
 	@Override
 	public SqmCorrelatedCrossJoin<T> copy(SqmCopyContext context) {
-		final SqmCorrelatedCrossJoin<T> existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
-		final SqmCorrelatedCrossJoin<T> path = context.registerCopy(
+		final var path = context.registerCopy(
 				this,
 				new SqmCorrelatedCrossJoin<>(
 						getReferencedPathSource(),
@@ -84,13 +84,13 @@ public class SqmCorrelatedCrossJoin<T> extends SqmCrossJoin<T> implements SqmCor
 
 	@Override
 	public SqmCorrelatedCrossJoin<T> makeCopy(SqmCreationProcessingState creationProcessingState) {
-		final SqmPathRegistry pathRegistry = creationProcessingState.getPathRegistry();
+		final var pathRegistry = creationProcessingState.getPathRegistry();
 		return new SqmCorrelatedCrossJoin<>(
 				getReferencedPathSource(),
 				getExplicitAlias(),
-				pathRegistry.findFromByPath( getRoot().getNavigablePath() ),
-				pathRegistry.findFromByPath( correlatedRootJoin.getNavigablePath() ),
-				pathRegistry.findFromByPath( correlationParent.getNavigablePath() )
+				pathRegistry.resolveFromByPath( getRoot().getNavigablePath() ),
+				pathRegistry.resolveFromByPath( correlatedRootJoin.getNavigablePath() ),
+				pathRegistry.resolveFromByPath( correlationParent.getNavigablePath() )
 		);
 	}
 

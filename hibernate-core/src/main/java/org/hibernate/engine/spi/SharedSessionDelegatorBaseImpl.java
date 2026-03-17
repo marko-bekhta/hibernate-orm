@@ -40,6 +40,7 @@ import org.hibernate.query.SelectionQuery;
 import org.hibernate.query.criteria.HibernateCriteriaBuilder;
 import org.hibernate.query.criteria.JpaCriteriaInsert;
 import org.hibernate.query.spi.QueryImplementor;
+import org.hibernate.query.spi.QueryParameterBindings;
 import org.hibernate.query.spi.QueryProducerImplementor;
 import org.hibernate.query.sql.spi.NativeQueryImplementor;
 import org.hibernate.resource.jdbc.spi.JdbcSessionContext;
@@ -569,8 +570,8 @@ public class SharedSessionDelegatorBaseImpl implements SharedSessionContractImpl
 	}
 
 	@Override
-	public void autoPreFlush() {
-		delegate.autoPreFlush();
+	public boolean autoPreFlushIfRequired(QueryParameterBindings parameterBindings) {
+		return delegate.autoPreFlushIfRequired( parameterBindings );
 	}
 
 	@Override
@@ -631,6 +632,11 @@ public class SharedSessionDelegatorBaseImpl implements SharedSessionContractImpl
 	@Override
 	public int getPreferredSqlTypeCodeForBoolean() {
 		return delegate.getPreferredSqlTypeCodeForBoolean();
+	}
+
+	@Override
+	public boolean useLanguageTagForLocale() {
+		return delegate.useLanguageTagForLocale();
 	}
 
 	@Override
@@ -736,5 +742,10 @@ public class SharedSessionDelegatorBaseImpl implements SharedSessionContractImpl
 	@Override
 	public TransactionCompletionCallbacksImplementor getTransactionCompletionCallbacksImplementor() {
 		return delegate.getTransactionCompletionCallbacksImplementor();
+	}
+
+	@Override
+	public boolean isManaged(Object entity) {
+		return delegate.isManaged( entity );
 	}
 }

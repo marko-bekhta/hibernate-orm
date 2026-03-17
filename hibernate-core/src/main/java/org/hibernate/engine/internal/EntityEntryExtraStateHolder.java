@@ -11,15 +11,15 @@ import org.hibernate.engine.spi.EntityEntryExtraState;
  *
  * @author Emmanuel Bernard
  */
-public class EntityEntryExtraStateHolder implements EntityEntryExtraState {
+class EntityEntryExtraStateHolder implements EntityEntryExtraState {
 	private EntityEntryExtraState next;
 	private Object[] deletedState;
 
-	public Object[] getDeletedState() {
+	Object[] getDeletedState() {
 		return deletedState;
 	}
 
-	public void setDeletedState(Object[] deletedState) {
+	void setDeletedState(Object[] deletedState) {
 		this.deletedState = deletedState;
 	}
 
@@ -36,13 +36,13 @@ public class EntityEntryExtraStateHolder implements EntityEntryExtraState {
 		}
 	}
 
-	@Override @SuppressWarnings("unchecked")
+	@Override
 	public <T extends EntityEntryExtraState> T getExtraState(Class<T> extraStateType) {
 		if ( next == null ) {
 			return null;
 		}
-		if ( extraStateType.isAssignableFrom( next.getClass() ) ) {
-			return (T) next;
+		if ( extraStateType.isInstance( next ) ) {
+			return extraStateType.cast( next );
 		}
 		else {
 			return next.getExtraState( extraStateType );

@@ -12,7 +12,6 @@ import java.util.function.BiConsumer;
 import org.hibernate.EntityFilterException;
 import org.hibernate.FetchNotFoundException;
 import org.hibernate.Hibernate;
-import org.hibernate.HibernateException;
 import org.hibernate.LockMode;
 import org.hibernate.StaleObjectStateException;
 import org.hibernate.WrongClassException;
@@ -21,6 +20,7 @@ import org.hibernate.bytecode.enhance.spi.LazyPropertyInitializer;
 import org.hibernate.bytecode.enhance.spi.interceptor.EnhancementAsProxyLazinessInterceptor;
 import org.hibernate.cache.spi.access.AccessType;
 import org.hibernate.cache.spi.access.EntityDataAccess;
+import org.hibernate.cache.spi.entry.CacheEntry;
 import org.hibernate.engine.FetchTiming;
 import org.hibernate.engine.internal.ForeignKeys;
 import org.hibernate.engine.spi.EntityEntry;
@@ -279,25 +279,27 @@ public class EntityInitializerImpl
 
 		final int fetchableCount = entityDescriptor.getNumberOfFetchables();
 		final var subMappingTypes = rootEntityDescriptor.getSubMappingTypes();
-		final var assemblers = new DomainResultAssembler[subMappingTypes.size() + 1][];
+		final int size = subMappingTypes.size() + 1;
+		final var assemblers = new DomainResultAssembler[size][];
 		final var allInitializers = new Initializer<?>[fetchableCount];
-		final var subInitializers = new Initializer<?>[subMappingTypes.size() + 1][];
-		final var eagerSubInitializers = new Initializer<?>[subMappingTypes.size() + 1][];
-		final var collectionContainingSubInitializers = new Initializer<?>[subMappingTypes.size() + 1][];
-		final var lazySets = new BitSet[subMappingTypes.size() + 1];
-		final var maybeLazySets = new BitSet[subMappingTypes.size() + 1];
-		final var updatableAttributeMutabilityPlans = new MutabilityPlan[subMappingTypes.size() + 1][];
-		assemblers[rootEntityDescriptor.getSubclassId()] =
-				new DomainResultAssembler[rootEntityDescriptor.getNumberOfFetchables()];
-		updatableAttributeMutabilityPlans[rootEntityDescriptor.getSubclassId()] =
-				new MutabilityPlan[rootEntityDescriptor.getNumberOfAttributeMappings()];
+		final var subInitializers = new Initializer<?>[size][];
+		final var eagerSubInitializers = new Initializer<?>[size][];
+		final var collectionContainingSubInitializers = new Initializer<?>[size][];
+		final var lazySets = new BitSet[size];
+		final var maybeLazySets = new BitSet[size];
+		final var updatableAttributeMutabilityPlans = new MutabilityPlan[size][];
+		final int rootId = rootEntityDescriptor.getSubclassId();
+		final int rootNumberOfFetchables = rootEntityDescriptor.getNumberOfFetchables();
+		final int numberOfRootAttributeMappings = rootEntityDescriptor.getNumberOfAttributeMappings();
+		assemblers[rootId] = new DomainResultAssembler[rootNumberOfFetchables];
+		updatableAttributeMutabilityPlans[rootId] = new MutabilityPlan[numberOfRootAttributeMappings];
 
 		for ( var subMappingType : subMappingTypes ) {
 			final int subclassId = subMappingType.getSubclassId();
-			assemblers[subclassId] =
-					new DomainResultAssembler[subMappingType.getNumberOfFetchables()];
-			updatableAttributeMutabilityPlans[subclassId] =
-					new MutabilityPlan[subMappingType.getNumberOfAttributeMappings()];
+			final int numberOfFetchables = subMappingType.getNumberOfFetchables();
+			final int numberOfAttributeMappings = subMappingType.getNumberOfAttributeMappings();
+			assemblers[subclassId] = new DomainResultAssembler[numberOfFetchables];
+			updatableAttributeMutabilityPlans[subclassId] = new MutabilityPlan[numberOfAttributeMappings];
 		}
 
 		boolean hasLazySubInitializers = false;
@@ -660,15 +662,16 @@ public class EntityInitializerImpl
 			// If an entity has unfetched attributes, we should probably also invoke non-eager initializers.
 			// Non-eager initializers only set proxies, but since that contains the FK information,
 			// it would be wasteful not to set that information on the bytecode enhanced entity
-			var subInitializersToUse = rootEntityDescriptor.getBytecodeEnhancementMetadata().hasUnFetchedAttributes( data.entityInstanceForNotify )
+			final var subInitializersToUse =
+					rootEntityDescriptor.getBytecodeEnhancementMetadata()
+							.hasUnFetchedAttributes( data.entityInstanceForNotify )
 					? subInitializers
 					: eagerSubInitializers;
 			initializers = subInitializersToUse[subclassId];
 			maybeLazySet = entityEntry.getMaybeLazySet();
 			// Skip resolving if this initializer has no sub-initializers
 			// or the lazy set of this initializer is a superset/contains the entity entry maybeLazySet
-			if ( initializers.length == 0
-					&& !hasLazyInitializingSubAssemblers
+			if ( initializers.length == 0 && !hasLazyInitializingSubAssemblers
 				|| maybeLazySet != null && lazySets[subclassId].contains( maybeLazySet ) ) {
 				return;
 			}
@@ -808,20 +811,15 @@ public class EntityInitializerImpl
 		// for a dangling foreign-key
 
 		if ( keyAssembler != null ) {
-			final Object fkKeyValue = keyAssembler.assemble( data.getRowProcessingState() );
-			if ( fkKeyValue != null ) {
+			final Object foreignKeyValue = keyAssembler.assemble( data.getRowProcessingState() );
+			if ( foreignKeyValue != null ) {
 				if ( notFoundAction != NotFoundAction.IGNORE ) {
+					final String entityName = getEntityDescriptor().getEntityName();
 					if ( affectedByFilter ) {
-						throw new EntityFilterException(
-								getEntityDescriptor().getEntityName(),
-								fkKeyValue,
-								referencedModelPart.getNavigableRole().getFullPath()
-						);
+						throw new EntityFilterException( entityName, foreignKeyValue,
+								referencedModelPart.getNavigableRole().getFullPath() );
 					}
-					throw new FetchNotFoundException(
-							getEntityDescriptor().getEntityName(),
-							fkKeyValue
-					);
+					throw new FetchNotFoundException( entityName, foreignKeyValue );
 				}
 			}
 		}
@@ -987,29 +985,63 @@ public class EntityInitializerImpl
 			setMissing( data );
 		}
 		else {
-			data.setInstance( instance );
 			final var lazyInitializer = extractLazyInitializer( instance );
 			final var rowProcessingState = data.getRowProcessingState();
 			final var session = rowProcessingState.getSession();
 			final var persistenceContext = session.getPersistenceContextInternal();
 			if ( lazyInitializer == null ) {
 				// Entity is most probably initialized
-				data.entityInstanceForNotify = instance;
 				data.concreteDescriptor = session.getEntityPersister( null, instance );
 				resolveEntityKey( data, data.concreteDescriptor.getIdentifier( instance, session ) );
-				data.entityHolder = persistenceContext.getEntityHolder( data.entityKey );
-				if ( data.entityHolder == null ) {
-					// Entity was most probably removed in the same session without setting this association to null.
-					// Since this load request can happen through `find()` which doesn't auto-flush on association joins,
-					// the entity must be fully initialized, even if it is removed already
-					data.entityHolder =
-							persistenceContext.claimEntityHolderIfPossible(
-									data.entityKey,
-									data.entityInstanceForNotify,
-									rowProcessingState.getJdbcValuesSourceProcessingState(),
-									this
-							);
+				data.entityHolder = persistenceContext.claimEntityHolderIfPossible(
+						data.entityKey,
+						null,
+						rowProcessingState.getJdbcValuesSourceProcessingState(),
+						this
+				);
+				if ( data.entityHolder.getManagedObject() == null ) {
+					final var entry = persistenceContext.getEntry( instance ); // make sure an EntityEntry exists
+					if ( entry == null ) {
+						// We cannot reuse an entity instance that has no entry in the PC,
+						// this can happen if the parent entity contained a detached instance.
+						// We need to create a new instance in this case (see resolveEntityInstance1)
+						instance = resolveEntityInstance( data );
+					}
+					else {
+						// Entity was most probably removed in the same session without setting this association to null.
+						// Since this load request can happen through `find()` which doesn't auto-flush on association joins,
+						// the entity must be fully initialized, even if it is removed already
+						data.entityHolder = persistenceContext.claimEntityHolderIfPossible(
+								data.entityKey,
+								instance,
+								rowProcessingState.getJdbcValuesSourceProcessingState(),
+								this
+						);
+					}
 				}
+				else {
+					final Object entity = data.entityHolder.getEntity();
+					final var entityKey = data.entityHolder.getEntityKey();
+					if ( entity == null ) {
+						final Object proxy = data.entityHolder.getProxy();
+						assert proxy != instance;
+						instance = resolveEntityInstance( data );
+						data.entityKey = entityKey;
+						if ( proxy != null ) {
+							castNonNull( extractLazyInitializer( proxy ) )
+									.setImplementation( instance );
+						}
+					}
+					else if ( entity != instance ) {
+						// The instance contained in the parent entity is different from the managed persistent instance
+						// currently in the persistence context. We should always initialize the managed one in this case.
+						instance = entity;
+						data.entityKey = entityKey;
+					}
+				}
+
+				data.entityInstanceForNotify = instance;
+
 				if ( data.concreteDescriptor.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading()
 						&& isPersistentAttributeInterceptable( data.entityInstanceForNotify )
 						&& getAttributeInterceptor( data.entityInstanceForNotify )
@@ -1049,21 +1081,39 @@ public class EntityInitializerImpl
 						this
 				);
 				// Resolve and potentially create the entity instance
-				data.entityInstanceForNotify = resolveEntityInstance( data );
-				lazyInitializer.setImplementation( data.entityInstanceForNotify );
-				registerLoadingEntity( data, data.entityInstanceForNotify );
+				final Object proxy = data.entityHolder.getProxy();
+				if ( proxy == instance ) {
+					data.entityInstanceForNotify = resolveEntityInstance( data );
+					lazyInitializer.setImplementation( data.entityInstanceForNotify );
+				}
+				else {
+					resolveEntity( data, proxy );
+				}
 			}
 			else {
-				data.entityInstanceForNotify = lazyInitializer.getImplementation();
-				data.concreteDescriptor = session.getEntityPersister( null, data.entityInstanceForNotify );
+				final var implementation = lazyInitializer.getImplementation();
+				data.concreteDescriptor = session.getEntityPersister( null, implementation );
 				resolveEntityKey( data, lazyInitializer.getInternalIdentifier() );
 				data.entityHolder = persistenceContext.getEntityHolder( data.entityKey );
-				// Even though the lazyInitializer reports it is initialized, check if the entity holder reports initialized,
-				// because in a nested initialization scenario, this nested initializer must initialize the entity
-				data.setState( data.entityHolder.isInitialized() ? State.INITIALIZED : State.RESOLVED );
+				final Object proxy = data.entityHolder.getProxy();
+				if ( proxy == instance ) {
+					data.entityInstanceForNotify = implementation;
+					// Even though the lazyInitializer reports it is initialized,
+					// check if the entity holder reports initialized, because in
+					// a nested initialization scenario, this nested initializer
+					// must initialize the entity
+					data.setState( data.entityHolder.isInitialized() ? State.INITIALIZED : State.RESOLVED );
+				}
+				else {
+					resolveEntity( data, proxy );
+					data.entityKey = data.entityHolder.getEntityKey();
+				}
 			}
+
+			data.setInstance( data.entityHolder.getManagedObject() );
+
 			if ( identifierAssembler != null ) {
-				final Initializer<?> initializer = identifierAssembler.getInitializer();
+				final var initializer = identifierAssembler.getInitializer();
 				if ( initializer != null ) {
 					initializer.resolveInstance( data.entityKey.getIdentifier(), rowProcessingState );
 				}
@@ -1072,7 +1122,8 @@ public class EntityInitializerImpl
 			if ( data.getState() == State.INITIALIZED ) {
 				registerReloadedEntity( data );
 				resolveInstanceSubInitializers( data );
-				if ( data.getState() == State.INITIALIZED && rowProcessingState.needsResolveState() ) {
+				if ( data.getState() == State.INITIALIZED
+						&& rowProcessingState.needsResolveState() ) {
 					// We need to read result set values to correctly populate the query cache
 					resolveEntityState( data );
 				}
@@ -1083,10 +1134,28 @@ public class EntityInitializerImpl
 		}
 	}
 
+	private void resolveEntity(EntityInitializerData data, Object proxy) {
+		final Object entity = data.entityHolder.getEntity();
+		if ( entity == null ) {
+			data.entityInstanceForNotify = resolveEntityInstance( data );
+			if ( proxy != null ) {
+				castNonNull( extractLazyInitializer( proxy ) )
+						.setImplementation( data.entityInstanceForNotify );
+			}
+			data.setState( State.RESOLVED );
+		}
+		else {
+			data.entityInstanceForNotify = entity;
+			data.setState( data.entityHolder.isInitialized() ? State.INITIALIZED : State.RESOLVED );
+		}
+	}
+
 	@Override
 	public void resolveInstance(EntityInitializerData data) {
 		if ( data.getState() == State.KEY_RESOLVED ) {
 			final var rowProcessingState = data.getRowProcessingState();
+			final var session = rowProcessingState.getSession();
+			final var persistenceContext = session.getPersistenceContextInternal();
 			data.setState( State.RESOLVED );
 			if ( data.entityKey == null ) {
 				assert identifierAssembler != null;
@@ -1098,7 +1167,7 @@ public class EntityInitializerImpl
 				resolveEntityKey( data, id );
 			}
 			data.entityHolder =
-					rowProcessingState.getSession().getPersistenceContextInternal()
+					persistenceContext
 							.claimEntityHolderIfPossible(
 									data.entityKey,
 									null,
@@ -1112,7 +1181,6 @@ public class EntityInitializerImpl
 			else {
 				resolveEntityInstance1( data );
 				if ( data.uniqueKeyAttributePath != null ) {
-					final var session = rowProcessingState.getSession();
 					final var concreteDescriptor = getConcreteDescriptor( data );
 					final var entityUniqueKey = new EntityUniqueKey(
 							concreteDescriptor.getEntityName(),
@@ -1121,7 +1189,7 @@ public class EntityInitializerImpl
 							data.uniqueKeyPropertyTypes[concreteDescriptor.getSubclassId()],
 							session.getFactory()
 					);
-					session.getPersistenceContextInternal().addEntity( entityUniqueKey, data.getInstance() );
+					persistenceContext.addEntity( entityUniqueKey, data.getInstance() );
 				}
 			}
 
@@ -1144,17 +1212,14 @@ public class EntityInitializerImpl
 	protected void resolveEntityInstance1(EntityInitializerData data) {
 		final var entityHolder = data.entityHolder;
 		final Object proxy = entityHolder.getProxy();
-		final boolean unwrapProxy = proxy != null
-				&& referencedModelPart instanceof ToOneAttributeMapping toOneAttributeMapping
-				&& toOneAttributeMapping.isUnwrapProxy()
-				&& getConcreteDescriptor( data ).getBytecodeEnhancementMetadata().isEnhancedForLazyLoading();
-		if ( !unwrapProxy && isProxyInstance( proxy ) ) {
+		if ( !unwrapProxy( data, proxy ) && isProxyInstance( proxy ) ) {
 			final Object entityFromExecutionContext = getEntityFromExecutionContext( data );
 			if ( entityFromExecutionContext != null ) {
 				data.entityInstanceForNotify = entityFromExecutionContext;
 				data.setInstance( entityFromExecutionContext );
-				// If the entity comes from the execution context, it is treated as not initialized
-				// so that we can refresh the data as requested
+				// If the entity comes from the execution context,
+				// it is treated as not initialized so that we can
+				// refresh the data as requested
 				registerReloadedEntity( data );
 			}
 			else {
@@ -1175,9 +1240,10 @@ public class EntityInitializerImpl
 		}
 		else {
 			final Object existingEntity = entityHolder.getEntity();
+			final var initializer = entityHolder.getEntityInitializer();
 			if ( existingEntity != null ) {
 				data.setInstance( data.entityInstanceForNotify = existingEntity );
-				if ( entityHolder.getEntityInitializer() == null ) {
+				if ( initializer == null ) {
 					assert entityHolder.isInitialized() == isExistingEntityInitialized( existingEntity );
 					if ( entityHolder.isInitialized() ) {
 						data.setState( State.INITIALIZED );
@@ -1186,12 +1252,19 @@ public class EntityInitializerImpl
 						registerLoadingEntity( data, existingEntity );
 					}
 				}
-				else if ( entityHolder.getEntityInitializer() != this ) {
-					data.setState( State.INITIALIZED );
+				else if ( initializer != this ) {
+					// The other initializer will take care of initialization
+					if ( !hasLazyInitializingSubAssemblers ) {
+						// but we can only skip the initialization phase of this initializer
+						// if this initializer does not initialize lazy basic attributes
+						data.setState( State.INITIALIZED );
+					}
 				}
 				else if ( data.shallowCached ) {
 					// For shallow cached entities, only the id is available, so ensure we load the data immediately
-					data.setInstance( data.entityInstanceForNotify = resolveEntityInstance( data ) );
+					final Object resolvedEntityInstance = resolveEntityInstance( data );
+					data.entityInstanceForNotify = resolvedEntityInstance;
+					data.setInstance( resolvedEntityInstance );
 				}
 			}
 			else {
@@ -1205,15 +1278,13 @@ public class EntityInitializerImpl
 					}
 				}
 				else {
-					assert entityHolder.getEntityInitializer() == this;
+					assert initializer == this;
 					// look to see if another initializer from a parent load context or an earlier
 					// initializer is already loading the entity
 					final Object resolvedEntityInstance = resolveEntityInstance2( data );
 					data.entityInstanceForNotify = resolvedEntityInstance;
 					data.setInstance( resolvedEntityInstance );
-					if ( entityHolder.getEntityInitializer() == this
-							&& data.getState() != State.INITIALIZED
-							&& identifierAssembler != null ) {
+					if ( data.getState() != State.INITIALIZED && identifierAssembler != null ) {
 						final var idInitializer = identifierAssembler.getInitializer();
 						if ( idInitializer != null ) {
 							// If this is the owning initializer and the returned object is not initialized,
@@ -1230,6 +1301,13 @@ public class EntityInitializerImpl
 		assert !data.shallowCached || data.getState() == State.INITIALIZED : "Forgot to initialize the entity";
 	}
 
+	private boolean unwrapProxy(EntityInitializerData data, Object proxy) {
+		return proxy != null
+			&& referencedModelPart instanceof ToOneAttributeMapping toOneAttributeMapping
+			&& toOneAttributeMapping.isUnwrapProxy()
+			&& getConcreteDescriptor( data ).getBytecodeEnhancementMetadata().isEnhancedForLazyLoading();
+	}
+
 	protected Object getEntityFromExecutionContext(EntityInitializerData data) {
 		final var executionContext =
 				data.getRowProcessingState()
@@ -1242,26 +1320,36 @@ public class EntityInitializerImpl
 	}
 
 	protected void upgradeLockMode(EntityInitializerData data) {
-		final var rowProcessingState = data.getRowProcessingState();
-		if ( data.lockMode != LockMode.NONE && rowProcessingState.upgradeLocks() ) {
-			final var entityEntry = data.entityHolder.getEntityEntry();
-			assert entityEntry ==
-				rowProcessingState.getSession().getPersistenceContextInternal()
-						.getEntry( data.entityInstanceForNotify );
-			if ( entityEntry != null && entityEntry.getLockMode().lessThan( data.lockMode ) ) {
-				//we only check the version when _upgrading_ lock modes
-				if ( versionAssembler != null && entityEntry.getLockMode() != LockMode.NONE ) {
-					checkVersion( data, entityEntry, rowProcessingState );
+		if ( data.lockMode != LockMode.NONE ) {
+			final var rowProcessingState = data.getRowProcessingState();
+			if ( rowProcessingState.upgradeLocks() ) {
+				final var entityEntry = data.entityHolder.getEntityEntry();
+				assert entityEntry ==
+					rowProcessingState.getSession().getPersistenceContextInternal()
+							.getEntry( data.entityInstanceForNotify );
+				if ( entityEntry != null ) {
+					final var entryLockMode = entityEntry.getLockMode();
+					if ( entryLockMode.lessThan( data.lockMode ) ) {
+						//we only check the version when _upgrading_ lock modes
+						if ( versionAssembler != null && entryLockMode != LockMode.NONE ) {
+							checkVersion( data, entityEntry, rowProcessingState );
+						}
+						//we need to upgrade the lock mode to the mode requested
+						entityEntry.setLockMode( data.lockMode );
+					}
 				}
-				//we need to upgrade the lock mode to the mode requested
-				entityEntry.setLockMode( data.lockMode );
 			}
 		}
 	}
 
-	private boolean isProxyInstance(Object proxy) {
+	// Used by Hibernate Reactive
+	protected boolean isProxyInstance(Object proxy) {
 		return proxy != null
-			&& ( proxy instanceof MapProxy || entityDescriptor.getJavaType().getJavaTypeClass().isInstance( proxy ) );
+			&& ( proxy instanceof MapProxy
+					// do NOT use JavaType.isInstance() here; we're testing if the
+					// proxy itself is an instance of the given entity type, not if
+					// the underlying entity implementation is an instance
+					|| entityDescriptor.getJavaType().getJavaTypeClass().isInstance( proxy ) );
 	}
 
 	private boolean isExistingEntityInitialized(Object existingEntity) {
@@ -1276,17 +1364,18 @@ public class EntityInitializerImpl
 	private void checkVersion(
 			EntityInitializerData data,
 			EntityEntry entry,
-			final RowProcessingState rowProcessingState) throws HibernateException {
+			RowProcessingState rowProcessingState) {
 		final Object version = entry.getVersion();
 		if ( version != null ) {
 			// null version means the object is in the process of being loaded somewhere else in the ResultSet
 			final Object currentVersion = versionAssembler.assemble( rowProcessingState );
 			if ( !data.concreteDescriptor.getVersionType().isEqual( version, currentVersion ) ) {
+				final String entityName = data.concreteDescriptor.getEntityName();
 				final var statistics = rowProcessingState.getSession().getFactory().getStatistics();
 				if ( statistics.isStatisticsEnabled() ) {
-					statistics.optimisticFailure( data.concreteDescriptor.getEntityName() );
+					statistics.optimisticFailure( entityName );
 				}
-				throw new StaleObjectStateException( data.concreteDescriptor.getEntityName(), entry.getId(),
+				throw new StaleObjectStateException( entityName, entry.getId(),
 						"Query result contains conflicting version of entity already held in persistence context" );
 			}
 		}
@@ -1308,7 +1397,6 @@ public class EntityInitializerImpl
 	}
 
 	protected Object resolveEntityInstance(EntityInitializerData data) {
-		final var rowProcessingState = data.getRowProcessingState();
 		final Object resolved = resolveToOptionalInstance( data );
 		if ( resolved != null ) {
 			registerLoadingEntity( data, resolved );
@@ -1318,6 +1406,7 @@ public class EntityInitializerImpl
 			if ( data.shallowCached ) {
 				// We must load the entity this way, because the query cache entry contains only the primary key
 				data.setState( State.INITIALIZED );
+				final var rowProcessingState = data.getRowProcessingState();
 				final var session = rowProcessingState.getSession();
 				assert data.entityHolder.getEntityInitializer() == this;
 				// If this initializer owns the entity, we have to remove the entity holder,
@@ -1351,9 +1440,10 @@ public class EntityInitializerImpl
 				.instantiate( data.concreteDescriptor, data.entityKey.getIdentifier() );
 	}
 
-	private Object resolveToOptionalInstance(EntityInitializerData data) {
+	// Used by Hibernate Reactive
+	protected Object resolveToOptionalInstance(EntityInitializerData data) {
 		if ( isResultInitializer() ) {
-			// this isEntityReturn bit is just for entity loaders, not hql/criteria
+			// this isEntityReturn bit is just for entity loaders, not HQL/criteria
 			final var processingOptions =
 					data.getRowProcessingState()
 							.getJdbcValuesSourceProcessingState()
@@ -1367,7 +1457,8 @@ public class EntityInitializerImpl
 		}
 	}
 
-	private boolean matchesOptionalInstance(
+	// Used by Hibernate Reactive
+	protected boolean matchesOptionalInstance(
 			EntityInitializerData data,
 			JdbcValuesSourceProcessingOptions processingOptions) {
 		final Object optionalEntityInstance = processingOptions.getEffectiveOptionalObject();
@@ -1377,7 +1468,8 @@ public class EntityInitializerImpl
 			&& areKeysEqual( requestedEntityId, data.entityKey.getIdentifier() );
 	}
 
-	private Object resolveInstanceFromCache(EntityInitializerData data) {
+	// Used by Hibernate Reactive
+	protected Object resolveInstanceFromCache(EntityInitializerData data) {
 		return loadFromSecondLevelCache(
 				data.getRowProcessingState().getSession().asEventSource(),
 				null,
@@ -1427,14 +1519,14 @@ public class EntityInitializerImpl
 	protected void updateInitializedEntityInstance(EntityInitializerData data) {
 		assert rootEntityDescriptor.getBytecodeEnhancementMetadata().isEnhancedForLazyLoading();
 
-		final RowProcessingState rowProcessingState = data.getRowProcessingState();
+		final var rowProcessingState = data.getRowProcessingState();
 		final var entityEntry = data.entityHolder.getEntityEntry();
 		final var loadedState = entityEntry.getLoadedState();
-		final DomainResultAssembler<?>[] concreteAssemblers = assemblers[data.concreteDescriptor.getSubclassId()];
+		final var concreteAssemblers = assemblers[data.concreteDescriptor.getSubclassId()];
 
 		for ( int i = 0; i < loadedState.length; i++ ) {
 			final var subInstance = loadedState[i];
-			final DomainResultAssembler<?> assembler = concreteAssemblers[i];
+			final var assembler = concreteAssemblers[i];
 			if ( subInstance == UNFETCHED_PROPERTY
 				&& assembler != null
 				&& !(assembler instanceof UnfetchedResultAssembler<?>)
@@ -1447,7 +1539,7 @@ public class EntityInitializerImpl
 			}
 		}
 
-		final SharedSessionContractImplementor session = rowProcessingState.getSession();
+		final var session = rowProcessingState.getSession();
 		updateCaches(
 				data,
 				session,
@@ -1463,7 +1555,8 @@ public class EntityInitializerImpl
 				data.getRowProcessingState().getSession()
 						.getPersistenceContextInternal()
 						.getEntity( data.entityKey );
-		return entity == null || entity == data.entityInstanceForNotify;
+		return entity == null
+			|| entity == data.entityInstanceForNotify;
 	}
 
 	protected void initializeEntityInstance(EntityInitializerData data) {
@@ -1473,10 +1566,11 @@ public class EntityInitializerImpl
 		final var entityKey = data.entityKey;
 		assert entityKey != null;
 
-		final Object entityIdentifier = entityKey.getIdentifier();
+		final var entityIdentifier = entityKey.getIdentifier();
 		final var resolvedEntityState = extractConcreteTypeStateValues( data );
 
-		rowProcessingState.getJdbcValuesSourceProcessingState().registerLoadingEntityHolder( data.entityHolder );
+		rowProcessingState.getJdbcValuesSourceProcessingState()
+				.registerLoadingEntityHolder( data.entityHolder );
 		preLoad( data, resolvedEntityState );
 
 		final Object entityInstanceForNotify = data.entityInstanceForNotify;
@@ -1499,8 +1593,8 @@ public class EntityInitializerImpl
 		// Also register possible unique key entries
 		registerPossibleUniqueKeyEntries( data, resolvedEntityState, session );
 
-		final Object version = versionAssembler != null ? versionAssembler.assemble( rowProcessingState ) : null;
-		final Object rowId = rowIdAssembler != null ? rowIdAssembler.assemble( rowProcessingState ) : null;
+		final Object version = versionAssembler == null ? null : versionAssembler.assemble( rowProcessingState );
+		final Object rowId = rowIdAssembler == null ? null : rowIdAssembler.assemble( rowProcessingState );
 
 		final var entityEntry =
 				persistenceContext.addEntry(
@@ -1528,9 +1622,9 @@ public class EntityInitializerImpl
 
 		assert data.concreteDescriptor.getIdentifier( entityInstanceForNotify, session ) != null;
 
-		final var statistics = session.getFactory().getStatistics();
-		if ( statistics.isStatisticsEnabled() ) {
-			if ( !rowProcessingState.isQueryCacheHit() ) {
+		if ( !rowProcessingState.isQueryCacheHit() ) {
+			final var statistics = session.getFactory().getStatistics();
+			if ( statistics.isStatisticsEnabled() ) {
 				statistics.loadEntity( data.concreteDescriptor.getEntityName() );
 			}
 		}
@@ -1578,7 +1672,8 @@ public class EntityInitializerImpl
 			Object[] resolvedEntityState) {
 		if ( entityDescriptor.getNaturalIdMapping() != null ) {
 			final Object naturalId =
-					entityDescriptor.getNaturalIdMapping().extractNaturalIdFromEntityState( resolvedEntityState );
+					entityDescriptor.getNaturalIdMapping()
+							.extractNaturalIdFromEntityState( resolvedEntityState );
 			persistenceContext.getNaturalIdResolutions()
 					.cacheResolutionFromLoad( data.entityKey.getIdentifier(), naturalId, entityDescriptor );
 		}
@@ -1625,8 +1720,6 @@ public class EntityInitializerImpl
 			Object[] resolvedEntityState,
 			Object version,
 			EntityDataAccess cacheAccess) {
-		final var factory = session.getFactory();
-
 		final var cacheEntry =
 				data.concreteDescriptor.buildCacheEntry(
 						data.entityInstanceForNotify,
@@ -1638,80 +1731,103 @@ public class EntityInitializerImpl
 				cacheAccess.generateCacheKey(
 						data.entityKey.getIdentifier(),
 						rootEntityDescriptor,
-						factory,
+						session.getFactory(),
 						session.getTenantIdentifier()
 				);
-
-		// explicit handling of caching for rows just inserted and then somehow forced to be read
-		// from the database *within the same transaction*.  usually this is done by
+		// Explicit handling of caching for rows just inserted and then somehow forced to be
+		// read from the database *within the same transaction*. Usually this is done by:
 		// 		1) Session#refresh, or
 		// 		2) Session#clear + some form of load
 		//
-		// we need to be careful not to clobber the lock here in the cache so that it can be rolled back if need be
-		final var eventMonitor = session.getEventMonitor();
+		// We need to be careful not to clobber the lock here in the cache so that it can be
+		// rolled back if necessary
 		if ( persistenceContext.wasInsertedDuringTransaction( data.concreteDescriptor, data.entityKey.getIdentifier() ) ) {
-			boolean cacheContentChanged = false;
-			final var cachePutEvent = eventMonitor.beginCachePutEvent();
-			try {
-				// Updating the cache entry for entities that were inserted in this transaction
-				// only makes sense for transactional caches. Other implementations no-op for #update
-				// Since #afterInsert will run at the end of the transaction,
-				// the state of an entity will be stored in the cache eventually.
-				// Refreshing an inserted entity is a potential concern,
-				// because one might think that we are missing to store the refreshed data in the cache.
-				// Actually an entity is evicted from the cache on refresh for non-transactional caches
-				// via CachedDomainDataAccess#unlockItem after transaction completion, so all is fine.
-				if ( cacheAccess.getAccessType() == AccessType.TRANSACTIONAL ) {
-					cacheContentChanged = cacheAccess.update(
-							session,
-							cacheKey,
-							data.concreteDescriptor.getCacheEntryStructure().structure( cacheEntry ),
-							version,
-							version
-					);
-				}
-			}
-			finally {
-				eventMonitor.completeCachePutEvent(
-						cachePutEvent,
-						session,
-						cacheAccess,
-						data.concreteDescriptor,
-						cacheContentChanged,
-						EventMonitor.CacheActionDescription.ENTITY_UPDATE
-				);
-			}
+			putRecentlyInsertedInCache( data, session, version, cacheAccess, cacheKey, cacheEntry );
 		}
 		else {
-			final var eventListenerManager = session.getEventListenerManager();
-			boolean put = false;
-			final var cachePutEvent = eventMonitor.beginCachePutEvent();
-			try {
-				eventListenerManager.cachePutStart();
-				put = cacheAccess.putFromLoad(
+			putInCache( data, session, version, cacheAccess, cacheKey, cacheEntry );
+		}
+	}
+
+	private void putInCache(
+			EntityInitializerData data,
+			SharedSessionContractImplementor session,
+			Object version,
+			EntityDataAccess cacheAccess,
+			Object cacheKey, CacheEntry cacheEntry) {
+		final var eventListenerManager = session.getEventListenerManager();
+		boolean cacheContentChanged = false;
+		final var eventMonitor = session.getEventMonitor();
+		final var cachePutEvent = eventMonitor.beginCachePutEvent();
+		try {
+			eventListenerManager.cachePutStart();
+			cacheContentChanged = cacheAccess.putFromLoad(
+					session,
+					cacheKey,
+					data.concreteDescriptor.getCacheEntryStructure().structure( cacheEntry ),
+					version,
+					//useMinimalPuts( session, entityEntry )
+					false
+			);
+		}
+		finally {
+			eventMonitor.completeCachePutEvent(
+					cachePutEvent,
+					session,
+					cacheAccess,
+					data.concreteDescriptor,
+					cacheContentChanged,
+					EventMonitor.CacheActionDescription.ENTITY_LOAD
+			);
+			if ( cacheContentChanged ) {
+				final var statistics = session.getFactory().getStatistics();
+				if ( statistics.isStatisticsEnabled() ) {
+					statistics.entityCachePut( rootEntityDescriptor.getNavigableRole(),
+							cacheAccess.getRegion().getName() );
+				}
+			}
+			eventListenerManager.cachePutEnd();
+		}
+	}
+
+	private static void putRecentlyInsertedInCache(
+			EntityInitializerData data,
+			SharedSessionContractImplementor session,
+			Object version,
+			EntityDataAccess cacheAccess,
+			Object cacheKey, CacheEntry cacheEntry) {
+		boolean cacheContentChanged = false;
+		final var eventMonitor = session.getEventMonitor();
+		final var cachePutEvent = eventMonitor.beginCachePutEvent();
+		try {
+			// Updating the cache entry for entities that were inserted in this transaction only
+			// makes sense for transactional caches. Other cache implementations no-op for #update.
+			// Since #afterInsert will run at the end of the transaction, the state of an entity
+			// will be stored in the cache eventually. Refreshing an inserted entity is a potential
+			// concern because one might think that we are missing to store the refreshed data in
+			// the cache. Actually, for non-transactional caches, an entity is evicted from the
+			// cache on refresh via CachedDomainDataAccess#unlockItem after transaction completion,
+			// so all is fine.
+			if ( cacheAccess.getAccessType() == AccessType.TRANSACTIONAL ) {
+				cacheContentChanged = cacheAccess.update(
 						session,
 						cacheKey,
 						data.concreteDescriptor.getCacheEntryStructure().structure( cacheEntry ),
 						version,
-						//useMinimalPuts( session, entityEntry )
-						false
+						version
 				);
 			}
-			finally {
-				eventMonitor.completeCachePutEvent(
-						cachePutEvent,
-						session,
-						cacheAccess,
-						data.concreteDescriptor,
-						put,
-						EventMonitor.CacheActionDescription.ENTITY_LOAD
-				);
-				final var statistics = factory.getStatistics();
-				if ( put && statistics.isStatisticsEnabled() ) {
-					statistics.entityCachePut( rootEntityDescriptor.getNavigableRole(), cacheAccess.getRegion().getName() );
-				}
-				eventListenerManager.cachePutEnd();
-			}
+		}
+		finally {
+			eventMonitor.completeCachePutEvent(
+					cachePutEvent,
+					session,
+					cacheAccess,
+					data.concreteDescriptor,
+					cacheContentChanged,
+					EventMonitor.CacheActionDescription.ENTITY_UPDATE
+			);
+			//TODO: Statistics. Treat it like a regular put as above?
 		}
 	}
 
@@ -1729,17 +1845,18 @@ public class EntityInitializerImpl
 			// entity name used in the lookup is the same as the
 			// one used here, which it will be
 
-			if ( resolvedEntityState[index] != null ) {
+			final Object resolvedState = resolvedEntityState[index];
+			if ( resolvedState != null ) {
 				final Object key;
 				if ( type instanceof ManyToOneType manyToOneType ) {
 					key = ForeignKeys.getEntityIdentifier(
 							manyToOneType.getAssociatedEntityName(),
-							resolvedEntityState[index],
+							resolvedState,
 							session
 					);
 				}
 				else {
-					key = resolvedEntityState[index];
+					key = resolvedState;
 				}
 				final var entityUniqueKey =
 						new EntityUniqueKey(
@@ -1750,17 +1867,18 @@ public class EntityInitializerImpl
 								type,
 								session.getFactory()
 						);
-				session.getPersistenceContextInternal().addEntity( entityUniqueKey, data.entityInstanceForNotify );
+				session.getPersistenceContextInternal()
+						.addEntity( entityUniqueKey, data.entityInstanceForNotify );
 			}
 		}
 	}
 
 	protected Object[] extractConcreteTypeStateValues(EntityInitializerData data) {
-		final RowProcessingState rowProcessingState = data.getRowProcessingState();
-		final Object[] values = new Object[data.concreteDescriptor.getNumberOfAttributeMappings()];
-		final DomainResultAssembler<?>[] concreteAssemblers = assemblers[data.concreteDescriptor.getSubclassId()];
+		final var rowProcessingState = data.getRowProcessingState();
+		final var values = new Object[data.concreteDescriptor.getNumberOfAttributeMappings()];
+		final var concreteAssemblers = assemblers[data.concreteDescriptor.getSubclassId()];
 		for ( int i = 0; i < values.length; i++ ) {
-			final DomainResultAssembler<?> assembler = concreteAssemblers[i];
+			final var assembler = concreteAssemblers[i];
 			values[i] = assembler == null ? UNFETCHED_PROPERTY : assembler.assemble( rowProcessingState );
 		}
 		return values;
@@ -1772,7 +1890,7 @@ public class EntityInitializerImpl
 			identifierAssembler.resolveState( data.getRowProcessingState() );
 		}
 		if ( discriminatorAssembler != null
-			&& (!data.shallowCached || rootEntityDescriptor.storeDiscriminatorInShallowQueryCacheLayout()) ) {
+			&& ( !data.shallowCached || rootEntityDescriptor.storeDiscriminatorInShallowQueryCacheLayout() ) ) {
 			discriminatorAssembler.resolveState( data.getRowProcessingState() );
 		}
 		if ( !data.shallowCached ) {
@@ -1965,6 +2083,25 @@ public class EntityInitializerImpl
 	//#########################
 	// For Hibernate Reactive
 	//#########################
+	protected EntityPersister getRootEntityDescriptor() {
+		return rootEntityDescriptor;
+	}
+
+	protected @Nullable Initializer<?>[][] getEagerSubInitializers() {
+		return eagerSubInitializers;
+	}
+
+	protected @Nullable Initializer<?>[][] getCollectionContainingSubInitializers() {
+		return collectionContainingSubInitializers;
+	}
+
+	protected ImmutableBitSet[] getLazySets() {
+		return lazySets;
+	}
+
+	public boolean isHasLazyInitializingSubAssemblers() {
+		return hasLazyInitializingSubAssemblers;
+	}
 
 	protected @Nullable DomainResultAssembler<?> getVersionAssembler() {
 		return versionAssembler;

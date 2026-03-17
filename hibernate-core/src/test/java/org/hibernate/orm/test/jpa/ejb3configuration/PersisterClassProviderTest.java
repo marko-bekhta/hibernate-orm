@@ -36,7 +36,7 @@ import org.hibernate.generator.Generator;
 import org.hibernate.generator.values.GeneratedValues;
 import org.hibernate.generator.values.GeneratedValuesMutationDelegate;
 import org.hibernate.id.IdentifierGenerator;
-import org.hibernate.internal.FilterAliasGenerator;
+import org.hibernate.persister.filter.FilterAliasGenerator;
 import org.hibernate.internal.util.IndexedConsumer;
 import org.hibernate.jpa.boot.spi.Bootstrap;
 import org.hibernate.loader.ast.spi.MultiIdLoadOptions;
@@ -96,7 +96,7 @@ import jakarta.persistence.PersistenceException;
 public class PersisterClassProviderTest {
 	@Test
 	public void testPersisterClassProvider() {
-		Map settings = SettingsGenerator.generateSettings(
+		Map<String,Object> settings = SettingsGenerator.generateSettings(
 				PersisterClassResolverInitiator.IMPL_NAME, GoofyPersisterClassProvider.class,
 				AvailableSettings.LOADED_CLASSES, Arrays.asList( Bell.class )
 		);

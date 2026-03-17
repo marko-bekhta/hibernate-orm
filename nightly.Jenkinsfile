@@ -14,7 +14,7 @@ import org.jenkinsci.plugins.workflow.support.steps.build.RunWrapper
 @Library('hibernate-jenkins-pipeline-helpers') _
 import org.hibernate.jenkins.pipeline.helpers.job.JobHelper
 
-@Field final String DEFAULT_JDK_VERSION = '21'
+@Field final String DEFAULT_JDK_VERSION = '25'
 @Field final String DEFAULT_JDK_TOOL = "OpenJDK ${DEFAULT_JDK_VERSION} Latest"
 @Field final String NODE_PATTERN_BASE = 'Worker&&Containers'
 @Field List<BuildEnvironment> environments
@@ -34,6 +34,7 @@ stage('Configure') {
 		new BuildEnvironment( dbName: 'mssql_2017' ), // Unfortunately there is no SQL Server 2008 image, so we have to test with 2017
 // 		new BuildEnvironment( dbName: 'sybase_16' ), // There only is a Sybase ASE 16 image, so no pint in testing that nightly
 		new BuildEnvironment( dbName: 'sybase_jconn' ),
+		new BuildEnvironment( dbName: 'informix' ),
 		// Long running databases
 		new BuildEnvironment( dbName: 'cockroachdb', node: 'cockroachdb', longRunning: true ),
 		new BuildEnvironment( dbName: 'hana_cloud', dbLockableResource: 'hana-cloud', dbLockResourceAsHost: true )
@@ -126,6 +127,16 @@ stage('Build') {
 								case "db2_11_5":
 									sh "./docker_db.sh db2_11_5"
 									state[buildEnv.tag]['containerName'] = "db2"
+									// The tenant feature was only added in DB2 12, so disable parallel testing
+									state[buildEnv.tag]['additionalOptions'] = state[buildEnv.tag]['additionalOptions'] +
+										" -Ptest.threads=1"
+									break;
+								case "informix":
+									sh "./docker_db.sh informix"
+									state[buildEnv.tag]['containerName'] = "informix"
+									// Disable parallel testing
+									state[buildEnv.tag]['additionalOptions'] = state[buildEnv.tag]['additionalOptions'] +
+										" -Ptest.threads=1"
 									break;
 								case "mssql_2017":
 									sh "./docker_db.sh mssql_2017"
@@ -135,8 +146,8 @@ stage('Build') {
 									sh "./docker_db.sh sybase"
 									state[buildEnv.tag]['containerName'] = "sybase"
 									break;
-								case "cockroachdb":
-									sh "./docker_db.sh cockroachdb"
+								case "cockroachdb_23_2":
+									sh "./docker_db.sh cockroachdb_23_2"
 									state[buildEnv.tag]['containerName'] = "cockroach"
 									break;
 							}

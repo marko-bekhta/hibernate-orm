@@ -4,6 +4,7 @@
  */
 package org.hibernate.metamodel.model.domain.internal;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.metamodel.model.domain.BasicDomainType;
 import org.hibernate.metamodel.model.domain.ReturnableType;
 import org.hibernate.query.sqm.TerminalPathException;
@@ -25,7 +26,7 @@ public class BasicSqmPathSource<J>
 
 	public BasicSqmPathSource(
 			String localPathName,
-			SqmPathSource<J> pathModel,
+			@Nullable SqmPathSource<J> pathModel,
 			BasicDomainType<J> domainType,
 			JavaType<?> relationalJavaType,
 			BindableType jpaBindableType,
@@ -46,14 +47,14 @@ public class BasicSqmPathSource<J>
 //	}
 
 	@Override
-	public SqmPathSource<?> findSubPathSource(String name) {
-		String path = pathModel.getPathName();
-		String pathDesc = path==null || path.startsWith("{") ? " " : " '" + pathModel.getPathName() + "' ";
+	public @Nullable SqmPathSource<?> findSubPathSource(String name) {
+		final String path = pathModel.getPathName();
+		final String pathDesc = path == null || path.startsWith( "{" ) ? " " : " '" + pathModel.getPathName() + "' ";
 		throw new TerminalPathException( "Terminal path" + pathDesc + "has no attribute '" + name + "'" );
 	}
 
 	@Override
-	public SqmPath<J> createSqmPath(SqmPath<?> lhs, SqmPathSource<?> intermediatePathSource) {
+	public SqmPath<J> createSqmPath(SqmPath<?> lhs, @Nullable SqmPathSource<?> intermediatePathSource) {
 		return new SqmBasicValuedSimplePath<>(
 				PathHelper.append( lhs, this, intermediatePathSource ),
 				pathModel,
@@ -84,8 +85,8 @@ public class BasicSqmPathSource<J>
 
 	@Override
 	public String toString() {
-		return "BasicSqmPathSource(" +
-				getPathName() + " : " + getJavaType().getSimpleName() +
-				")";
+		return "BasicSqmPathSource("
+			+ getPathName() + " : " + getJavaType().getSimpleName()
+			+ ")";
 	}
 }

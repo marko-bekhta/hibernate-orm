@@ -4,6 +4,8 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.query.hql.spi.SqmCreationState;
 import org.hibernate.query.sqm.SemanticQueryWalker;
 import org.hibernate.query.sqm.SqmBindableType;
@@ -11,6 +13,8 @@ import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
 import org.hibernate.query.sqm.tree.SqmRenderContext;
 import org.hibernate.spi.NavigablePath;
+
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 
 /**
  * @author Steve Ebersole
@@ -27,7 +31,7 @@ public class SqmTreatedEmbeddedValuedSimplePath<T, S extends T> extends SqmEmbed
 		super(
 				wrappedPath.getNavigablePath().treatAs( treatTarget.getTypeName() ),
 				(SqmPathSource<S>) wrappedPath.getReferencedPathSource(),
-				null,
+				castNonNull( wrappedPath.getLhs() ),
 				wrappedPath.nodeBuilder()
 		);
 		this.wrappedPath = wrappedPath;
@@ -42,7 +46,7 @@ public class SqmTreatedEmbeddedValuedSimplePath<T, S extends T> extends SqmEmbed
 		super(
 				navigablePath,
 				(SqmPathSource<S>) wrappedPath.getReferencedPathSource(),
-				null,
+				castNonNull( wrappedPath.getLhs() ),
 				wrappedPath.nodeBuilder()
 		);
 		this.wrappedPath = wrappedPath;
@@ -51,11 +55,11 @@ public class SqmTreatedEmbeddedValuedSimplePath<T, S extends T> extends SqmEmbed
 
 	@Override
 	public SqmTreatedEmbeddedValuedSimplePath<T, S> copy(SqmCopyContext context) {
-		final SqmTreatedEmbeddedValuedSimplePath<T, S> existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
-		final SqmTreatedEmbeddedValuedSimplePath<T, S> path = context.registerCopy(
+		final var path = context.registerCopy(
 				this,
 				new SqmTreatedEmbeddedValuedSimplePath<>(
 						getNavigablePath(),
@@ -78,7 +82,7 @@ public class SqmTreatedEmbeddedValuedSimplePath<T, S extends T> extends SqmEmbed
 	}
 
 	@Override
-	public SqmBindableType<S> getNodeType() {
+	public @NonNull SqmBindableType<S> getNodeType() {
 		return treatTarget;
 	}
 
@@ -93,18 +97,14 @@ public class SqmTreatedEmbeddedValuedSimplePath<T, S extends T> extends SqmEmbed
 	}
 
 	@Override
-	public SqmPath<?> getLhs() {
-		return wrappedPath.getLhs();
-	}
-
-	@Override
 	public <X> X accept(SemanticQueryWalker<X> walker) {
-		return walker.visitTreatedPath( this );
+		// Cast needed for Checker Framework
+		return walker.visitTreatedPath( (SqmTreatedPath<?, @Nullable ?>) this );
 	}
 
 	@Override
 	public SqmPath<?> resolvePathPart(String name, boolean isTerminal, SqmCreationState creationState) {
-		final SqmPath<?> sqmPath = get( name, true );
+		final var sqmPath = get( name, true );
 		creationState.getProcessingStateStack().getCurrent().getPathRegistry().register( sqmPath );
 		return sqmPath;
 	}

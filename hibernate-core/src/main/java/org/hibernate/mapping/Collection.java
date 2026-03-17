@@ -14,7 +14,6 @@ import org.hibernate.boot.spi.MetadataImplementor;
 import org.hibernate.collection.internal.CustomCollectionTypeSemantics;
 import org.hibernate.collection.spi.CollectionSemantics;
 import org.hibernate.engine.spi.ExecuteUpdateResultCheckStyle;
-import org.hibernate.internal.FilterConfiguration;
 import org.hibernate.internal.util.PropertiesHelper;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.jdbc.Expectation;
@@ -397,7 +396,7 @@ public abstract sealed class Collection
 
 	private void checkColumnDuplication() throws MappingException {
 		final String owner = "collection '" + getReferencedPropertyName() + "'";
-		final HashSet<String> cols = new HashSet<>();
+		final HashSet<QualifiedColumnName> cols = new HashSet<>();
 		getKey().checkColumnDuplication( cols, owner );
 		if ( isIndexed() ) {
 			( (IndexedCollection) this ).getIndex().checkColumnDuplication( cols, owner );
@@ -423,6 +422,11 @@ public abstract sealed class Collection
 	@Override
 	public int getColumnSpan() {
 		return 0;
+	}
+
+	@Override
+	public boolean hasColumns() {
+		return false;
 	}
 
 	@Override

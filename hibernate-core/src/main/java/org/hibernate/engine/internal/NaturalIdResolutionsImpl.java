@@ -50,8 +50,16 @@ public class NaturalIdResolutionsImpl implements NaturalIdResolutions, Serializa
 	 *
 	 * @return The session
 	 */
-	protected SharedSessionContractImplementor session() {
+	private SharedSessionContractImplementor session() {
 		return persistenceContext.getSession();
+	}
+
+	public EntityResolutions getEntityResolutions(EntityMappingType entityMappingType) {
+		return resolutionsByEntity.get( entityMappingType );
+	}
+
+	public EntityResolutions getEntityResolutions(Class<?> entityType) {
+		return getEntityResolutions( session().getFactory().getMappingMetamodel().getEntityDescriptor( entityType ) );
 	}
 
 	@Override
@@ -709,7 +717,7 @@ public class NaturalIdResolutionsImpl implements NaturalIdResolutions, Serializa
 	/**
 	 * Represents the entity-specific cross-reference cache.
 	 */
-	private static class EntityResolutions implements Serializable {
+	public static class EntityResolutions implements Serializable {
 		private final PersistenceContext persistenceContext;
 
 		private final EntityMappingType entityDescriptor;
@@ -730,6 +738,25 @@ public class NaturalIdResolutionsImpl implements NaturalIdResolutions, Serializa
 
 		public EntityPersister getPersister() {
 			return getEntityDescriptor().getEntityPersister();
+		}
+
+		/**
+		 * Used for testing.
+		 */
+		public Resolution getResolutionByPk(Object pk) {
+			return pkToNaturalIdMap.get( pk );
+		}
+
+		/**
+		 * Used for testing.
+		 */
+		public Object getIdResolutionByNaturalId(Object naturalId) {
+			for ( var entry : pkToNaturalIdMap.entrySet() ) {
+				if ( entry.getValue().getNaturalIdValue().equals( naturalId ) ) {
+					return entry.getKey();
+				}
+			}
+			return null;
 		}
 
 		public boolean sameAsCached(Object pk, Object naturalIdValues) {

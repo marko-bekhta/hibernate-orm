@@ -33,7 +33,6 @@ import org.hibernate.mapping.Component;
 import org.hibernate.mapping.Formula;
 import org.hibernate.mapping.Join;
 import org.hibernate.mapping.SimpleValue;
-import org.hibernate.mapping.Table;
 import org.hibernate.models.spi.ModelsContext;
 
 import static org.hibernate.boot.model.internal.BinderHelper.getPath;
@@ -235,9 +234,7 @@ public class AnnotatedColumn {
 
 	public void bind() {
 		if ( isNotEmpty( formulaString ) ) {
-if ( BOOT_LOGGER.isTraceEnabled() ) {
-				BOOT_LOGGER.bindingFormula( formulaString );
-			}
+			BOOT_LOGGER.bindingFormula( formulaString );
 			formula = new Formula();
 			formula.setFormula( formulaString );
 		}
@@ -258,7 +255,7 @@ if ( BOOT_LOGGER.isTraceEnabled() ) {
 			if ( defaultValue != null ) {
 				mappingColumn.setDefaultValue( defaultValue );
 			}
-			for ( CheckConstraint constraint : checkConstraints ) {
+			for ( var constraint : checkConstraints ) {
 				mappingColumn.addCheckConstraint( constraint );
 			}
 			mappingColumn.setOptions( options );
@@ -269,7 +266,7 @@ if ( BOOT_LOGGER.isTraceEnabled() ) {
 			if ( generatedAs != null ) {
 				mappingColumn.setGeneratedAs( generatedAs );
 			}
-if ( BOOT_LOGGER.isDebugEnabled() && logicalColumnName != null ) {
+			if ( logicalColumnName != null ) {
 				BOOT_LOGGER.bindingColumn( logicalColumnName );
 			}
 		}
@@ -315,7 +312,7 @@ if ( BOOT_LOGGER.isDebugEnabled() && logicalColumnName != null ) {
 				// assign a unique key name to the column
 				getParent().getTable().createUniqueKey( mappingColumn, getBuildingContext() );
 			}
-			for ( CheckConstraint constraint : checkConstraints ) {
+			for ( var constraint : checkConstraints ) {
 				mappingColumn.addCheckConstraint( constraint );
 			}
 			mappingColumn.setDefaultValue( defaultValue );
@@ -353,9 +350,10 @@ if ( BOOT_LOGGER.isDebugEnabled() && logicalColumnName != null ) {
 	 * @return {@code true} if a name could be inferred
 	 */
 	boolean inferColumnNameIfPossible(String columnName, String propertyName, boolean applyNamingStrategy) {
-		if ( !isEmpty( columnName ) || !isEmpty( propertyName ) ) {
-			final String logicalColumnName = resolveLogicalColumnName( columnName, propertyName );
-			mappingColumn.setName( processColumnName( logicalColumnName, applyNamingStrategy ) );
+		if ( isNotEmpty( columnName ) || isNotEmpty( propertyName ) ) {
+			mappingColumn.setName(
+					processColumnName( resolveLogicalColumnName( columnName, propertyName ),
+							applyNamingStrategy, isNotEmpty( columnName ) ) );
 			return true;
 		}
 		else {
@@ -365,9 +363,10 @@ if ( BOOT_LOGGER.isDebugEnabled() && logicalColumnName != null ) {
 
 	private String resolveLogicalColumnName(String columnName, String propertyName) {
 		final String baseColumnName = isNotEmpty( columnName ) ? columnName : inferColumnName( propertyName );
-		return parent.getPropertyHolder() != null && parent.getPropertyHolder().isComponent()
+		final var propertyHolder = parent.getPropertyHolder();
+		return propertyHolder != null && propertyHolder.isComponent()
 				// see if we need to apply one-or-more @EmbeddedColumnNaming patterns
-				? applyEmbeddedColumnNaming( baseColumnName, (ComponentPropertyHolder) parent.getPropertyHolder() )
+				? applyEmbeddedColumnNaming( baseColumnName, (ComponentPropertyHolder) propertyHolder )
 				: baseColumnName;
 	}
 
@@ -403,11 +402,12 @@ if ( BOOT_LOGGER.isDebugEnabled() && logicalColumnName != null ) {
 		return result;
 	}
 
-	protected String processColumnName(String columnName, boolean applyNamingStrategy) {
+	protected String processColumnName(String columnName, boolean applyNamingStrategy, boolean isExplicit) {
 		if ( applyNamingStrategy ) {
 			final var database = getDatabase();
 			return getPhysicalNamingStrategy()
-					.toPhysicalColumnName( database.toIdentifier( columnName ), database.getJdbcEnvironment() )
+					.toPhysicalColumnName( database.toIdentifier( columnName, isExplicit ),
+							database.getJdbcEnvironment() )
 					.render( database.getDialect() );
 		}
 		else {
@@ -508,7 +508,7 @@ if ( BOOT_LOGGER.isDebugEnabled() && logicalColumnName != null ) {
 			value.addFormula( formula );
 		}
 		else {
-			final Table table = value.getTable();
+			final var table = value.getTable();
 			parent.setTable( table );
 			mappingColumn.setValue( value );
 			value.addColumn( mappingColumn, insertable, updatable );
@@ -770,7 +770,7 @@ if ( BOOT_LOGGER.isDebugEnabled() && logicalColumnName != null ) {
 						+ " columns (every column must have exactly one '@AttributeOverride')" );
 			}
 			if ( BOOT_LOGGER.isTraceEnabled() ) {
-	BOOT_LOGGER.columnMappingOverridden( inferredData.getPropertyName() );
+				BOOT_LOGGER.columnMappingOverridden( inferredData.getPropertyName() );
 			}
 			return isEmpty( overriddenCols ) ? null : overriddenCols;
 		}
@@ -930,7 +930,7 @@ if ( BOOT_LOGGER.isDebugEnabled() && logicalColumnName != null ) {
 			}
 		}
 		else {
-BOOT_LOGGER.couldNotPerformColumnDefaultLookup();
+			BOOT_LOGGER.couldNotPerformColumnDefaultLookup();
 		}
 	}
 
@@ -951,7 +951,7 @@ BOOT_LOGGER.couldNotPerformColumnDefaultLookup();
 			}
 		}
 		else {
-BOOT_LOGGER.couldNotPerformGeneratedColumnLookup();
+			BOOT_LOGGER.couldNotPerformGeneratedColumnLookup();
 		}
 }
 
@@ -994,9 +994,9 @@ BOOT_LOGGER.couldNotPerformGeneratedColumnLookup();
 			}
 		}
 		else {
-BOOT_LOGGER.couldNotPerformCheckLookup();
+			BOOT_LOGGER.couldNotPerformCheckLookup();
 		}
-}
+	}
 
 	//must only be called after all setters are defined and before binding
 	private void extractDataFromPropertyData(

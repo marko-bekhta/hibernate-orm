@@ -56,7 +56,7 @@ public class SqmMapEntryReference<K,V>
 
 	@Override
 	public SqmMapEntryReference<K, V> copy(SqmCopyContext context) {
-		final SqmMapEntryReference<K, V> existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
@@ -67,7 +67,7 @@ public class SqmMapEntryReference<K,V>
 	}
 
 	@Override
-	public String getAlias() {
+	public @Nullable String getAlias() {
 		return explicitAlias;
 	}
 
@@ -133,7 +133,7 @@ public class SqmMapEntryReference<K,V>
 	}
 
 	@Override
-	public SqmDomainType<Map.Entry<K, V>> getSqmType() {
+	public @Nullable SqmDomainType<Map.Entry<K, V>> getSqmType() {
 		return null;
 	}
 
@@ -150,7 +150,7 @@ public class SqmMapEntryReference<K,V>
 	}
 
 	@Override
-	public boolean equals(Object object) {
+	public boolean equals(@Nullable Object object) {
 		return object instanceof SqmMapEntryReference<?, ?> that
 			&& mapPath.equals( that.mapPath )
 			&& Objects.equals( explicitAlias, that.explicitAlias );

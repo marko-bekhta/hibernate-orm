@@ -65,7 +65,6 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ConstraintMode;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embedded;
-import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.Index;
@@ -107,6 +106,7 @@ import static org.hibernate.boot.model.internal.BinderHelper.isDefault;
 import static org.hibernate.boot.model.internal.BinderHelper.isPrimitive;
 import static org.hibernate.boot.model.internal.DialectOverridesAnnotationHelper.getOverridableAnnotation;
 import static org.hibernate.boot.model.internal.EmbeddableBinder.fillEmbeddable;
+import static org.hibernate.boot.model.internal.EntityBinder.isEntity;
 import static org.hibernate.boot.model.internal.GeneratorBinder.visitIdGeneratorDefinitions;
 import static org.hibernate.boot.model.internal.PropertyHolderBuilder.buildPropertyHolder;
 import static org.hibernate.boot.model.internal.QueryBinder.bindNativeQuery;
@@ -1062,9 +1062,7 @@ public abstract class CollectionBinder {
 		}
 		collection = createCollection( propertyHolder.getPersistentClass() );
 		final String role = qualify( propertyHolder.getPath(), propertyName );
-		if ( BOOT_LOGGER.isTraceEnabled() ) {
-			BOOT_LOGGER.bindingCollectionRole( role );
-		}
+		BOOT_LOGGER.bindingCollectionRole( role );
 		collection.setRole( role );
 		collection.setMappedByProperty( mappedBy );
 
@@ -1145,16 +1143,14 @@ public abstract class CollectionBinder {
 			}
 			if ( oneToMany ) {
 				if ( property.hasDirectAnnotationUsage( MapKeyColumn.class ) ) {
-					BOOT_LOGGER.warn( "Association '"
-									+ qualify( propertyHolder.getPath(), propertyName )
-									+ "' is 'mappedBy' another entity and should not specify a '@MapKeyColumn'"
-									+ " (use '@MapKey' instead)" );
+					BOOT_LOGGER.mappedByShouldNotSpecifyMapKeyColumn(
+							qualify( propertyHolder.getPath(), propertyName )
+					);
 				}
 				if ( property.hasDirectAnnotationUsage( OrderColumn.class ) ) {
-					BOOT_LOGGER.warn( "Association '"
-									+ qualify( propertyHolder.getPath(), propertyName )
-									+ "' is 'mappedBy' another entity and should not specify an '@OrderColumn'"
-									+ " (use '@OrderBy' instead)" );
+					BOOT_LOGGER.mappedByShouldNotSpecifyOrderColumn(
+							qualify( propertyHolder.getPath(), propertyName )
+					);
 				}
 			}
 			else {
@@ -2502,7 +2498,7 @@ public abstract class CollectionBinder {
 
 	static String targetEntityMessage(TypeDetails elementType) {
 		final String problem =
-				elementType.determineRawClass().hasDirectAnnotationUsage( Entity.class )
+				isEntity( elementType.determineRawClass() )
 						? " which does not belong to the same persistence unit"
 						: " which is not an '@Entity' type";
 		return " targets the type '" + elementType.getName() + "'" + problem;

@@ -6,6 +6,8 @@ package org.hibernate.query.sqm.tree.domain;
 
 import java.util.Map;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.metamodel.model.domain.PathSource;
@@ -33,7 +35,7 @@ public class SqmMapJoin<L, K, V>
 	public SqmMapJoin(
 			SqmFrom<?, L> lhs,
 			SqmMapPersistentAttribute<? super L, K, V> pluralValuedNavigable,
-			String alias,
+			@Nullable String alias,
 			SqmJoinType sqmJoinType,
 			boolean fetched,
 			NodeBuilder nodeBuilder) {
@@ -44,7 +46,7 @@ public class SqmMapJoin<L, K, V>
 			SqmFrom<?, L> lhs,
 			NavigablePath navigablePath,
 			SqmMapPersistentAttribute<L, K, V> pluralValuedNavigable,
-			String alias,
+			@Nullable String alias,
 			SqmJoinType joinType,
 			boolean fetched,
 			NodeBuilder nodeBuilder) {
@@ -53,12 +55,12 @@ public class SqmMapJoin<L, K, V>
 
 	@Override
 	public SqmMapJoin<L, K, V> copy(SqmCopyContext context) {
-		final SqmMapJoin<L, K, V> existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
 		final SqmFrom<?, L> lhsCopy = getLhs().copy( context );
-		final SqmMapJoin<L, K, V> path = context.registerCopy(
+		final var path = context.registerCopy(
 				this,
 				new SqmMapJoin<>(
 						lhsCopy,
@@ -85,7 +87,7 @@ public class SqmMapJoin<L, K, V>
 	}
 
 	@Override
-	public SqmMapPersistentAttribute<L, K, V> getAttribute() {
+	public @NonNull SqmMapPersistentAttribute<L, K, V> getAttribute() {
 		return getModel();
 	}
 
@@ -110,22 +112,22 @@ public class SqmMapJoin<L, K, V>
 	}
 
 	@Override
-	public SqmMapJoin<L, K, V> on(JpaExpression<Boolean> restriction) {
+	public SqmMapJoin<L, K, V> on(@Nullable JpaExpression<Boolean> restriction) {
 		return (SqmMapJoin<L, K, V>) super.on( restriction );
 	}
 
 	@Override
-	public SqmMapJoin<L, K, V> on(Expression<Boolean> restriction) {
+	public SqmMapJoin<L, K, V> on(@Nullable Expression<Boolean> restriction) {
 		return (SqmMapJoin<L, K, V>) super.on( restriction );
 	}
 
 	@Override
-	public SqmMapJoin<L, K, V> on(JpaPredicate... restrictions) {
+	public SqmMapJoin<L, K, V> on(JpaPredicate @Nullable... restrictions) {
 		return (SqmMapJoin<L, K, V>) super.on( restrictions );
 	}
 
 	@Override
-	public SqmMapJoin<L, K, V> on(Predicate... restrictions) {
+	public SqmMapJoin<L, K, V> on(Predicate @Nullable... restrictions) {
 		return (SqmMapJoin<L, K, V>) super.on( restrictions );
 	}
 
@@ -140,12 +142,12 @@ public class SqmMapJoin<L, K, V>
 	}
 
 	@Override
-	public <S extends V> SqmTreatedMapJoin<L, K, V, S> treatAs(Class<S> treatJavaType, String alias) {
+	public <S extends V> SqmTreatedMapJoin<L, K, V, S> treatAs(Class<S> treatJavaType, @Nullable String alias) {
 		return treatAs( treatJavaType, alias, false );
 	}
 
 	@Override
-	public <S extends V> SqmTreatedMapJoin<L, K, V, S> treatAs(Class<S> treatJavaType, String alias, boolean fetch) {
+	public <S extends V> SqmTreatedMapJoin<L, K, V, S> treatAs(Class<S> treatJavaType, @Nullable String alias, boolean fetch) {
 		final ManagedDomainType<S> treatTarget = nodeBuilder().getDomainModel().managedType( treatJavaType );
 		final SqmTreatedMapJoin<L, K, V, S> treat = findTreat( treatTarget, alias );
 		if ( treat == null ) {
@@ -165,7 +167,7 @@ public class SqmMapJoin<L, K, V>
 	}
 
 	@Override
-	public <S extends V> SqmTreatedMapJoin<L, K, V, S> treatAs(EntityDomainType<S> treatTarget, String alias, boolean fetch) {
+	public <S extends V> SqmTreatedMapJoin<L, K, V, S> treatAs(EntityDomainType<S> treatTarget, @Nullable String alias, boolean fetch) {
 		final SqmTreatedMapJoin<L, K, V, S> treat = findTreat( treatTarget, alias );
 		if ( treat == null ) {
 			return addTreat( new SqmTreatedMapJoin<>( this, (SqmEntityDomainType<S>) treatTarget, alias, fetch ) );
@@ -174,7 +176,7 @@ public class SqmMapJoin<L, K, V>
 	}
 
 	@Override
-	public <S extends V> SqmTreatedMapJoin<L, K, V, S> treatAs(EntityDomainType<S> treatTarget, String alias) {
+	public <S extends V> SqmTreatedMapJoin<L, K, V, S> treatAs(EntityDomainType<S> treatTarget, @Nullable String alias) {
 		final SqmTreatedMapJoin<L, K, V, S> treat = findTreat( treatTarget, alias );
 		if ( treat == null ) {
 			return addTreat( new SqmTreatedMapJoin<>( this, (SqmEntityDomainType<S>) treatTarget, alias ) );

@@ -15,6 +15,7 @@ import org.hibernate.HibernateException;
 import org.hibernate.IdentifierLoadAccess;
 import org.hibernate.LockMode;
 import org.hibernate.LockOptions;
+import org.hibernate.Locking;
 import org.hibernate.UnknownProfileException;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.engine.spi.Status;
@@ -67,6 +68,14 @@ public abstract class BaseNaturalIdLoadAccessImpl<T> implements NaturalIdLoadOpt
 		}
 		lockOptions.setLockMode( lockMode );
 		lockOptions.setLockScope( lockScope );
+		return this;
+	}
+
+	protected Object with(Locking.Scope lockScope) {
+		if ( lockOptions == null ) {
+			lockOptions = new LockOptions();
+		}
+		lockOptions.setScope( lockScope );
 		return this;
 	}
 
@@ -174,19 +183,21 @@ public abstract class BaseNaturalIdLoadAccessImpl<T> implements NaturalIdLoadOpt
 			final var session = context.getSession();
 			final var influencers = session.getLoadQueryInfluencers();
 			final var fetchProfiles = influencers.adjustFetchProfiles( disabledFetchProfiles, enabledFetchProfiles );
-			final var effectiveEntityGraph = influencers.applyEntityGraph( rootGraph, graphSemantic );
+			final var effectiveEntityGraph =
+					rootGraph == null
+							? null
+							: influencers.applyEntityGraph( rootGraph, graphSemantic );
 			try {
 				@SuppressWarnings("unchecked")
 				final T loaded = cachedResolution != null
-						? identifierLoadAccess().load(cachedResolution)
+						? identifierLoadAccess().load( cachedResolution )
 						: (T) entityPersister().getNaturalIdLoader()
 								.load( normalizedNaturalIdValue, this, session );
 				if ( loaded != null ) {
 					final var persistenceContext = session.getPersistenceContextInternal();
 					final var lazyInitializer = HibernateProxy.extractLazyInitializer( loaded );
-					final var entry = lazyInitializer != null
-							? persistenceContext.getEntry( lazyInitializer.getImplementation() )
-							: persistenceContext.getEntry( loaded );
+					final var entity = lazyInitializer != null ? lazyInitializer.getImplementation() : loaded;
+					final var entry = persistenceContext.getEntry( entity );
 					assert entry != null;
 					if ( entry.getStatus() == Status.DELETED ) {
 						return null;
@@ -196,7 +207,9 @@ public abstract class BaseNaturalIdLoadAccessImpl<T> implements NaturalIdLoadOpt
 			}
 			finally {
 				context.delayedAfterCompletion();
-				effectiveEntityGraph.clear();
+				if ( effectiveEntityGraph != null ) {
+					effectiveEntityGraph.clear();
+				}
 				influencers.setEnabledFetchProfileNames( fetchProfiles );
 			}
 		}

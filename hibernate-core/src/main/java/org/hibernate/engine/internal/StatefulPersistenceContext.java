@@ -28,7 +28,6 @@ import org.hibernate.HibernateException;
 import org.hibernate.LockMode;
 import org.hibernate.MappingException;
 import org.hibernate.NonUniqueObjectException;
-import org.hibernate.PersistentObjectException;
 import org.hibernate.bytecode.enhance.spi.interceptor.BytecodeLazyAttributeInterceptor;
 import org.hibernate.bytecode.enhance.spi.interceptor.EnhancementAsProxyLazinessInterceptor;
 import org.hibernate.collection.spi.PersistentCollection;
@@ -89,20 +88,15 @@ class StatefulPersistenceContext implements PersistenceContext {
 
 	private static final int INIT_COLL_SIZE = 8;
 
-	/*
-		Eagerly Initialized Fields
-		the following fields are used in all circumstances, and are not worth (or not suited) to being converted into lazy
-	 */
+	// Eagerly initialized fields. The following fields are used in every circumstance
+	// and are not worth (or not suited) to being converted to lazy initialization.
+
 	private final SharedSessionContractImplementor session;
 	private EntityEntryContext entityEntryContext;
 
-	/*
-		Everything else below should be carefully initialized only on first need;
-		this optimisation is very effective as null checks are free, while allocation costs
-		are very often the dominating cost of an application using ORM.
-		This is not general advice, but it's worth the added maintenance burden in this case
-		as this is a very central component of our library.
-	 */
+	// Everything else below should be carefully initialized only on first need.
+	// This optimization is very effective as null checks are free, while allocation
+	// costs are very often the dominating cost of an application using ORM.
 
 	// Loaded entity instances, by EntityKey
 	private HashMap<EntityKey, EntityHolderImpl> entitiesByKey;
@@ -113,8 +107,7 @@ class StatefulPersistenceContext implements PersistenceContext {
 	// Loaded entity instances, by EntityUniqueKey
 	private HashMap<EntityUniqueKey, Object> entitiesByUniqueKey;
 
-
-	// Snapshots of current database state for entities
+	// Snapshots of the current database state for entities
 	// that have *not* been loaded
 	private HashMap<EntityKey, Object> entitySnapshotsByKey;
 
@@ -136,7 +129,7 @@ class StatefulPersistenceContext implements PersistenceContext {
 	// Set of EntityKeys of deleted unloaded proxies
 	private HashSet<EntityKey> deletedUnloadedEntityKeys;
 
-	// properties that we have tried to load, and not found in the database
+	// properties that we have tried to load and not found in the database
 	private HashSet<AssociationKey> nullAssociations;
 
 	// A list of collection wrappers that were instantiating during result set
@@ -209,14 +202,6 @@ class StatefulPersistenceContext implements PersistenceContext {
 		return loadContexts != null;
 	}
 
-//	@Override
-//	public void addUnownedCollection(CollectionKey key, PersistentCollection collection) {
-//		if ( unownedCollections == null ) {
-//			unownedCollections = CollectionHelper.mapOfSize( INIT_COLL_SIZE );
-//		}
-//		unownedCollections.put( key, collection );
-//	}
-//
 	@Override
 	public PersistentCollection<?> useUnownedCollection(CollectionKey key) {
 		return unownedCollections == null ? null : unownedCollections.remove( key );
@@ -405,7 +390,10 @@ class StatefulPersistenceContext implements PersistenceContext {
 		else {
 			newEntityHolder = null;
 		}
-		holder.entityInitializer = initializer;
+		if ( holder.processingState != processingState ) {
+			holder.entityInitializer = initializer;
+			holder.processingState = processingState;
+		}
 		return holder;
 	}
 
@@ -688,26 +676,35 @@ class StatefulPersistenceContext implements PersistenceContext {
 
 	@Override
 	public boolean reassociateIfUninitializedProxy(Object value) throws MappingException {
-		if ( !Hibernate.isInitialized( value ) ) {
-			// could be a proxy
-			final var lazyInitializer = extractLazyInitializer( value );
-			if ( lazyInitializer != null ) {
-				reassociateProxy( lazyInitializer, asHibernateProxy( value ) );
-				return true;
-			}
-			// or an uninitialized enhanced entity ("bytecode proxy")
-			if ( isPersistentAttributeInterceptable( value ) ) {
-				final var bytecodeProxy = asPersistentAttributeInterceptable( value );
-				final var interceptor =
-						(BytecodeLazyAttributeInterceptor)
-								bytecodeProxy.$$_hibernate_getInterceptor();
-				if ( interceptor != null ) {
-					interceptor.setSession( getSession() );
-				}
-				return true;
-			}
+		if ( Hibernate.isInitialized( value ) ) {
+			return false;
 		}
-		return false;
+		// could be a proxy
+		final var lazyInitializer = extractLazyInitializer( value );
+		if ( lazyInitializer != null ) {
+			final boolean uninitialized = lazyInitializer.isUninitialized();
+			if ( uninitialized ) {
+				reassociateProxy( lazyInitializer, asHibernateProxy( value ) );
+			}
+			return uninitialized;
+		}
+		// or an uninitialized enhanced entity ("bytecode proxy")
+		else if ( isPersistentAttributeInterceptable( value ) ) {
+			final var interceptor =
+					(BytecodeLazyAttributeInterceptor)
+							asPersistentAttributeInterceptable( value )
+									.$$_hibernate_getInterceptor();
+			final boolean uninitialized =
+					interceptor instanceof EnhancementAsProxyLazinessInterceptor enhancementInterceptor
+							&& !enhancementInterceptor.isInitialized();
+			if ( uninitialized ) {
+				interceptor.setSession( getSession() );
+			}
+			return uninitialized;
+		}
+		else {
+			return false;
+		}
 	}
 
 	@Override
@@ -744,22 +741,6 @@ class StatefulPersistenceContext implements PersistenceContext {
 				newEntityHolder = null;
 			}
 			proxy.getHibernateLazyInitializer().setSession( session );
-		}
-	}
-
-	@Override
-	public Object unproxy(Object maybeProxy) throws HibernateException {
-		final var lazyInitializer = extractLazyInitializer( maybeProxy );
-		if ( lazyInitializer != null ) {
-			if ( lazyInitializer.isUninitialized() ) {
-				throw new PersistentObjectException( "object was an uninitialized proxy for "
-														+ lazyInitializer.getEntityName() );
-			}
-			//unwrap the object and return
-			return lazyInitializer.getImplementation();
-		}
-		else {
-			return maybeProxy;
 		}
 	}
 
@@ -932,7 +913,7 @@ class StatefulPersistenceContext implements PersistenceContext {
 				}
 				else {
 					//		b) try by EntityKey, which means we need to resolve owner-key -> collection-key
-					//			IMPL NOTE : yes if we get here this impl is very non-performant, but PersistenceContext
+					//			IMPL NOTE: yes if we get here this impl is very non-performant, but PersistenceContext
 					//					was never designed to handle this case; adding that capability for real means splitting
 					//					the notions of:
 					//						1) collection key
@@ -1224,14 +1205,6 @@ class StatefulPersistenceContext implements PersistenceContext {
 		}
 		return removeProxyByKey( key );
 	}
-
-//	@Override
-//	public HashSet getNullifiableEntityKeys() {
-//		if ( nullifiableEntityKeys == null ) {
-//			nullifiableEntityKeys = new HashSet<>();
-//		}
-//		return nullifiableEntityKeys;
-//	}
 
 	/**
 	 * @deprecated this will be removed: it provides too wide access, making it hard to optimise the internals
@@ -1878,9 +1851,8 @@ class StatefulPersistenceContext implements PersistenceContext {
 	 * @throws IOException deserialization errors.
 	 * @throws ClassNotFoundException deserialization errors.
 	 */
-	public static StatefulPersistenceContext deserialize(
-			ObjectInputStream ois,
-			SessionImplementor session) throws IOException, ClassNotFoundException {
+	public static StatefulPersistenceContext deserialize(ObjectInputStream ois, SessionImplementor session)
+				throws IOException, ClassNotFoundException {
 		PERSISTENCE_CONTEXT_LOGGER.deserializingPersistenceContext();
 		final var context = new StatefulPersistenceContext( session );
 		final var factory = session.getFactory();
@@ -2174,7 +2146,8 @@ class StatefulPersistenceContext implements PersistenceContext {
 		private Object entity;
 		private Object proxy;
 		private @Nullable EntityEntry entityEntry;
-		private EntityInitializer<?> entityInitializer;
+		private @Nullable EntityInitializer<?> entityInitializer;
+		private @Nullable JdbcValuesSourceProcessingState processingState;
 		private EntityHolderState state;
 
 		private EntityHolderImpl() {
@@ -2212,8 +2185,13 @@ class StatefulPersistenceContext implements PersistenceContext {
 		}
 
 		@Override
-		public EntityInitializer<?> getEntityInitializer() {
+		public @Nullable EntityInitializer<?> getEntityInitializer() {
 			return entityInitializer;
+		}
+
+		@Override
+		public @Nullable JdbcValuesSourceProcessingState getJdbcValuesProcessingState() {
+			return processingState;
 		}
 
 		@Override
@@ -2237,8 +2215,9 @@ class StatefulPersistenceContext implements PersistenceContext {
 		}
 
 		@Override
-		public void resetEntityInitialier(){
+		public void resetEntityInitialier() {
 			entityInitializer = null;
+			processingState = null;
 		}
 
 		public EntityHolderImpl withEntity(EntityKey entityKey, EntityPersister descriptor, Object entity) {
@@ -2253,6 +2232,7 @@ class StatefulPersistenceContext implements PersistenceContext {
 			assert entityKey != null
 				&& descriptor != null
 				&& entityInitializer == null
+				&& processingState == null
 				&& state == EntityHolderState.UNINITIALIZED;
 			this.entityKey = entityKey;
 			this.descriptor = descriptor;

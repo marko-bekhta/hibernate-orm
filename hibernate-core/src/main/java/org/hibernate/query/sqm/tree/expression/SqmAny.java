@@ -32,13 +32,13 @@ public class SqmAny<T> extends AbstractSqmExpression<T> {
 	}
 
 	@Override
-	public Integer getTupleLength() {
+	public @Nullable Integer getTupleLength() {
 		return subquery.getTupleLength();
 	}
 
 	@Override
 	public SqmAny<T> copy(SqmCopyContext context) {
-		final SqmAny<T> existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
@@ -69,7 +69,7 @@ public class SqmAny<T> extends AbstractSqmExpression<T> {
 	}
 
 	@Override
-	public boolean equals(Object object) {
+	public boolean equals(@Nullable Object object) {
 		return object instanceof SqmAny<?> sqmAny
 			&& subquery.equals( sqmAny.subquery );
 	}

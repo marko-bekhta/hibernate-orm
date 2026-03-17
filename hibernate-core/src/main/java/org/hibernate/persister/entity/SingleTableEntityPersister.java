@@ -15,8 +15,7 @@ import org.hibernate.MappingException;
 import org.hibernate.Remove;
 import org.hibernate.cache.spi.access.EntityDataAccess;
 import org.hibernate.cache.spi.access.NaturalIdDataAccess;
-import org.hibernate.internal.DynamicFilterAliasGenerator;
-import org.hibernate.internal.FilterAliasGenerator;
+import org.hibernate.persister.filter.FilterAliasGenerator;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Formula;
@@ -24,6 +23,7 @@ import org.hibernate.mapping.PersistentClass;
 import org.hibernate.metamodel.MappingMetamodel;
 import org.hibernate.metamodel.mapping.TableDetails;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
+import org.hibernate.persister.filter.internal.DynamicFilterAliasGenerator;
 import org.hibernate.sql.ast.tree.from.NamedTableReference;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.model.ast.builder.MutationGroupBuilder;
@@ -105,7 +105,8 @@ public class SingleTableEntityPersister extends AbstractEntityPersister {
 			final PersistentClass persistentClass,
 			final EntityDataAccess cacheAccessStrategy,
 			final NaturalIdDataAccess naturalIdRegionAccessStrategy,
-			final RuntimeModelCreationContext creationContext) throws HibernateException {
+			final RuntimeModelCreationContext creationContext)
+					throws HibernateException {
 		super( persistentClass, cacheAccessStrategy, naturalIdRegionAccessStrategy, creationContext );
 
 		final var dialect = creationContext.getDialect();
@@ -471,9 +472,8 @@ public class SingleTableEntityPersister extends AbstractEntityPersister {
 			final TableInsertBuilder tableInsertBuilder =
 					insertGroupBuilder.getTableDetailsBuilder( getRootTableName() );
 			tableInsertBuilder.addValueColumn(
-					discriminatorColumnName,
 					discriminatorValue == NULL_DISCRIMINATOR ? NULL : discriminatorSQLValue,
-					getDiscriminatorMapping().getJdbcMapping()
+					getDiscriminatorMapping()
 			);
 		}
 	}
@@ -576,7 +576,7 @@ public class SingleTableEntityPersister extends AbstractEntityPersister {
 					// Also, it makes no sense to filter for any of the super types,
 					// as the query will contain a filter for that already anyway
 					final var superMappingType = getSuperMappingType();
-					if ( superMappingType == null || !getSuperMappingType().isTypeOrSuperType( persister ) ) {
+					if ( superMappingType == null || !superMappingType.isTypeOrSuperType( persister ) ) {
 						return true;
 					}
 				}
@@ -610,8 +610,8 @@ public class SingleTableEntityPersister extends AbstractEntityPersister {
 					tableName,
 					tableIndex,
 					() -> columnConsumer -> columnConsumer.accept(
-							tableName,
 							getIdentifierMapping(),
+							tableName,
 							keyColumnNames[tableIndex]
 					)
 			);

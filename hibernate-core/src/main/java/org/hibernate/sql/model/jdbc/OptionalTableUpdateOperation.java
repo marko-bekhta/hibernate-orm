@@ -105,6 +105,22 @@ public class OptionalTableUpdateOperation implements SelfExecutingUpdateOperatio
 		return tableMapping;
 	}
 
+	public List<ColumnValueBinding> getValueBindings() {
+		return valueBindings;
+	}
+
+	public List<ColumnValueBinding> getKeyBindings() {
+		return keyBindings;
+	}
+
+	public List<ColumnValueBinding> getOptimisticLockBindings() {
+		return optimisticLockBindings;
+	}
+
+	public List<ColumnValueParameter> getParameters() {
+		return parameters;
+	}
+
 	@Override
 	public JdbcValueDescriptor findValueDescriptor(String columnName, ParameterUsage usage) {
 		for ( int i = 0; i < jdbcValueDescriptors.size(); i++ ) {
@@ -153,11 +169,17 @@ public class OptionalTableUpdateOperation implements SelfExecutingUpdateOperatio
 							performInsert( jdbcValueBindings, session );
 						}
 						catch (ConstraintViolationException cve) {
-							throw cve.getKind() == UNIQUE
+							if ( cve.getKind() == UNIQUE ) {
+								// Ignore primary key violation if the insert is composed of just the primary key
+								if ( !valueBindings.isEmpty() ) {
 									// assume it was the primary key constraint which was violated,
 									// due to a new version of the row existing in the database
-									? new StaleStateException( mutationTarget.getRolePath(), cve )
-									: cve;
+									throw new StaleStateException( mutationTarget.getRolePath(), cve );
+								}
+							}
+							else {
+								throw cve;
+							}
 						}
 					}
 				}
@@ -369,7 +391,7 @@ public class OptionalTableUpdateOperation implements SelfExecutingUpdateOperatio
 	}
 
 	private void performInsert(JdbcValueBindings jdbcValueBindings, SharedSessionContractImplementor session) {
-		final JdbcInsertMutation jdbcInsert = createJdbcInsert( session );
+		final JdbcMutationOperation jdbcInsert = createJdbcOptionalInsert( session );
 		final JdbcServices jdbcServices = session.getJdbcServices();
 		final JdbcCoordinator jdbcCoordinator = session.getJdbcCoordinator();
 		final PreparedStatement insertStatement = createStatementDetails( jdbcInsert, jdbcCoordinator );
@@ -405,6 +427,13 @@ public class OptionalTableUpdateOperation implements SelfExecutingUpdateOperatio
 			jdbcCoordinator.getLogicalConnection().getResourceRegistry().release( insertStatement );
 			jdbcCoordinator.afterStatementExecution();
 		}
+	}
+
+	/*
+	 * Used by Hibernate Reactive
+	 */
+	protected JdbcMutationOperation createJdbcOptionalInsert(SharedSessionContractImplementor session) {
+		return createJdbcInsert( session );
 	}
 
 	/*

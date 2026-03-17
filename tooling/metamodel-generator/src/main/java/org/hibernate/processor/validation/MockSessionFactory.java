@@ -446,6 +446,11 @@ public abstract class MockSessionFactory
 	}
 
 	@Override
+	public boolean isPreferLocaleLanguageTagEnabled() {
+		return MetadataBuildingContext.super.isPreferLocaleLanguageTagEnabled();
+	}
+
+	@Override
 	public boolean isXmlFormatMapperLegacyFormatEnabled() {
 		return false;
 	}
@@ -855,14 +860,14 @@ public abstract class MockSessionFactory
 		}
 
 		@Override
-		public @Nullable <X> ManagedDomainType<X> findManagedType(@Nullable String typeName) {
+		public @Nullable ManagedDomainType<?> findManagedType(@Nullable String typeName) {
 			// TODO: not every ManagedDomainType is an EntityDomainType!
 			return typeName == null ? null : new MockEntityDomainType<>(new MockJavaType<>(typeName));
 		}
 
 		@Override
 		public <X> ManagedDomainType<X> findManagedType(Class<X> cls) {
-			return findManagedType( cls.getName() );
+			return cls == null ? null : new MockEntityDomainType<>(new MockJavaType<>(cls.getName()));
 		}
 
 		@Override
@@ -895,7 +900,7 @@ public abstract class MockSessionFactory
 		}
 
 		@Override
-		public <T> T getJavaConstant(String className, String fieldName) {
+		public <E> E getJavaConstant(String className, String fieldName, Class<E> javaTypeClass) {
 			return null;
 		}
 
@@ -923,7 +928,7 @@ public abstract class MockSessionFactory
 		}
 
 		@Override
-		public SqmPersistentAttribute<X,?> findDeclaredAttribute(String name) {
+		public @Nullable SqmPersistentAttribute<X,?> findDeclaredAttribute(String name) {
 			final String typeName = getTypeName();
 			return isFieldDefined(typeName, name)
 					? createAttribute(name, typeName, propertyType(typeName, name), this)
@@ -944,7 +949,7 @@ public abstract class MockSessionFactory
 		}
 
 		@Override
-		public SqmSingularPersistentAttribute<? super X, ?> findVersionAttribute() {
+		public @Nullable SqmSingularPersistentAttribute<? super X, ?> findVersionAttribute() {
 			final BasicType<?> type = getVersionType(getHibernateEntityName());
 			if (type == null) {
 				return null;
@@ -971,7 +976,7 @@ public abstract class MockSessionFactory
 		}
 
 		@Override
-		public SqmPathSource<?> getIdentifierDescriptor() {
+		public @Nullable SqmPathSource<?> getIdentifierDescriptor() {
 			final Type type = getIdentifierType(getHibernateEntityName());
 			if (type instanceof BasicDomainType<?> basicDomainType) {
 				return new BasicSqmPathSource<>(
@@ -998,7 +1003,7 @@ public abstract class MockSessionFactory
 		}
 
 		@Override
-		public SqmPathSource<?> findSubPathSource(String name, boolean includeSubtypes) {
+		public @Nullable SqmPathSource<?> findSubPathSource(String name, boolean includeSubtypes) {
 			switch (name) {
 				case EntityIdentifierMapping.ID_ROLE_NAME:
 					return getIdentifierDescriptor();
@@ -1033,7 +1038,7 @@ public abstract class MockSessionFactory
 		}
 
 		@Override
-		public SqmPersistentAttribute<? super X, ?> findAttribute(String name) {
+		public @Nullable SqmPersistentAttribute<? super X, ?> findAttribute(String name) {
 			final var attribute = super.findAttribute(name);
 			if (attribute != null) {
 				return attribute;
@@ -1045,7 +1050,7 @@ public abstract class MockSessionFactory
 		}
 
 		@Override
-		public SqmPersistentAttribute<X,?> findDeclaredAttribute(String name) {
+		public @Nullable SqmPersistentAttribute<X,?> findDeclaredAttribute(String name) {
 			final String entityName = getHibernateEntityName();
 			return isAttributeDefined(entityName, name)
 					? createAttribute(name, entityName, getReferencedPropertyType(entityName, name), this)
@@ -1212,7 +1217,7 @@ public abstract class MockSessionFactory
 		final JavaType<T> javaType = new UnknownBasicJavaType<>(null, compositeType.getReturnedClassName());
 		return new EmbeddableTypeImpl<>( javaType, null, null, true, metamodel.getJpaMetamodel() ) {
 			@Override
-			public SqmPersistentAttribute<T, ?> findAttribute(String name) {
+			public @Nullable SqmPersistentAttribute<T, ?> findAttribute(String name) {
 				return createAttribute(
 						name,
 						entityName,

@@ -4,6 +4,7 @@
  */
 package org.hibernate.query.sqm.tree.expression;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.type.BindableType;
 import org.hibernate.query.sqm.NodeBuilder;
 import org.hibernate.query.sqm.SqmBindableType;
@@ -20,9 +21,9 @@ import java.util.Objects;
  * @see org.hibernate.query.criteria.ValueHandlingMode
  */
 public class ValueBindJpaCriteriaParameter<T> extends JpaCriteriaParameter<T> {
-	private final T value;
+	private final @Nullable T value;
 
-	public ValueBindJpaCriteriaParameter(BindableType<? super T> type, T value, NodeBuilder nodeBuilder) {
+	public ValueBindJpaCriteriaParameter(@Nullable BindableType<? super T> type, @Nullable T value, NodeBuilder nodeBuilder) {
 		super( null, type, false, nodeBuilder );
 		assert value == null || type == null
 			|| ( type instanceof SqmBindableType<? super T> bindable
@@ -39,13 +40,13 @@ public class ValueBindJpaCriteriaParameter<T> extends JpaCriteriaParameter<T> {
 
 	@Override
 	public ValueBindJpaCriteriaParameter<T> copy(SqmCopyContext context) {
-		final ValueBindJpaCriteriaParameter<T> existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		return existing != null
 				? existing
 				: context.registerCopy( this, new ValueBindJpaCriteriaParameter<>( this ) );
 	}
 
-	public T getValue() {
+	public @Nullable T getValue() {
 		return value;
 	}
 
@@ -58,26 +59,31 @@ public class ValueBindJpaCriteriaParameter<T> extends JpaCriteriaParameter<T> {
 	// but for equals/hashCode, use equals/hashCode of the underlying value, if available, from the nodes JavaType
 
 	@Override
-	public final boolean equals(Object o) {
-		if ( this == o ) {
+	public final boolean equals(@Nullable Object object) {
+		if ( this == object ) {
 			return true;
 		}
-		if ( o instanceof ValueBindJpaCriteriaParameter<?> that ) {
-			if ( value == null ) {
-				return that.value == null && Objects.equals( getNodeType(), that.getNodeType() );
+		else if ( object instanceof ValueBindJpaCriteriaParameter<?> that ) {
+			if ( this.value == null || that.value == null ) {
+				return this.value == that.value
+					&& Objects.equals( this.getNodeType(), that.getNodeType() );
 			}
-			final var javaType = getJavaTypeDescriptor();
-			if ( that.value != null ) {
-				if ( javaType != null ) {
-					//noinspection unchecked
-					return javaType.equals( that.getJavaTypeDescriptor() ) && javaType.areEqual( value, (T) that.value );
+			else {
+				final var thisJavaType = getJavaTypeDescriptor();
+				final var thatJavaType = that.getJavaTypeDescriptor();
+				if ( thisJavaType == null || thatJavaType == null ) {
+					return thisJavaType == thatJavaType
+						&& this.value.equals( that.value );
 				}
 				else {
-					return that.getJavaTypeDescriptor() == null && value.equals( that.value );
+					return thisJavaType.equals( thatJavaType )
+						&& thisJavaType.areEqual( value, thisJavaType.cast( that.value ) );
 				}
 			}
 		}
-		return false;
+		else {
+			return false;
+		}
 	}
 
 	@Override
@@ -85,7 +91,11 @@ public class ValueBindJpaCriteriaParameter<T> extends JpaCriteriaParameter<T> {
 		if ( value == null ) {
 			return 0;
 		}
-		final var javaType = getJavaTypeDescriptor();
-		return javaType == null ? value.hashCode() : javaType.extractHashCode( value );
+		else {
+			final var javaType = getJavaTypeDescriptor();
+			return javaType == null
+					? value.hashCode()
+					: javaType.extractHashCode( value );
+		}
 	}
 }

@@ -26,6 +26,7 @@ import jakarta.persistence.metamodel.PluralAttribute;
 import jakarta.persistence.metamodel.SetAttribute;
 import jakarta.persistence.metamodel.SingularAttribute;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.metamodel.RepresentationMode;
 import org.hibernate.metamodel.model.domain.BagPersistentAttribute;
 import org.hibernate.metamodel.model.domain.JpaMetamodel;
@@ -56,7 +57,7 @@ public abstract class AbstractManagedType<J>
 		implements SqmManagedDomainType<J>, AttributeContainer<J>, Serializable {
 
 	private final String hibernateTypeName;
-	private final SqmManagedDomainType<? super J> supertype;
+	private final @Nullable SqmManagedDomainType<? super J> supertype;
 	private final RepresentationMode representationMode;
 	private final JpaMetamodelImplementor metamodel;
 
@@ -103,7 +104,7 @@ public abstract class AbstractManagedType<J>
 	}
 
 	@Override
-	public SqmManagedDomainType<? super J> getSuperType() {
+	public @Nullable SqmManagedDomainType<? super J> getSuperType() {
 		return supertype;
 	}
 
@@ -125,8 +126,9 @@ public abstract class AbstractManagedType<J>
 	@Override
 	public void visitAttributes(Consumer<? super PersistentAttribute<? super J, ?>> action) {
 		visitDeclaredAttributes( action );
-		if ( getSuperType() != null ) {
-			getSuperType().visitAttributes( action );
+		final var superType = getSuperType();
+		if ( superType != null ) {
+			superType.visitAttributes( action );
 		}
 	}
 
@@ -175,7 +177,7 @@ public abstract class AbstractManagedType<J>
 	}
 
 	@Override
-	public SqmPersistentAttribute<? super J,?> findAttribute(String name) {
+	public @Nullable SqmPersistentAttribute<? super J,?> findAttribute(String name) {
 		final var attribute = findDeclaredAttribute( name );
 		if ( attribute != null ) {
 			return attribute;
@@ -186,7 +188,7 @@ public abstract class AbstractManagedType<J>
 	}
 
 	@Override
-	public final SqmPersistentAttribute<? super J, ?> findAttributeInSuperTypes(String name) {
+	public final @Nullable SqmPersistentAttribute<? super J, ?> findAttributeInSuperTypes(String name) {
 		final var attribute = findDeclaredAttribute( name );
 		if ( attribute != null ) {
 			return attribute;
@@ -197,7 +199,7 @@ public abstract class AbstractManagedType<J>
 	}
 
 	@Override
-	public SqmPersistentAttribute<?, ?> findSubTypesAttribute(String name) {
+	public @Nullable SqmPersistentAttribute<?, ?> findSubTypesAttribute(String name) {
 		final var attribute = findDeclaredAttribute( name );
 		if ( attribute != null ) {
 			return attribute;
@@ -214,7 +216,7 @@ public abstract class AbstractManagedType<J>
 	}
 
 	@Override
-	public SqmPersistentAttribute<J,?> findDeclaredAttribute(String name) {
+	public @Nullable SqmPersistentAttribute<J,?> findDeclaredAttribute(String name) {
 		// try singular attribute
 		final var attribute = declaredSingularAttributes.get( name );
 		if ( attribute != null ) {
@@ -281,7 +283,7 @@ public abstract class AbstractManagedType<J>
 	}
 
 	@Override
-	public SqmSingularPersistentAttribute<? super J, ?> findSingularAttribute(String name) {
+	public @Nullable SqmSingularPersistentAttribute<? super J, ?> findSingularAttribute(String name) {
 		final var attribute = findDeclaredSingularAttribute( name );
 		return attribute == null && getSuperType() != null
 				? getSuperType().findSingularAttribute( name )
@@ -301,7 +303,7 @@ public abstract class AbstractManagedType<J>
 	}
 
 	@Override
-	public SqmSingularPersistentAttribute<J, ?> findDeclaredSingularAttribute(String name) {
+	public @Nullable SqmSingularPersistentAttribute<J, ?> findDeclaredSingularAttribute(String name) {
 		return declaredSingularAttributes.get( name );
 	}
 
@@ -388,7 +390,7 @@ public abstract class AbstractManagedType<J>
 	}
 
 	@Override
-	public SqmPluralPersistentAttribute<? super J, ?, ?> findPluralAttribute(String name) {
+	public @Nullable SqmPluralPersistentAttribute<? super J, ?, ?> findPluralAttribute(String name) {
 		var attribute = findDeclaredPluralAttribute( name );
 		if ( attribute != null ) {
 			return attribute;
@@ -402,7 +404,7 @@ public abstract class AbstractManagedType<J>
 	}
 
 	@Override
-	public SqmPluralPersistentAttribute<J, ?, ?> findDeclaredPluralAttribute(String name) {
+	public @Nullable SqmPluralPersistentAttribute<J, ?, ?> findDeclaredPluralAttribute(String name) {
 		return declaredPluralAttributes == null ? null : declaredPluralAttributes.get( name );
 	}
 
@@ -428,7 +430,7 @@ public abstract class AbstractManagedType<J>
 	// Generic attributes
 
 	@Override
-	public SqmPersistentAttribute<? super J, ?> findConcreteGenericAttribute(String name) {
+	public @Nullable SqmPersistentAttribute<? super J, ?> findConcreteGenericAttribute(String name) {
 		final var attribute = findDeclaredConcreteGenericAttribute( name );
 		return attribute == null && getSuperType() != null
 				? getSuperType().findDeclaredConcreteGenericAttribute( name )
@@ -436,7 +438,7 @@ public abstract class AbstractManagedType<J>
 	}
 
 	@Override
-	public SqmPersistentAttribute<J, ?> findDeclaredConcreteGenericAttribute(String name) {
+	public @Nullable SqmPersistentAttribute<J, ?> findDeclaredConcreteGenericAttribute(String name) {
 		return declaredConcreteGenericAttributes == null ? null : declaredConcreteGenericAttributes.get( name );
 	}
 

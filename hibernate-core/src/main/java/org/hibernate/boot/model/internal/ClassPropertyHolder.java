@@ -12,7 +12,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.AssertionFailure;
 import org.hibernate.PropertyNotFoundException;
 import org.hibernate.boot.spi.MetadataBuildingContext;
-import org.hibernate.boot.spi.SecondPass;
+import org.hibernate.mapping.BasicValue;
 import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.IndexedCollection;
@@ -29,6 +29,8 @@ import org.hibernate.models.spi.MemberDetails;
 
 import jakarta.persistence.Convert;
 import jakarta.persistence.JoinTable;
+import org.hibernate.models.spi.TypeDetails;
+import org.hibernate.type.internal.ParameterizedTypeImpl;
 
 import static org.hibernate.internal.util.StringHelper.isEmpty;
 import static org.hibernate.internal.util.collections.CollectionHelper.mapOfSize;
@@ -181,6 +183,19 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 	}
 
 	@Override
+	public void movePropertyToJoin(Property property, Join join, MemberDetails memberDetails, ClassDetails declaringClass) {
+		if ( property.getValue() instanceof Component ) {
+			//TODO handle quote and non quote table comparison
+			final String tableName = property.getValue().getTable().getName();
+			if ( getJoinsPerRealTableName().get( tableName ) == join ) {
+				// Skip moving the property, since it was already added to the join
+				return;
+			}
+		}
+		persistentClass.movePropertyToJoin( property, join );
+	}
+
+	@Override
 	public Join addJoin(JoinTable joinTableAnn, boolean noDelayInPkColumnCreation) {
 		final var join = entityBinder.addJoinTable( joinTableAnn, this, noDelayInPkColumnCreation );
 		joins = entityBinder.getSecondaryTables();
@@ -299,29 +314,25 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 			if ( !allowCollections ) {
 				throw new AssertionFailure( "Collections are not allowed as identifier properties" );
 			}
-			// The owner is a MappedSuperclass which is not a PersistentClass, so set it to null
-//						collection.setOwner( null );
+			// The owner is a MappedSuperclass, not a PersistentClass,
+			// so set it to null collection.setOwner( null );
 			collection.setRole( memberDetails.getDeclaringType().getName() + "." + property.getName() );
 			// To copy the element and key values, we need to defer setting the type name until the CollectionBinder ran
 			final var originalValue = property.getValue();
-			context.getMetadataCollector().addSecondPass(
-					new SecondPass() {
-						@Override
-						public void doSecondPass(Map<String, PersistentClass> persistentClasses) {
-							final var initializedCollection = (Collection) originalValue;
-							final var element = initializedCollection.getElement().copy();
-							setTypeName( element, memberDetails.getElementType().getName() );
-							if ( initializedCollection instanceof IndexedCollection indexedCollection ) {
-								final var index = indexedCollection.getIndex().copy();
-								if ( memberDetails.getMapKeyType() != null ) {
-									setTypeName( index, memberDetails.getMapKeyType().getName() );
-								}
-								( (IndexedCollection) collection ).setIndex( index );
-							}
-							collection.setElement( element );
-						}
+			context.getMetadataCollector().addSecondPass( persistentClasses -> {
+				final var initializedCollection = (Collection) originalValue;
+				final var element = initializedCollection.getElement().copy();
+				setTypeName( element, memberDetails.getElementType().getName() );
+				if ( initializedCollection instanceof IndexedCollection indexedCollection ) {
+					final var index = indexedCollection.getIndex().copy();
+					final var mapKeyType = memberDetails.getMapKeyType();
+					if ( mapKeyType != null ) {
+						setTypeName( index, mapKeyType.getName() );
 					}
-			);
+					( (IndexedCollection) collection ).setIndex( index );
+				}
+				collection.setElement( element );
+			} );
 		}
 		else {
 			setTypeName( value, memberDetails.getType().getName() );
@@ -403,6 +414,34 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 		}
 		else if ( value instanceof SimpleValue simpleValue ) {
 			simpleValue.setTypeName( typeName );
+		}
+	}
+
+	static void setType(Value value, TypeDetails type) {
+		final var typeName = type.getName();
+		if ( value instanceof ToOne toOne ) {
+			toOne.setReferencedEntityName( typeName );
+			toOne.setTypeName( typeName );
+		}
+		else if ( value instanceof Component component ) {
+			// Avoid setting type name for generic components
+			if ( !component.isGeneric() ) {
+				component.setComponentClassName( typeName );
+			}
+			if ( component.getTypeName() != null ) {
+				component.setTypeName( typeName );
+			}
+		}
+		else if ( value instanceof SimpleValue simpleValue ) {
+			if ( value instanceof BasicValue basicValue ) {
+				basicValue.setImplicitJavaTypeAccess( typeConfiguration ->
+						type.getTypeKind() == TypeDetails.Kind.PARAMETERIZED_TYPE
+						? ParameterizedTypeImpl.from( type.asParameterizedType() )
+						: type.determineRawClass().toJavaClass() );
+			}
+			else {
+				simpleValue.setTypeName( typeName );
+			}
 		}
 	}
 

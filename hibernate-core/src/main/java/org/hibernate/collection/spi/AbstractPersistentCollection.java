@@ -7,7 +7,6 @@ package org.hibernate.collection.spi;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -22,8 +21,6 @@ import org.hibernate.FlushMode;
 import org.hibernate.HibernateException;
 import org.hibernate.LazyInitializationException;
 import org.hibernate.engine.spi.CollectionEntry;
-import org.hibernate.engine.spi.EntityEntry;
-import org.hibernate.engine.spi.PersistenceContext;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.engine.spi.Status;
 import org.hibernate.engine.spi.TypedValue;
@@ -37,6 +34,7 @@ import org.hibernate.type.Type;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import static java.util.Collections.emptyIterator;
 import static java.util.Collections.emptyList;
 import static org.hibernate.collection.internal.CollectionLogger.COLLECTION_LOGGER;
 import static org.hibernate.engine.internal.ForeignKeys.getEntityIdentifier;
@@ -177,9 +175,6 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 									read();
 								}
 							}
-							else {
-								throwLazyInitializationExceptionIfNotConnected();
-							}
 							return false;
 						}
 				);
@@ -193,9 +188,9 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 			return cachedSize;
 		}
 		else {
+			throwLazyInitializationExceptionIfNotConnected();
 			final var entry = getCollectionEntry();
 			if ( entry == null ) {
-				throwLazyInitializationExceptionIfNotConnected();
 				throwLazyInitializationException( "collection not associated with session" );
 				throw new AssertionFailure( "impossible" );
 			}
@@ -373,9 +368,9 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 
 	@Override
 	public boolean elementExists(Object element) {
+		throwLazyInitializationExceptionIfNotConnected();
 		final var entry = getCollectionEntry();
 		if ( entry == null ) {
-			throwLazyInitializationExceptionIfNotConnected();
 			throwLazyInitializationException( "collection not associated with session" );
 			throw new AssertionFailure( "impossible" );
 		}
@@ -392,44 +387,30 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 
 	protected Object readElementByIndex(final Object index) {
 		if ( !initialized ) {
-			class ExtraLazyElementByIndexReader implements LazyInitializationWork<Object> {
-				private boolean isExtraLazy;
-				private Object element;
-
-				@Override
-				public Object doWork() {
-					final var entry = getCollectionEntry();
-					final var persister = entry.getLoadedPersister();
-					checkPersister( AbstractPersistentCollection.this, persister );
-					isExtraLazy = persister.isExtraLazy();
-					if ( isExtraLazy ) {
-						if ( hasQueuedOperations() ) {
-							session.flush();
-						}
-						element = persister.getElementByIndex( entry.getLoadedKey(), index, session, owner );
+			return withTemporarySessionIfNeeded( () -> {
+				final var entry = getCollectionEntry();
+				final var persister = entry.getLoadedPersister();
+				checkPersister( AbstractPersistentCollection.this, persister );
+				if ( persister.isExtraLazy() ) {
+					if ( hasQueuedOperations() ) {
+						session.flush();
 					}
-					else {
-						read();
-					}
-					return null;
+					return persister.getElementByIndex( entry.getLoadedKey(), index, session, owner );
 				}
-			}
-
-			final ExtraLazyElementByIndexReader reader = new ExtraLazyElementByIndexReader();
-			withTemporarySessionIfNeeded( reader );
-			if ( reader.isExtraLazy ) {
-				return reader.element;
-			}
+				else {
+					read();
+					return UNKNOWN;
+				}
+			} );
 		}
 		return UNKNOWN;
-
 	}
 
 	@Override
 	public Object elementByIndex(Object index) {
+		throwLazyInitializationExceptionIfNotConnected();
 		final var entry = getCollectionEntry();
 		if ( entry == null ) {
-			throwLazyInitializationExceptionIfNotConnected();
 			throwLazyInitializationException( "collection not associated with session" );
 			throw new AssertionFailure( "impossible" );
 		}
@@ -703,7 +684,8 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 				if ( allowLoadOutsideTransaction
 						&& !initialized
 						&& session.getLoadQueryInfluencers().hasEnabledFilters() ) {
-					COLLECTION_LOGGER.enabledFiltersWhenDetachFromSession( collectionInfoString( getRole(), getKey() ) );
+					COLLECTION_LOGGER.enabledFiltersWhenDetachFromSession(
+							collectionInfoString( getRole(), getKey() ) );
 				}
 				session = null;
 			}
@@ -711,7 +693,8 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 		}
 		else {
 			if ( session != null ) {
-				COLLECTION_LOGGER.logCannotUnsetUnexpectedSessionInCollection( unexpectedSessionStateMessage( currentSession ) );
+				COLLECTION_LOGGER.logCannotUnsetUnexpectedSessionInCollection(
+						unexpectedSessionStateMessage( currentSession ) );
 			}
 			return false;
 		}
@@ -721,20 +704,23 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 		try {
 			if ( wasTransactionRolledBack() ) {
 				// It was due to a rollback.
-				if ( COLLECTION_LOGGER.isDebugEnabled()) {
-					COLLECTION_LOGGER.queuedOperationWhenDetachFromSessionOnRollback( collectionInfoString( getRole(), getKey() ) );
+				if ( COLLECTION_LOGGER.isDebugEnabled() ) {
+					COLLECTION_LOGGER.queuedOperationWhenDetachFromSessionOnRollback(
+							collectionInfoString( getRole(), getKey() ) );
 				}
 			}
 			else {
 				// We don't know why the collection is being detached.
 				// Just log the info.
-				COLLECTION_LOGGER.queuedOperationWhenDetachFromSession( collectionInfoString( getRole(), getKey() ) );
+				COLLECTION_LOGGER.queuedOperationWhenDetachFromSession(
+						collectionInfoString( getRole(), getKey() ) );
 			}
 		}
 		catch (Exception e) {
 			// We don't know why the collection is being detached.
 			// Just log the info.
-			COLLECTION_LOGGER.queuedOperationWhenDetachFromSession( collectionInfoString( getRole(), getKey() ) );
+			COLLECTION_LOGGER.queuedOperationWhenDetachFromSession(
+					collectionInfoString( getRole(), getKey() ) );
 		}
 	}
 
@@ -773,7 +759,8 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 			}
 		}
 		if ( hasQueuedOperations() ) {
-			COLLECTION_LOGGER.queuedOperationWhenAttachToSession( collectionInfoString( getRole(), getKey() ) );
+			COLLECTION_LOGGER.queuedOperationWhenAttachToSession(
+					collectionInfoString( getRole(), getKey() ) );
 		}
 		this.session = session;
 		return true;
@@ -791,7 +778,7 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 		final String roleCurrent = role;
 		final Object keyCurrent = key;
 
-		final var message = new StringBuilder( "Collection : " );
+		final var message = new StringBuilder( "Collection: " );
 		if ( roleCurrent != null ) {
 			message.append( collectionInfoString( roleCurrent, keyCurrent ) );
 		}
@@ -889,7 +876,7 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 			};
 		}
 		else {
-			return Collections.emptyIterator();
+			return emptyIterator();
 		}
 	}
 
@@ -1087,8 +1074,8 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 		public final boolean equals(Object object) {
 			return object == this
 				|| object instanceof Set<?> that
-				&& that.size() == this.size()
-				&& containsAll( that );
+					&& that.size() == this.size()
+					&& containsAll( that );
 		}
 
 		@Override
@@ -1323,11 +1310,11 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 		// collect EntityIdentifier(s) of the *current* elements - add them into a HashSet for fast access
 		final java.util.Set<Object> currentIds = new HashSet<>();
 		final java.util.Set<Object> currentSaving = new IdentitySet<>();
-		final PersistenceContext persistenceContext = session.getPersistenceContextInternal();
+		final var persistenceContext = session.getPersistenceContextInternal();
 		for ( Object current : currentElements ) {
 			if ( current != null && isNotTransient( entityName, current, null, session ) ) {
-				final EntityEntry ee = persistenceContext.getEntry( current );
-				if ( ee != null && ee.getStatus() == Status.SAVING ) {
+				final var entityEntry = persistenceContext.getEntry( current );
+				if ( entityEntry != null && entityEntry.getStatus() == Status.SAVING ) {
 					currentSaving.add( current );
 				}
 				else {
@@ -1352,7 +1339,7 @@ public abstract class AbstractPersistentCollection<E> implements Serializable, P
 
 	private static boolean mayUseIdDirect(Type idType) {
 		if ( idType instanceof BasicType<?> basicType ) {
-			final Class<?> javaType = basicType.getJavaType();
+			final var javaType = basicType.getJavaType();
 			return javaType == String.class
 				|| javaType == Integer.class
 				|| javaType == Long.class

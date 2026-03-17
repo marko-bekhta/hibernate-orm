@@ -23,6 +23,8 @@ import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OrderColumn;
 
+import java.util.Locale;
+
 /**
  * @author Steve Ebersole
  */
@@ -274,6 +276,21 @@ public interface MappingSettings {
 	 */
 	@Incubating
 	String PREFER_NATIVE_ENUM_TYPES = "hibernate.type.prefer_native_enum_types";
+
+	/**
+	 * Indicates whether {@link Locale#toLanguageTag()} should be preferred over
+	 * {@link Locale#toString()} when converting a {@code Locale} to a {@code String}.
+	 * <p/>
+	 * This configuration property is used to specify a global preference,
+	 * but Hibernate ORM can always read both formats, so no data needs to be migrated.
+	 * The setting only affects how {@link Locale} data is stored.
+	 *
+	 * @settingDefault false
+	 *
+	 * @since 7.2
+	 */
+	@Incubating
+	String PREFER_LOCALE_LANGUAGE_TAG = "hibernate.type.prefer_locale_language_tag";
 
 	/**
 	 * Specifies the preferred JDBC type for storing plural i.e. array/collection values.

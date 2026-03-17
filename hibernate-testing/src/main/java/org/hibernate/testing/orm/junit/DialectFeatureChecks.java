@@ -121,6 +121,7 @@ import java.util.function.Supplier;
  *
  * @author Hardy Ferentschik
  * @author Steve Ebersole
+ * @author Yoobin Yoon
  */
 abstract public class DialectFeatureChecks {
 	public static class SupportsSequences implements DialectFeatureCheck {
@@ -132,6 +133,12 @@ abstract public class DialectFeatureChecks {
 	public static class SupportsExpectedLobUsagePattern implements DialectFeatureCheck {
 		public boolean apply(Dialect dialect) {
 			return dialect.supportsExpectedLobUsagePattern();
+		}
+	}
+
+	public static class SupportsLobValueChangePropagation implements DialectFeatureCheck {
+		public boolean apply(Dialect dialect) {
+			return dialect.supportsLobValueChangePropagation();
 		}
 	}
 
@@ -162,6 +169,18 @@ abstract public class DialectFeatureChecks {
 	public static class SupportsIdentityColumns implements DialectFeatureCheck {
 		public boolean apply(Dialect dialect) {
 			return dialect.getIdentityColumnSupport().supportsIdentityColumns();
+		}
+	}
+
+	public static class SupportsTemporaryTableIdentity implements DialectFeatureCheck {
+		public boolean apply(Dialect dialect) {
+			return dialect.getLocalTemporaryTableStrategy() != null
+				&& dialect.getLocalTemporaryTableStrategy().supportsTemporaryTablePrimaryKey()
+				|| dialect.getGlobalTemporaryTableStrategy() != null
+					&& dialect.getGlobalTemporaryTableStrategy().supportsTemporaryTablePrimaryKey()
+				// Persistent tables definitely support identity
+				|| dialect.getLocalTemporaryTableStrategy() == null
+					&& dialect.getGlobalTemporaryTableStrategy() == null;
 		}
 	}
 
@@ -210,6 +229,12 @@ abstract public class DialectFeatureChecks {
 	public static class SupportsSubqueryAsLeftHandSideInPredicate implements DialectFeatureCheck {
 		public boolean apply(Dialect dialect) {
 			return dialect.supportsSubselectAsInPredicateLHS();
+		}
+	}
+
+	public static class SupportsUnionInSubquery implements DialectFeatureCheck {
+		public boolean apply(Dialect dialect) {
+			return dialect.supportsUnionInSubquery();
 		}
 	}
 
@@ -941,7 +966,7 @@ abstract public class DialectFeatureChecks {
 
 	public static class SupportsUnnest implements DialectFeatureCheck {
 		public boolean apply(Dialect dialect) {
-			return definesSetReturningFunction( dialect, "unnest" );
+			return definesSetReturningFunction( dialect, "unnest" ) && !(dialect instanceof TiDBDialect);
 		}
 	}
 
@@ -953,7 +978,7 @@ abstract public class DialectFeatureChecks {
 
 	public static class SupportsJsonTable implements DialectFeatureCheck {
 		public boolean apply(Dialect dialect) {
-			return definesSetReturningFunction( dialect, "json_table" );
+			return definesSetReturningFunction( dialect, "json_table" ) && !(dialect instanceof TiDBDialect);
 		}
 	}
 
@@ -1083,9 +1108,27 @@ abstract public class DialectFeatureChecks {
 		}
 	}
 
+	public static class SupportsArrayReverse implements DialectFeatureCheck {
+		public boolean apply(Dialect dialect) {
+			return definesFunction( dialect, "array_reverse" );
+		}
+	}
+
+	public static class SupportsArraySort implements DialectFeatureCheck {
+		public boolean apply(Dialect dialect) {
+			return definesFunction( dialect, "array_sort" );
+		}
+	}
+
 	public static class SupportsRegexpLike implements DialectFeatureCheck {
 		public boolean apply(Dialect dialect) {
 			return definesFunction( dialect, "regexp_like" );
+		}
+	}
+
+	public static class SupportsIntervalSecondType implements DialectFeatureCheck {
+		public boolean apply(Dialect dialect) {
+			return definesDdlType( dialect, SqlTypes.INTERVAL_SECOND );
 		}
 	}
 
@@ -1538,7 +1581,8 @@ abstract public class DialectFeatureChecks {
 				String name,
 				String subselect,
 				boolean isAbstract,
-				MetadataBuildingContext buildingContext) {
+				MetadataBuildingContext buildingContext,
+				boolean isExplicit) {
 			return null;
 		}
 

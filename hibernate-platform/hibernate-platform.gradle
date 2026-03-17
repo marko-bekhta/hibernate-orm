@@ -43,7 +43,6 @@ dependencies {
         runtime libs.byteBuddy
         runtime libs.byteBuddyAgent
         runtime libs.jandex
-        runtime libs.classmate
 
         runtime jakartaLibs.jaxb
         runtime jakartaLibs.jaxbApi
@@ -62,6 +61,16 @@ dependencies {
         runtime libs.micrometer
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     }
+}
+
+
+tasks.register("releasePrepare") {
+    group "release-prepare"
+    description "See :release:releasePrepare for details."
+
+    dependsOn tasks.generateMetadataFileForPublishedArtifactsPublication
+    dependsOn tasks.generatePomFileForPublishedArtifactsPublication
+    dependsOn tasks.publishAllPublicationsToStagingRepository
 }
 
 var publishingExtension = project.getExtensions().getByType(PublishingExtension) as PublishingExtension

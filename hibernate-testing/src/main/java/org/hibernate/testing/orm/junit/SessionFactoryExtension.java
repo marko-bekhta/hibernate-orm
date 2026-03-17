@@ -35,15 +35,15 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-/**
- * hibernate-testing implementation of a few JUnit5 contracts to support SessionFactory-based testing,
- * including argument injection (or see {@link SessionFactoryScopeAware})
- *
- * @see SessionFactoryScope
- * @see DomainModelExtension
- *
- * @author Steve Ebersole
- */
+/// JUnit Jupiter [extension][org.junit.jupiter.api.extension.Extension] to support
+/// SessionFactory-based functional testing.
+///
+/// @see SessionFactoryScope
+/// @see DomainModelExtension
+///
+/// @implNote Leverages the [domain model][DomainModelScope] defined using the [DomainModelExtension].
+///
+/// @author Steve Ebersole
 public class SessionFactoryExtension
 		implements TestInstancePostProcessor, BeforeEachCallback, TestExecutionExceptionHandler {
 
@@ -134,7 +134,7 @@ public class SessionFactoryExtension
 						}
 
 						if ( ! sessionFactoryConfig.interceptorClass().equals( Interceptor.class ) ) {
-							sessionFactoryBuilder.applyInterceptor( sessionFactoryConfig.interceptorClass().newInstance() );
+							sessionFactoryBuilder.applyInterceptor( sessionFactoryConfig.interceptorClass().getDeclaredConstructor().newInstance() );
 						}
 
 						final Class<? extends StatementInspector> explicitInspectorClass = sessionFactoryConfig.statementInspectorClass();
@@ -146,8 +146,10 @@ public class SessionFactoryExtension
 						}
 						sessionFactoryBuilder.applyCollectionsInDefaultFetchGroup( sessionFactoryConfig.applyCollectionsInDefaultFetchGroup() );
 
-						final SessionFactoryImplementor sessionFactory = (SessionFactoryImplementor) sessionFactoryBuilder.build();
+						sessionFactoryConfig.sessionFactoryConfigurer().getDeclaredConstructor().newInstance()
+								.accept( sessionFactoryBuilder );
 
+						final SessionFactoryImplementor sessionFactory = (SessionFactoryImplementor) sessionFactoryBuilder.build();
 						if ( sessionFactoryConfig.exportSchema() ) {
 							prepareSchemaExport( sessionFactory, model, sessionFactoryConfig.createSecondarySchemas() );
 						}
@@ -287,6 +289,7 @@ public class SessionFactoryExtension
 			releaseSessionFactory();
 		}
 
+		@Override
 		public void releaseSessionFactory() {
 			if ( sessionFactory != null ) {
 				log.debug( "Releasing SessionFactory" );
@@ -371,9 +374,27 @@ public class SessionFactoryExtension
 		}
 
 		@Override
+		public void inTransaction(Function<SessionFactoryImplementor, SessionImplementor> sessionProducer, Consumer<SessionImplementor> action) {
+			log.trace( "inTransaction(Function,Consumer)" );
+
+			try (SessionImplementor session = sessionProducer.apply( getSessionFactory() )) {
+				TransactionUtil.inTransaction( session, action );
+			}
+		}
+
+		@Override
 		public <T> T fromTransaction(SessionImplementor session, Function<SessionImplementor, T> action) {
 			log.trace( "fromTransaction(Session,Function)" );
 			return TransactionUtil.fromTransaction( session, action );
+		}
+
+		@Override
+		public <T> T fromTransaction(Function<SessionFactoryImplementor, SessionImplementor> sessionProducer, Function<SessionImplementor, T> action) {
+			log.trace( "fromTransaction(Function,Function)" );
+
+			try (SessionImplementor session = sessionProducer.apply( getSessionFactory() )) {
+				return TransactionUtil.fromTransaction( session, action );
+			}
 		}
 
 		@Override

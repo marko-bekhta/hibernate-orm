@@ -4,18 +4,13 @@
  */
 package org.hibernate.orm.test.locking;
 
-import java.sql.Connection;
-import java.util.Collections;
-
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.Timeout;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
-
 import org.hibernate.LockMode;
 import org.hibernate.Session;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.community.dialect.AltibaseDialect;
 import org.hibernate.community.dialect.InformixDialect;
 import org.hibernate.dialect.CockroachDialect;
@@ -26,20 +21,22 @@ import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.query.criteria.HibernateCriteriaBuilder;
 import org.hibernate.query.criteria.JpaCriteriaQuery;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
-
 import org.hibernate.testing.orm.junit.BaseSessionFactoryFunctionalTest;
 import org.hibernate.testing.orm.junit.DialectFeatureChecks;
+import org.hibernate.testing.orm.junit.JiraKey;
 import org.hibernate.testing.orm.junit.RequiresDialectFeature;
 import org.hibernate.testing.orm.junit.SkipForDialect;
-import org.hibernate.testing.orm.junit.JiraKey;
 import org.hibernate.testing.transaction.TransactionUtil;
 import org.hibernate.testing.util.ExceptionUtil;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
+
 import static jakarta.persistence.LockModeType.NONE;
 import static jakarta.persistence.LockModeType.PESSIMISTIC_WRITE;
+import static java.sql.Connection.TRANSACTION_REPEATABLE_READ;
+import static org.hibernate.cfg.JdbcSettings.ISOLATION;
 import static org.hibernate.testing.transaction.TransactionUtil.doInHibernate;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -65,11 +62,8 @@ public class LockModeTest extends BaseSessionFactoryFunctionalTest {
 	@Override
 	protected void applySettings(StandardServiceRegistryBuilder ssrBuilder) {
 		super.applySettings( ssrBuilder );
-		// We can't use a shared connection provider if we use T ransactionUtil.setJdbcTimeout because that is set on the connection level
-//		ssrBuilder.getSettings().remove( AvailableSettings.CONNECTION_PROVIDER );
 		if ( getDialect() instanceof InformixDialect ) {
-			ssrBuilder.applySetting( AvailableSettings.ISOLATION,
-					Connection.TRANSACTION_REPEATABLE_READ );
+			ssrBuilder.applySetting( ISOLATION, TRANSACTION_REPEATABLE_READ );
 		}
 	}
 

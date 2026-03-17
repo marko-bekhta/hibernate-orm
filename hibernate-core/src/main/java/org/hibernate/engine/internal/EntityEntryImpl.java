@@ -508,6 +508,8 @@ public final class EntityEntryImpl implements Serializable, EntityEntry {
 	/**
 	 * Custom deserialization routine used during deserialization
 	 * of a {@link PersistenceContext} for increased performance.
+	 * <p>
+	 * This method is called reflectively by {@link EntityEntryContext}.
 	 *
 	 * @param ois The stream from which to read the entry
 	 * @param persistenceContext The context being deserialized
@@ -546,13 +548,13 @@ public final class EntityEntryImpl implements Serializable, EntityEntry {
 		}
 	}
 
-	@Override @SuppressWarnings("unchecked")
+	@Override
 	public <T extends EntityEntryExtraState> T getExtraState(Class<T> extraStateType) {
 		if ( next == null ) {
 			return null;
 		}
-		else if ( extraStateType.isAssignableFrom( next.getClass() ) ) {
-			return (T) next;
+		else if ( extraStateType.isInstance( next ) ) {
+			return extraStateType.cast( next );
 		}
 		else {
 			return next.getExtraState( extraStateType );

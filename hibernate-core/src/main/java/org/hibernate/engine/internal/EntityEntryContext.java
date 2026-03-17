@@ -43,7 +43,7 @@ import static org.hibernate.internal.CoreMessageLogger.CORE_LOGGER;
  *
  * @author Steve Ebersole
  */
-public class EntityEntryContext {
+class EntityEntryContext {
 
 	private final transient PersistenceContext persistenceContext;
 
@@ -63,7 +63,7 @@ public class EntityEntryContext {
 	/**
 	 * Constructs a EntityEntryContext
 	 */
-	public EntityEntryContext(PersistenceContext persistenceContext) {
+	EntityEntryContext(PersistenceContext persistenceContext) {
 		this.persistenceContext = persistenceContext;
 	}
 
@@ -73,7 +73,7 @@ public class EntityEntryContext {
 	 * @param entity The entity
 	 * @param entityEntry The entry
 	 */
-	public void addEntityEntry(Object entity, EntityEntry entityEntry) {
+	void addEntityEntry(Object entity, EntityEntry entityEntry) {
 		// IMPORTANT!!!!!
 		//		add is called more than once of some entities.  In such cases the first
 		//		call is simply setting up a "marker" to avoid infinite looping from reentrancy
@@ -161,14 +161,13 @@ public class EntityEntryContext {
 	private ManagedEntity getAssociatedManagedEntity(Object entity) {
 		if ( isManagedEntity( entity ) ) {
 			final var managedEntity = asManagedEntity( entity );
-			if ( managedEntity.$$_hibernate_getEntityEntry() == null ) {
-				// it is not associated
-				return null;
-			}
 			final var entityEntry =
 					(EntityEntryImpl)
 							managedEntity.$$_hibernate_getEntityEntry();
-
+			if ( entityEntry == null ) {
+				// it is not associated
+				return null;
+			}
 			if ( entityEntry.getPersister().isMutable() ) {
 				return entityEntry.getPersistenceContext() == persistenceContext
 						? managedEntity // it is associated
@@ -208,20 +207,20 @@ public class EntityEntryContext {
 	private void checkNotAssociatedWithOtherPersistenceContextIfMutable(ManagedEntity managedEntity) {
 		// we only have to check mutable managedEntity
 		final var entityEntry = (EntityEntryImpl) managedEntity.$$_hibernate_getEntityEntry();
-		if ( entityEntry != null
-				&& entityEntry.getPersister().isMutable()
-				&& entityEntry.getPersistenceContext() != null
-				&& entityEntry.getPersistenceContext() != persistenceContext ) {
-			if ( entityEntry.getPersistenceContext().getSession().isOpen() ) {
-				// NOTE: otherPersistenceContext may be operating on the entityEntry in a different thread.
-				//       it is not safe to associate entityEntry with this EntityEntryContext.
-				throw new HibernateException(
-						"Illegal attempt to associate a ManagedEntity with two open persistence contexts: " + entityEntry
-				);
-			}
-			else {
-				// otherPersistenceContext is associated with a closed PersistenceContext
-				CORE_LOGGER.stalePersistenceContextInEntityEntry( entityEntry.toString() );
+		if ( entityEntry != null && entityEntry.getPersister().isMutable() ) {
+			final var entryPersistenceContext = entityEntry.getPersistenceContext();
+			if ( entryPersistenceContext != null && entryPersistenceContext != persistenceContext ) {
+				if ( entryPersistenceContext.getSession().isOpen() ) {
+					// NOTE: otherPersistenceContext may be operating on the entityEntry in a different thread.
+					//       it is not safe to associate entityEntry with this EntityEntryContext.
+					throw new HibernateException(
+							"Illegal attempt to associate a ManagedEntity with two open persistence contexts: " + entityEntry
+					);
+				}
+				else {
+					// otherPersistenceContext is associated with a closed PersistenceContext
+					CORE_LOGGER.stalePersistenceContextInEntityEntry( entityEntry.toString() );
+				}
 			}
 		}
 	}
@@ -233,7 +232,7 @@ public class EntityEntryContext {
 	 *
 	 * @return {@code true} if it is associated with this context
 	 */
-	public boolean hasEntityEntry(Object entity) {
+	boolean hasEntityEntry(Object entity) {
 		return getEntityEntry( entity ) != null;
 	}
 
@@ -244,7 +243,7 @@ public class EntityEntryContext {
 	 *
 	 * @return The associated {@link EntityEntry}
 	 */
-	public EntityEntry getEntityEntry(Object entity) {
+	EntityEntry getEntityEntry(Object entity) {
 		// locate a ManagedEntity for the entity, but only if it is associated with the same PersistenceContext.
 		final var managedEntity = getAssociatedManagedEntity( entity );
 		// and get/return the EntityEntry from the ManagedEntry
@@ -260,7 +259,7 @@ public class EntityEntryContext {
 	 *
 	 * @return The removed {@link EntityEntry}
 	 */
-	public EntityEntry removeEntityEntry(Object entity) {
+	EntityEntry removeEntityEntry(Object entity) {
 		// locate a ManagedEntity for the entity, but only if it is associated with the same PersistenceContext.
 		// no need to check if the entity is a ManagedEntity that is associated with a different PersistenceContext
 		final var managedEntity = getAssociatedManagedEntity( entity );
@@ -335,7 +334,7 @@ public class EntityEntryContext {
 	 *
 	 * @return The safe array
 	 */
-	public Map.Entry<Object, EntityEntry>[] reentrantSafeEntityEntries() {
+	Map.Entry<Object, EntityEntry>[] reentrantSafeEntityEntries() {
 		if ( dirty ) {
 			reentrantSafeEntries = new EntityEntryCrossRefImpl[count];
 			int i = 0;
@@ -449,12 +448,14 @@ public class EntityEntryContext {
 		var managedEntity = head;
 		while ( managedEntity != null ) {
 			// so we know whether or not to build a ManagedEntityImpl on deserialize
-			oos.writeBoolean( managedEntity == managedEntity.$$_hibernate_getEntityInstance() );
-			oos.writeObject( managedEntity.$$_hibernate_getEntityInstance() );
+			final var instance = managedEntity.$$_hibernate_getEntityInstance();
+			oos.writeBoolean( managedEntity == instance );
+			oos.writeObject( instance );
 			// we need to know which implementation of EntityEntry is being serialized
-			oos.writeInt( managedEntity.$$_hibernate_getEntityEntry().getClass().getName().length() );
-			oos.writeChars( managedEntity.$$_hibernate_getEntityEntry().getClass().getName() );
-			managedEntity.$$_hibernate_getEntityEntry().serialize( oos );
+			final var entry = managedEntity.$$_hibernate_getEntityEntry();
+			oos.writeInt( entry.getClass().getName().length() );
+			oos.writeChars( entry.getClass().getName() );
+			entry.serialize( oos );
 			managedEntity = managedEntity.$$_hibernate_getNextManagedEntity();
 		}
 	}
@@ -758,7 +759,7 @@ public class EntityEntryContext {
 	/**
 	 * Used in building the {@link #reentrantSafeEntityEntries()} entries
 	 */
-	public interface EntityEntryCrossRef extends Map.Entry<Object,EntityEntry> {
+	private interface EntityEntryCrossRef extends Map.Entry<Object,EntityEntry> {
 		/**
 		 * The entity
 		 *

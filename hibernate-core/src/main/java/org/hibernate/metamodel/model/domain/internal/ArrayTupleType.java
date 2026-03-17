@@ -7,6 +7,7 @@ package org.hibernate.metamodel.model.domain.internal;
 import java.util.Arrays;
 import java.util.List;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.cache.MutableCacheKeyBuilder;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.IndexedConsumer;
@@ -47,12 +48,12 @@ public class ArrayTupleType
 	}
 
 	@Override
-	public SqmDomainType<Object[]> getSqmType() {
+	public @Nullable SqmDomainType<Object[]> getSqmType() {
 		return this;
 	}
 
 	private static JavaType<?>[] getTypeDescriptors(SqmExpressible<?>[] components) {
-		final JavaType<?>[] typeDescriptors = new JavaType<?>[components.length];
+		final var typeDescriptors = new JavaType<?>[components.length];
 		for ( int i = 0; i < components.length; i++ ) {
 			typeDescriptors[i] = components[i].getExpressibleJavaType();
 		}

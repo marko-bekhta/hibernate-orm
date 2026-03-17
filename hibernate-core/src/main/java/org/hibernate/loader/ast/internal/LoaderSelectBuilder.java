@@ -58,7 +58,7 @@ import org.hibernate.sql.ast.tree.predicate.PredicateContainer;
 import org.hibernate.sql.ast.tree.select.QueryPart;
 import org.hibernate.sql.ast.tree.select.QuerySpec;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
-import org.hibernate.sql.exec.internal.JdbcParameterImpl;
+import org.hibernate.sql.exec.internal.SqlTypedMappingJdbcParameter;
 import org.hibernate.sql.results.graph.BiDirectionalFetch;
 import org.hibernate.sql.results.graph.DomainResult;
 import org.hibernate.sql.results.graph.EntityGraphTraversalState;
@@ -148,6 +148,8 @@ public class LoaderSelectBuilder {
 		final var sqlAstCreationState = builder.createSqlAstCreationState( rootQuerySpec );
 
 		final var rootNavigablePath = new NavigablePath( loadable.getRootPathName() );
+		rootQuerySpec.applyRootPathForLocking( rootNavigablePath );
+
 		final var rootTableGroup =
 				builder.buildRootTableGroup( rootNavigablePath, rootQuerySpec, sqlAstCreationState );
 
@@ -464,6 +466,8 @@ public class LoaderSelectBuilder {
 		final var rootNavigablePath = new NavigablePath( loadable.getRootPathName() );
 
 		final var rootQuerySpec = new QuerySpec( true );
+		rootQuerySpec.applyRootPathForLocking( rootNavigablePath );
+
 		final var sqlAstCreationState = createSqlAstCreationState( rootQuerySpec );
 
 		final var rootTableGroup = buildRootTableGroup( rootNavigablePath, rootQuerySpec, sqlAstCreationState );
@@ -598,7 +602,7 @@ public class LoaderSelectBuilder {
 								(ColumnReference)
 										sqlExpressionResolver.resolveSqlExpression( tableReference, selection );
 						if ( numberOfKeysToLoad == 1 ) {
-							final var jdbcParameter = new JdbcParameterImpl( selection.getJdbcMapping() );
+							final var jdbcParameter = new SqlTypedMappingJdbcParameter( selection );
 							jdbcParameterConsumer.accept( jdbcParameter );
 							rootQuerySpec.applyPredicate(
 									new ComparisonPredicate( columnRef, ComparisonOperator.EQUAL, jdbcParameter )
@@ -607,11 +611,9 @@ public class LoaderSelectBuilder {
 						else {
 							final var predicate = new InListPredicate( columnRef );
 							for ( int i = 0; i < numberOfKeysToLoad; i++ ) {
-								for ( int j = 0; j < numberColumns; j++ ) {
-									final var jdbcParameter = new JdbcParameterImpl( columnRef.getJdbcMapping() );
-									jdbcParameterConsumer.accept( jdbcParameter );
-									predicate.addExpression( jdbcParameter );
-								}
+								final var jdbcParameter = new SqlTypedMappingJdbcParameter( selection );
+								jdbcParameterConsumer.accept( jdbcParameter );
+								predicate.addExpression( jdbcParameter );
 							}
 							rootQuerySpec.applyPredicate( predicate );
 						}
@@ -638,12 +640,13 @@ public class LoaderSelectBuilder {
 
 			for ( int i = 0; i < numberOfKeysToLoad; i++ ) {
 				final List<JdbcParameter> tupleParams = new ArrayList<>( numberColumns );
-				for ( int j = 0; j < numberColumns; j++ ) {
-					final ColumnReference columnReference = columnReferences.get( j );
-					final JdbcParameter jdbcParameter = new JdbcParameterImpl( columnReference.getJdbcMapping() );
-					jdbcParameterConsumer.accept( jdbcParameter );
-					tupleParams.add( jdbcParameter );
-				}
+				restrictedPart.forEachSelectable(
+						(columnIndex, selection) -> {
+							final JdbcParameter jdbcParameter = new SqlTypedMappingJdbcParameter( selection );
+							jdbcParameterConsumer.accept( jdbcParameter );
+							tupleParams.add( jdbcParameter );
+						}
+				);
 				final SqlTuple paramTuple = new SqlTuple( tupleParams, restrictedPart );
 				predicate.addExpression( paramTuple );
 			}
@@ -980,12 +983,11 @@ public class LoaderSelectBuilder {
 		//		- so `loadable` is the owner entity-descriptor and the `partsToSelect` is the collection
 
 		assert loadable instanceof PluralAttributeMapping;
-
 		final var attributeMapping = (PluralAttributeMapping) loadable;
 
-		final var rootQuerySpec = new QuerySpec( true );
-
 		final var rootNavigablePath = new NavigablePath( loadable.getRootPathName() );
+		final var rootQuerySpec = new QuerySpec( true );
+		rootQuerySpec.applyRootPathForLocking( rootNavigablePath );
 
 		// We need to initialize the acronymMap based on subselect.getLoadingSqlAst() to avoid alias collisions
 		final var tableReferences = AliasCollector.getTableReferences( subselect.getLoadingSqlAst() );

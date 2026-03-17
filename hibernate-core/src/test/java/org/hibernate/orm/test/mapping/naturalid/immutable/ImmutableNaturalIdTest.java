@@ -6,6 +6,7 @@ package org.hibernate.orm.test.mapping.naturalid.immutable;
 
 import jakarta.persistence.PersistenceException;
 
+import org.hibernate.KeyType;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.metamodel.mapping.AttributeMapping;
@@ -22,11 +23,12 @@ import org.hibernate.testing.orm.junit.Setting;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * @author Steve Ebersole
@@ -38,7 +40,7 @@ import static org.junit.Assert.fail;
 				@Setting( name = AvailableSettings.GENERATE_STATISTICS, value = "true" )
 		}
 )
-@DomainModel( xmlMappings = "org/hibernate/orm/test/mapping/naturalid/immutable/User.hbm.xml" )
+@DomainModel( xmlMappings = "mappings/natural-id/immutable/User.hbm.xml" )
 @SessionFactory
 public class ImmutableNaturalIdTest {
 	@AfterEach
@@ -75,15 +77,40 @@ public class ImmutableNaturalIdTest {
 		detachedUser.setUserName( "Steve" );
 		try {
 			scope.inTransaction(
-					(session) -> {
-						session.merge( detachedUser );
-					}
-			);
+					(session) -> session.merge( detachedUser ) );
 			fail();
 		}
 		catch (PersistenceException expected) {
 			// expected outcome
 		}
+	}
+
+	@Test
+	public void testNaturalIdCheckManaged(SessionFactoryScope scope) {
+		scope.inTransaction(
+				(session) -> {
+					final User user = new User( "steve", "superSecret" );
+					session.persist( user );
+				}
+		);
+
+		scope.inTransaction( (session) -> {
+			var user = session.find( User.class, "steve", KeyType.NATURAL );
+
+			// try to change the natural-id... should error on flush
+			user.setUserName( "Steve" );
+
+			try {
+				session.flush();
+				fail();
+			}
+			catch (PersistenceException expected) {
+				assertThat( expected ).hasMessageContainingAll(
+						"An immutable natural identifier",
+						"was altered"
+				);
+			}
+		} );
 	}
 
 	@Test

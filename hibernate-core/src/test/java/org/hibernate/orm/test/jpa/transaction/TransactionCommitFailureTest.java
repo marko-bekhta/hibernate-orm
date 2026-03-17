@@ -30,7 +30,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -53,7 +53,7 @@ public class TransactionCommitFailureTest {
 		transactionFailureTrigger = new AtomicBoolean();
 		connectionIsOpen = new AtomicBoolean();
 
-		final Map settings = basicSettings();
+		final Map<String, Object> settings = basicSettings();
 		emf = Bootstrap.getEntityManagerFactoryBuilder( new PersistenceUnitDescriptorAdapter(), settings ).build();
 	}
 
@@ -83,7 +83,7 @@ public class TransactionCommitFailureTest {
 			em.close();
 		}
 
-		assertEquals( false, connectionIsOpen.get(), "The connection was not released" );
+		assertFalse( connectionIsOpen.get(), "The connection was not released" );
 	}
 
 	@Test
@@ -94,7 +94,7 @@ public class TransactionCommitFailureTest {
 			em.getTransaction().begin();
 			// Force connection acquisition
 			em.createQuery( "select 1" ).getResultList();
-			assertEquals( true, connectionIsOpen.get() );
+			assertTrue( connectionIsOpen.get() );
 			transactionFailureTrigger.set( true );
 			em.getTransaction().rollback();
 			fail( "Rollback failure, Exception expected" );
@@ -109,10 +109,10 @@ public class TransactionCommitFailureTest {
 			em.close();
 		}
 
-		assertEquals( false, connectionIsOpen.get(), "The connection was not released" );
+		assertFalse( connectionIsOpen.get(), "The connection was not released" );
 	}
 
-	private Map basicSettings() {
+	private Map<String, Object> basicSettings() {
 		return SettingsGenerator.generateSettings(
 				Environment.HBM2DDL_AUTO, "create-drop",
 				Environment.DIALECT, DialectContext.getDialect().getClass().getName(),

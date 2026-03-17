@@ -19,6 +19,7 @@ import org.hibernate.bytecode.enhance.spi.EnhancementContext;
 import org.hibernate.bytecode.spi.ClassTransformer;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Environment;
+import org.hibernate.internal.util.PropertiesHelper;
 import org.hibernate.jpa.HibernatePersistenceProvider;
 import org.hibernate.jpa.boot.spi.Bootstrap;
 import org.hibernate.jpa.boot.spi.PersistenceUnitDescriptor;
@@ -27,6 +28,7 @@ import org.hibernate.query.sqm.mutation.internal.temptable.LocalTemporaryTableMu
 import org.hibernate.query.sqm.mutation.internal.temptable.PersistentTableStrategy;
 
 import org.hibernate.testing.util.ServiceRegistryUtil;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 
 import jakarta.persistence.EntityManager;
@@ -101,8 +103,8 @@ public class EntityManagerFactoryBasedFunctionalTest
 		return NO_CLASSES;
 	}
 
-	protected Map<Object, Object> buildSettings() {
-		Map<Object, Object> settings = getConfig();
+	protected Map<String, Object> buildSettings() {
+		Map<String, Object> settings = getConfig();
 		applySettings( settings );
 
 		if ( exportSchema() ) {
@@ -112,19 +114,32 @@ public class EntityManagerFactoryBasedFunctionalTest
 		return settings;
 	}
 
-	protected Map<Object, Object> getConfig() {
-		Map<Object, Object> config = Environment.getProperties();
+	@AfterAll
+	public void afterAll() {
+		if ( entityManagerFactoryScope != null ) {
+			try {
+				entityManagerFactoryScope.close();
+			}
+			catch (Exception e) {
+				throw new RuntimeException( e );
+			}
+		}
+	}
+
+
+	protected Map<String, Object> getConfig() {
+		Map<String, Object> config = PropertiesHelper.map( Environment.getProperties() );
 		ArrayList<Class<?>> classes = new ArrayList<>();
 
 		classes.addAll( Arrays.asList( getAnnotatedClasses() ) );
 		config.put( AvailableSettings.LOADED_CLASSES, classes );
-		for ( Map.Entry<Class, String> entry : getCachedClasses().entrySet() ) {
+		for ( Map.Entry<Class<?>, String> entry : getCachedClasses().entrySet() ) {
 			config.put(
 					AvailableSettings.CLASS_CACHE_PREFIX + "." + entry.getKey().getName(),
 					entry.getValue()
 			);
 		}
-		for ( Map.Entry<String, String> entry : getCachedCollections().entrySet() ) {
+		for ( var entry : getCachedCollections().entrySet() ) {
 			config.put(
 					AvailableSettings.COLLECTION_CACHE_PREFIX + "." + entry.getKey(),
 					entry.getValue()
@@ -144,14 +159,14 @@ public class EntityManagerFactoryBasedFunctionalTest
 		return config;
 	}
 
-	protected void applySettings(Map<Object, Object> settings) {
+	protected void applySettings(Map<String, Object> settings) {
 		String[] mappings = getMappings();
 		if ( mappings != null ) {
 			settings.put( AvailableSettings.HBM_XML_FILES, String.join( ",", mappings ) );
 		}
 	}
 
-	public Map<Class, String> getCachedClasses() {
+	public Map<Class<?>, String> getCachedClasses() {
 		return new HashMap<>();
 	}
 

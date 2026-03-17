@@ -11,6 +11,8 @@ import java.util.concurrent.ConcurrentMap;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.pool.TypePool;
 
+import static org.hibernate.internal.util.ReflectHelper.OBJECT_CLASS_NAME;
+
 /**
  * A CacheProvider for ByteBuddy which is specifically designed for
  * our CoreTypePool: it ensures the cache content doesn't get tainted
@@ -27,10 +29,8 @@ class CoreCacheProvider implements TypePool.CacheProvider {
 
 	CoreCacheProvider(final CorePrefixFilter acceptedPrefixes) {
 		this.acceptedPrefixes = Objects.requireNonNull( acceptedPrefixes );
-		register(
-				Object.class.getName(),
-				new TypePool.Resolution.Simple( TypeDescription.ForLoadedType.of( Object.class ) )
-		);
+		register( OBJECT_CLASS_NAME,
+				new TypePool.Resolution.Simple( TypeDescription.ForLoadedType.of( Object.class ) ) );
 	}
 
 	/**
@@ -46,12 +46,10 @@ class CoreCacheProvider implements TypePool.CacheProvider {
 	 */
 	@Override
 	public TypePool.Resolution register(String name, TypePool.Resolution resolution) {
-		//Ensure we DO NOT cache anything from a non-core namespace, to not leak application specific code:
+		//Ensure we DO NOT cache anything from a non-core namespace to not leak application-specific code:
 		if ( acceptedPrefixes.isCoreClassName( name ) ) {
-			TypePool.Resolution cached = storage.putIfAbsent( name, resolution );
-			return cached == null
-					? resolution
-					: cached;
+			final var cached = storage.putIfAbsent( name, resolution );
+			return cached == null ? resolution : cached;
 		}
 		else {
 			return resolution;

@@ -15,7 +15,7 @@ import org.hibernate.tool.schema.internal.script.MultiLineSqlScriptExtractor;
  */
 final class StaticClassLists {
 
-	public static Class[] typesNeedingAllConstructorsAccessible() {
+	public static Class<?>[] typesNeedingAllConstructorsAccessible() {
 		return new Class[] {
 				//The CoreMessageLogger is sometimes looked up without it necessarily being a field, so we're
 				//not processing it the same way as other Logger lookups.
@@ -28,7 +28,7 @@ final class StaticClassLists {
 		};
 	}
 
-	public static Class[] typesNeedingDefaultConstructorAccessible() {
+	public static Class<?>[] typesNeedingDefaultConstructorAccessible() {
 		return new Class[] {
 				//Various well known needs:
 				org.hibernate.resource.transaction.backend.jdbc.internal.JdbcResourceLocalTransactionCoordinatorBuilderImpl.class,
@@ -39,7 +39,7 @@ final class StaticClassLists {
 		};
 	}
 
-	public static Class[] typesNeedingArrayCopy() {
+	public static Class<?>[] typesNeedingArrayCopy() {
 		return new Class[] {
 				//Eventlisteners need to be registered for reflection to allow creation via Array#newInstance ;
 				// types need to be in synch with those declared in org.hibernate.event.spi.EventType
@@ -51,6 +51,7 @@ final class StaticClassLists {
 				org.hibernate.event.spi.ReplicateEventListener[].class,
 				org.hibernate.event.spi.FlushEventListener[].class,
 				org.hibernate.event.spi.AutoFlushEventListener[].class,
+				org.hibernate.event.spi.PreFlushEventListener[].class,
 				org.hibernate.event.spi.DirtyCheckEventListener[].class,
 				org.hibernate.event.spi.FlushEntityEventListener[].class,
 				org.hibernate.event.spi.ClearEventListener[].class,

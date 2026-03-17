@@ -31,13 +31,13 @@ public class SqmEvery<T> extends AbstractSqmExpression<T> {
 	}
 
 	@Override
-	public Integer getTupleLength() {
+	public @Nullable Integer getTupleLength() {
 		return subquery.getTupleLength();
 	}
 
 	@Override
 	public SqmEvery<T> copy(SqmCopyContext context) {
-		final SqmEvery<T> existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
@@ -64,7 +64,7 @@ public class SqmEvery<T> extends AbstractSqmExpression<T> {
 	}
 
 	@Override
-	public boolean equals(Object object) {
+	public boolean equals(@Nullable Object object) {
 		return object instanceof SqmEvery<?> sqmAny
 			&& this.subquery.equals( sqmAny.subquery );
 	}

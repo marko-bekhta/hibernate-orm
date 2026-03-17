@@ -49,7 +49,6 @@ import static org.hibernate.internal.util.StringHelper.isNotEmpty;
 import static org.hibernate.internal.util.collections.CollectionHelper.setOfSize;
 import static org.hibernate.tool.schema.UniqueConstraintSchemaUpdateStrategy.DROP_RECREATE_QUIETLY;
 import static org.hibernate.tool.schema.UniqueConstraintSchemaUpdateStrategy.SKIP;
-import static org.hibernate.tool.schema.internal.Helper.buildDatabaseInformation;
 import static org.hibernate.tool.schema.internal.Helper.interpretFormattingEnabled;
 import static org.hibernate.tool.schema.internal.SchemaCreatorImpl.createUserDefinedTypes;
 import static org.hibernate.tool.schema.internal.SchemaDropperImpl.dropUserDefinedTypes;
@@ -77,8 +76,8 @@ public abstract class AbstractSchemaMigrator implements SchemaMigrator {
 			ExecutionOptions options,
 			ContributableMatcher contributableInclusionFilter,
 			TargetDescriptor targetDescriptor) {
-		final var sqlGenerationContext = sqlGenerationContext( metadata, options );
 		if ( !targetDescriptor.getTargetTypes().isEmpty() ) {
+			final var sqlGenerationContext = sqlGenerationContext( metadata, options );
 			final var jdbcContext = tool.resolveJdbcContext( options.getConfigurationValues() );
 			try ( var isolator = tool.getDdlTransactionIsolator( jdbcContext ) ) {
 				final var databaseInformation = buildDatabaseInformation( isolator, sqlGenerationContext );
@@ -520,8 +519,8 @@ public abstract class AbstractSchemaMigrator implements SchemaMigrator {
 			SqlStringGenerationContext context,
 			GenerationTarget[] targets) {
 		if ( tryToCreateCatalogs || tryToCreateSchemas ) {
-			Namespace.Name logicalName = namespace.getName();
-			Namespace.Name physicalName = namespace.getPhysicalName();
+			final var logicalName = namespace.getName();
+			final var physicalName = namespace.getPhysicalName();
 
 			if ( tryToCreateCatalogs ) {
 				final Identifier catalogLogicalName = logicalName.catalog();

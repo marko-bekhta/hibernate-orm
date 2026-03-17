@@ -4,13 +4,14 @@
  */
 package org.hibernate.metamodel.model.domain.internal;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.annotations.AnyDiscriminator;
 import org.hibernate.metamodel.model.domain.SimpleDomainType;
 import org.hibernate.metamodel.model.domain.ReturnableType;
 import org.hibernate.query.sqm.SqmBindableType;
 import org.hibernate.query.sqm.SqmPathSource;
+import org.hibernate.query.sqm.tree.domain.SqmDomainType;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
-import org.hibernate.spi.NavigablePath;
 import org.hibernate.type.BasicType;
 import org.hibernate.type.descriptor.java.JavaType;
 
@@ -35,11 +36,12 @@ public class AnyDiscriminatorSqmPathSource<D> extends AbstractSqmPathSource<D>
 	}
 
 	@Override
-	public SqmPath<D> createSqmPath(SqmPath<?> lhs, SqmPathSource<?> intermediatePathSource) {
-		final NavigablePath navigablePath =
+	public SqmPath<D> createSqmPath(SqmPath<?> lhs, @Nullable SqmPathSource<?> intermediatePathSource) {
+		final var path = lhs.getNavigablePath();
+		final var navigablePath =
 				intermediatePathSource == null
-						? lhs.getNavigablePath()
-						: lhs.getNavigablePath().append( intermediatePathSource.getPathName() );
+						? path
+						: path.append( intermediatePathSource.getPathName() );
 		return new AnyDiscriminatorSqmPath<>( navigablePath, pathModel, lhs, lhs.nodeBuilder() );
 	}
 
@@ -59,7 +61,7 @@ public class AnyDiscriminatorSqmPathSource<D> extends AbstractSqmPathSource<D>
 	}
 
 	@Override
-	public BasicType<D> getSqmType() {
+	public @Nullable SqmDomainType<D> getSqmType() {
 		return getPathType();
 	}
 

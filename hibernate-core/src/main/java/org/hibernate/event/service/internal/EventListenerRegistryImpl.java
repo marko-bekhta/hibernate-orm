@@ -25,6 +25,7 @@ import org.hibernate.event.internal.DefaultMergeEventListener;
 import org.hibernate.event.internal.DefaultPersistEventListener;
 import org.hibernate.event.internal.DefaultPersistOnFlushEventListener;
 import org.hibernate.event.internal.DefaultPostLoadEventListener;
+import org.hibernate.event.internal.DefaultPreFlushEventListener;
 import org.hibernate.event.internal.DefaultPreLoadEventListener;
 import org.hibernate.event.internal.DefaultRefreshEventListener;
 import org.hibernate.event.internal.DefaultReplicateEventListener;
@@ -69,6 +70,7 @@ import static org.hibernate.event.spi.EventType.PRE_COLLECTION_RECREATE;
 import static org.hibernate.event.spi.EventType.PRE_COLLECTION_REMOVE;
 import static org.hibernate.event.spi.EventType.PRE_COLLECTION_UPDATE;
 import static org.hibernate.event.spi.EventType.PRE_DELETE;
+import static org.hibernate.event.spi.EventType.PRE_FLUSH;
 import static org.hibernate.event.spi.EventType.PRE_INSERT;
 import static org.hibernate.event.spi.EventType.PRE_LOAD;
 import static org.hibernate.event.spi.EventType.PRE_UPDATE;
@@ -133,10 +135,9 @@ public class EventListenerRegistryImpl implements EventListenerRegistry {
 	}
 
 	private <T> T resolveListenerInstance(Class<T> listenerClass) {
-		@SuppressWarnings("unchecked")
-		final T listenerInstance = (T) listenerClassToInstanceMap.get( listenerClass );
+		final T listenerInstance = listenerClass.cast( listenerClassToInstanceMap.get( listenerClass ) );
 		if ( listenerInstance == null ) {
-			T newListenerInstance = instantiateListener( listenerClass );
+			final T newListenerInstance = instantiateListener( listenerClass );
 			listenerClassToInstanceMap.put( listenerClass, newListenerInstance );
 			return newListenerInstance;
 		}
@@ -215,6 +216,9 @@ public class EventListenerRegistryImpl implements EventListenerRegistry {
 		private void applyStandardListeners() {
 			// auto-flush listeners
 			prepareListeners( AUTO_FLUSH, new DefaultAutoFlushEventListener() );
+
+			// pre-flush listeners
+			prepareListeners( PRE_FLUSH, new DefaultPreFlushEventListener() );
 
 			// create listeners
 			prepareListeners( PERSIST, new DefaultPersistEventListener() );

@@ -45,7 +45,7 @@ public abstract class AbstractSchemaPopulator {
 			Dialect dialect,
 			GenerationTarget... targets) {
 		final var formatter = getImportScriptFormatter(format);
-		boolean hasDefaultImportFileScriptBeenExecuted = applyImportScript(
+		final boolean hasDefaultImportFileScriptBeenExecuted = applyImportScript(
 				options,
 				commandExtractor,
 				dialect,
@@ -123,8 +123,11 @@ public abstract class AbstractSchemaPopulator {
 			return false;
 		}
 		else {
-			final URL defaultImportFileUrl = getClassLoaderService().locateResource( DEFAULT_IMPORT_FILE );
-			return defaultImportFileUrl != null && importScriptInput.containsScript( defaultImportFileUrl );
+			final URL defaultImportFileUrl =
+					getClassLoaderService()
+							.locateResource( DEFAULT_IMPORT_FILE );
+			return defaultImportFileUrl != null
+				&& importScriptInput.containsScript( defaultImportFileUrl );
 		}
 	}
 
@@ -142,6 +145,18 @@ public abstract class AbstractSchemaPopulator {
 		final String[] importFiles =
 				StringHelper.split( ",",
 						getString( HBM2DDL_IMPORT_FILES, options.getConfigurationValues(), defaultImportFile ) );
+		if ( importFiles.length > 0 ) {
+			applyImportFiles( options, commandExtractor, dialect, formatter, importFiles, targets );
+		}
+	}
+
+	private void applyImportFiles(
+			ExecutionOptions options,
+			SqlScriptCommandExtractor commandExtractor,
+			Dialect dialect,
+			Formatter formatter,
+			String[] importFiles,
+			GenerationTarget[] targets) {
 		final String charsetName = getCharsetName( options );
 		final var classLoaderService = getClassLoaderService();
 		for ( String currentFile : importFiles ) {

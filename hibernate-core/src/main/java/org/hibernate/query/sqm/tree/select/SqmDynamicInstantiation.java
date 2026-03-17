@@ -22,12 +22,17 @@ import org.hibernate.query.sqm.tree.SqmRenderContext;
 import org.hibernate.query.sqm.tree.domain.SqmDomainType;
 import org.hibernate.query.sqm.tree.expression.SqmExpression;
 import org.hibernate.query.sqm.tree.jpa.AbstractJpaSelection;
+import org.hibernate.type.descriptor.java.DateJavaType;
 import org.hibernate.type.descriptor.java.JavaType;
 
+import org.hibernate.type.descriptor.java.TemporalJavaType;
 import org.hibernate.type.spi.TypeConfiguration;
 import org.jboss.logging.Logger;
 
+import static java.util.Collections.emptyList;
+import static java.util.Collections.unmodifiableList;
 import static java.util.stream.Collectors.toList;
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 import static org.hibernate.query.sqm.DynamicInstantiationNature.CLASS;
 import static org.hibernate.query.sqm.DynamicInstantiationNature.LIST;
 import static org.hibernate.query.sqm.DynamicInstantiationNature.MAP;
@@ -110,7 +115,7 @@ public class SqmDynamicInstantiation<T>
 	}
 
 	private final SqmDynamicInstantiationTarget <T> instantiationTarget;
-	private List<SqmDynamicInstantiationArgument<?>> arguments;
+	private @Nullable List<SqmDynamicInstantiationArgument<?>> arguments;
 
 	private SqmDynamicInstantiation(
 			SqmDynamicInstantiationTarget<T> instantiationTarget,
@@ -125,16 +130,18 @@ public class SqmDynamicInstantiation<T>
 			NodeBuilder nodeBuilder) {
 		super( instantiationTarget.getSqmType(), nodeBuilder );
 		this.instantiationTarget = instantiationTarget;
+		final ArrayList<SqmDynamicInstantiationArgument<?>> newArguments = new ArrayList<>();
 		for ( var argument : arguments ) {
-			addArgument( new SqmDynamicInstantiationArgument<>( argument, argument.getAlias(), nodeBuilder() ) );
+			addArgument( instantiationTarget, newArguments, new SqmDynamicInstantiationArgument<>( argument, argument.getAlias(), nodeBuilder ) );
 		}
+		this.arguments = newArguments;
 	}
 
 	private SqmDynamicInstantiation(
-			SqmBindableType<T> sqmExpressible,
+			@Nullable SqmBindableType<T> sqmExpressible,
 			NodeBuilder criteriaBuilder,
 			SqmDynamicInstantiationTarget<T> instantiationTarget,
-			List<SqmDynamicInstantiationArgument<?>> arguments) {
+			@Nullable List<SqmDynamicInstantiationArgument<?>> arguments) {
 		super( sqmExpressible, criteriaBuilder );
 		this.instantiationTarget = instantiationTarget;
 		this.arguments = arguments;
@@ -142,22 +149,30 @@ public class SqmDynamicInstantiation<T>
 
 	public boolean checkInstantiation(TypeConfiguration typeConfiguration) {
 		if ( getInstantiationTarget().getNature() == CLASS ) {
-			if ( getJavaType().isArray() ) {
+			final Class<? extends T> javaType = castNonNull( getJavaType() );
+			if ( javaType.isArray() ) {
 				// hack to accommodate the needs of jpamodelgen
 				// where Class objects not available during build
 				return true;
 			}
 			final var argTypes = argumentTypes();
 			if ( isFullyAliased() ) {
-				final List<String> aliases =
-						getArguments().stream()
-								.map(SqmDynamicInstantiationArgument::getAlias)
-								.collect(toList());
-				return isInjectionCompatible( getJavaType(), aliases, argTypes )
-					|| isConstructorCompatible( getJavaType(), argTypes, typeConfiguration );
+				if ( isConstructorCompatible( javaType, argTypes, typeConfiguration ) ) {
+					return true;
+				}
+				final var arguments = getArguments();
+				final List<String> aliases = new ArrayList<>( arguments.size() );
+				for ( var argument : arguments ) {
+					final String alias = argument.getAlias();
+					if ( alias == null ) {
+						return false;
+					}
+					aliases.add( alias );
+				}
+				return isInjectionCompatible( javaType, aliases, argTypes );
 			}
 			else {
-				return isConstructorCompatible( getJavaType(), argTypes, typeConfiguration );
+				return isConstructorCompatible( javaType, argTypes, typeConfiguration );
 			}
 		}
 		else {
@@ -170,9 +185,18 @@ public class SqmDynamicInstantiation<T>
 		return getArguments().stream()
 				.map( arg -> {
 					final var expressible = arg.getExpressible();
-					return expressible != null && expressible.getExpressibleJavaType() != null ?
-							expressible.getExpressibleJavaType().getJavaTypeClass() :
-							Void.class;
+					if ( expressible != null ) {
+						final var expressibleJavaType = expressible.getExpressibleJavaType();
+						if ( expressibleJavaType != null ) {
+							return expressibleJavaType instanceof DateJavaType temporalJavaType
+									// Hack to accommodate a constructor with java.sql parameter
+									// types when the entity has java.util.Date as its field types.
+									// (This was requested in HHH-4179 and we fixed it by accident.)
+									? TemporalJavaType.resolveJavaTypeClass( temporalJavaType.getPrecision() )
+									: expressibleJavaType.getJavaTypeClass();
+						}
+					}
+					return Void.class;
 				} ).collect( toList() );
 	}
 
@@ -182,18 +206,19 @@ public class SqmDynamicInstantiation<T>
 
 	@Override
 	public SqmDynamicInstantiation<T> copy(SqmCopyContext context) {
-		final SqmDynamicInstantiation<T> existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
-		List<SqmDynamicInstantiationArgument<?>> arguments;
-		if ( this.arguments == null ) {
-			arguments = null;
+		final List<SqmDynamicInstantiationArgument<?>> arguments = this.arguments;
+		final List<SqmDynamicInstantiationArgument<?>> newArguments;
+		if ( arguments == null ) {
+			newArguments = null;
 		}
 		else {
-			arguments = new ArrayList<>( this.arguments.size() );
-			for ( var argument : this.arguments ) {
-				arguments.add( argument.copy( context ) );
+			newArguments = new ArrayList<>( arguments.size() );
+			for ( var argument : arguments ) {
+				newArguments.add( argument.copy( context ) );
 			}
 		}
 		final SqmDynamicInstantiation<T> instantiation = context.registerCopy(
@@ -202,7 +227,7 @@ public class SqmDynamicInstantiation<T>
 						getExpressible(),
 						nodeBuilder(),
 						instantiationTarget,
-						arguments
+						newArguments
 				)
 		);
 		copyTo( instantiation, context );
@@ -214,7 +239,7 @@ public class SqmDynamicInstantiation<T>
 	}
 
 	public List<SqmDynamicInstantiationArgument<?>> getArguments() {
-		return arguments;
+		return arguments == null ? emptyList() : unmodifiableList( arguments );
 	}
 
 	@Override
@@ -228,6 +253,13 @@ public class SqmDynamicInstantiation<T>
 	}
 
 	public void addArgument(SqmDynamicInstantiationArgument<?> argument) {
+		if ( arguments == null ) {
+			arguments = new ArrayList<>();
+		}
+		addArgument( instantiationTarget, arguments, argument );
+	}
+
+	private static void addArgument(SqmDynamicInstantiationTarget<?> instantiationTarget, List<SqmDynamicInstantiationArgument<?>> arguments, SqmDynamicInstantiationArgument<?> argument) {
 		if ( instantiationTarget.getNature() == LIST ) {
 			// really should not have an alias...
 			if ( argument.getAlias() != null && LOG.isDebugEnabled() ) {
@@ -252,9 +284,6 @@ public class SqmDynamicInstantiation<T>
 			}
 		}
 
-		if ( arguments == null ) {
-			arguments = new ArrayList<>();
-		}
 		arguments.add( argument );
 	}
 
@@ -288,6 +317,7 @@ public class SqmDynamicInstantiation<T>
 			hql.append( instantiationTarget.getTargetTypeDescriptor().getJavaTypeClass().getTypeName() );
 		}
 		hql.append( '(' );
+		final List<SqmDynamicInstantiationArgument<?>> arguments = castNonNull( this.arguments );
 		arguments.get( 0 ).appendHqlString( hql, context );
 		for ( int i = 1; i < arguments.size(); i++ ) {
 			hql.append(", ");
@@ -298,7 +328,7 @@ public class SqmDynamicInstantiation<T>
 	}
 
 	@Override
-	public boolean equals(Object object) {
+	public boolean equals(@Nullable Object object) {
 		return object instanceof SqmDynamicInstantiation<?> that
 			&& Objects.equals( instantiationTarget, that.instantiationTarget )
 			&& Objects.equals( arguments, that.arguments );
@@ -345,7 +375,7 @@ public class SqmDynamicInstantiation<T>
 		}
 
 		@Override
-		public boolean equals(Object object) {
+		public boolean equals(@Nullable Object object) {
 			return object instanceof DynamicInstantiationTargetImpl<?> that
 				&& nature == that.nature
 				&& Objects.equals( javaType, that.javaType );
@@ -377,7 +407,7 @@ public class SqmDynamicInstantiation<T>
 //		}
 
 		@Override
-		public SqmDomainType<T> getSqmType() {
+		public @Nullable SqmDomainType<T> getSqmType() {
 			return null;
 		}
 	}
@@ -388,7 +418,7 @@ public class SqmDynamicInstantiation<T>
 
 	@Override
 	public void visitSubSelectableNodes(Consumer<SqmSelectableNode<?>> consumer) {
-		for ( SqmDynamicInstantiationArgument<?> argument : arguments ) {
+		for ( SqmDynamicInstantiationArgument<?> argument : getArguments() ) {
 			consumer.accept( argument.getSelectableNode() );
 		}
 	}

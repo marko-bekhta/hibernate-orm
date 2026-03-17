@@ -4,6 +4,7 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
+import org.checkerframework.checker.initialization.qual.UnderInitialization;
 import org.hibernate.query.sqm.NodeBuilder;
 import org.hibernate.query.sqm.SemanticQueryWalker;
 import org.hibernate.query.sqm.SqmPathSource;
@@ -27,11 +28,11 @@ public class SqmCorrelatedRootJoin<T> extends SqmRoot<T> implements SqmCorrelati
 
 	@Override
 	public SqmCorrelatedRootJoin<T> copy(SqmCopyContext context) {
-		final SqmCorrelatedRootJoin<T> existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
-		final SqmCorrelatedRootJoin<T> path = context.registerCopy(
+		final var path = context.registerCopy(
 				this,
 				new SqmCorrelatedRootJoin<>(
 						getNavigablePath(),
@@ -43,8 +44,10 @@ public class SqmCorrelatedRootJoin<T> extends SqmRoot<T> implements SqmCorrelati
 		return path;
 	}
 
-	@SuppressWarnings("unchecked")
-	public static <X, J extends SqmJoin<X, ?>> SqmCorrelatedRootJoin<X> create(J correlationParent, J correlatedJoin) {
+	// Need to suppress argument warnings because correlatedJoin which is under initialization is passed to addSqmJoin,
+	// which expects an initialized argument. We know this is safe though because we only store the instance
+	@SuppressWarnings({"unchecked", "argument"})
+	public static <X, J extends SqmJoin<X, ?>> SqmCorrelatedRootJoin<X> create(J correlationParent, @UnderInitialization J correlatedJoin) {
 		final SqmFrom<?, X> parentPath = (SqmFrom<?, X>) correlationParent.getParentPath();
 		final SqmCorrelatedRootJoin<X> rootJoin;
 		if ( parentPath == null ) {

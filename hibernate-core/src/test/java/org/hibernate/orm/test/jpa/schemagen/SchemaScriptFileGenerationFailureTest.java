@@ -4,35 +4,35 @@
  */
 package org.hibernate.orm.test.jpa.schemagen;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.PersistenceException;
+import jakarta.persistence.Table;
+import org.hibernate.cfg.AvailableSettings;
+import org.hibernate.cfg.Environment;
+import org.hibernate.community.dialect.GaussDBDialect;
+import org.hibernate.dialect.PostgreSQLDialect;
+import org.hibernate.dialect.PostgresPlusDialect;
+import org.hibernate.internal.util.PropertiesHelper;
+import org.hibernate.jpa.boot.spi.Bootstrap;
+import org.hibernate.jpa.boot.spi.EntityManagerFactoryBuilder;
+import org.hibernate.jpa.boot.spi.PersistenceUnitDescriptor;
+import org.hibernate.testing.orm.junit.EntityManagerFactoryBasedFunctionalTest;
+import org.hibernate.testing.orm.junit.JiraKey;
+import org.hibernate.testing.orm.junit.SkipForDialect;
+import org.hibernate.testing.util.ServiceRegistryUtil;
+import org.hibernate.tool.schema.spi.CommandAcceptanceException;
+import org.hibernate.tool.schema.spi.SchemaManagementException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.regex.Pattern;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.PersistenceException;
-import jakarta.persistence.Table;
-
-import org.hibernate.cfg.AvailableSettings;
-import org.hibernate.cfg.Environment;
-import org.hibernate.community.dialect.GaussDBDialect;
-import org.hibernate.dialect.PostgreSQLDialect;
-import org.hibernate.dialect.PostgresPlusDialect;
-import org.hibernate.jpa.boot.spi.Bootstrap;
-import org.hibernate.jpa.boot.spi.EntityManagerFactoryBuilder;
-import org.hibernate.jpa.boot.spi.PersistenceUnitDescriptor;
-import org.hibernate.testing.orm.junit.SkipForDialect;
-import org.hibernate.tool.schema.spi.CommandAcceptanceException;
-import org.hibernate.tool.schema.spi.SchemaManagementException;
-import org.hibernate.testing.orm.junit.JiraKey;
-import org.hibernate.testing.orm.junit.EntityManagerFactoryBasedFunctionalTest;
-import org.hibernate.testing.util.ServiceRegistryUtil;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -116,15 +116,15 @@ public class SchemaScriptFileGenerationFailureTest {
 		return new EntityManagerFactoryBasedFunctionalTest.TestingPersistenceUnitDescriptorImpl( getClass().getSimpleName() );
 	}
 
-	private Map getConfig() {
-		final Map<Object, Object> config = Environment.getProperties();
+	private Map<String, Object> getConfig() {
+		final Map<String, Object> config = PropertiesHelper.map( Environment.getProperties() );
 		ServiceRegistryUtil.applySettings( config );
 		config.put( AvailableSettings.JAKARTA_HBM2DDL_SCRIPTS_DROP_TARGET, writer );
 		config.put( AvailableSettings.JAKARTA_HBM2DDL_SCRIPTS_ACTION, "drop-and-create" );
 		config.put( AvailableSettings.HBM2DDL_HALT_ON_ERROR, "true" );
-		ArrayList<Class> classes = new ArrayList<>();
+		ArrayList<Class<?>> classes = new ArrayList<>();
 
-		classes.addAll( Arrays.asList( new Class[] { TestEntity.class } ) );
+		classes.addAll( Arrays.asList( new Class<?>[] { TestEntity.class } ) );
 		config.put( AvailableSettings.LOADED_CLASSES, classes );
 		return config;
 	}

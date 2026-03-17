@@ -15,7 +15,6 @@ import org.hibernate.Filter;
 import org.hibernate.HibernateException;
 import org.hibernate.engine.spi.FilterDefinition;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
-import org.hibernate.metamodel.mapping.JdbcMapping;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -38,9 +37,11 @@ public class FilterImpl implements Filter, Serializable {
 	private @Nullable TreeMap<String,Object> parameters;
 	private final boolean autoEnabled;
 	private final boolean applyToLoadByKey;
+	private transient boolean validated;
 
 	void afterDeserialize(SessionFactoryImplementor factory) {
 		definition = factory.getFilterDefinition( filterName );
+		validated = false;
 		validate();
 	}
 
@@ -106,7 +107,7 @@ public class FilterImpl implements Filter, Serializable {
 		final Object argument = definition.processArgument( value );
 
 		// Make sure this is a defined parameter and check the incoming value type
-		final JdbcMapping type = definition.getParameterJdbcMapping( name );
+		final var type = definition.getParameterJdbcMapping( name );
 		if ( type == null ) {
 			throw new IllegalArgumentException( "Undefined filter parameter '" + name + "'" );
 		}
@@ -118,6 +119,7 @@ public class FilterImpl implements Filter, Serializable {
 			parameters = new TreeMap<>();
 		}
 		parameters.put( name, argument );
+		validated = false;
 		return this;
 	}
 
@@ -134,7 +136,7 @@ public class FilterImpl implements Filter, Serializable {
 		if ( values == null ) {
 			throw new IllegalArgumentException( "Collection must be not null" );
 		}
-		final JdbcMapping type = definition.getParameterJdbcMapping( name );
+		final var type = definition.getParameterJdbcMapping( name );
 		if ( type == null ) {
 			throw new HibernateException( "Undefined filter parameter '" + name + "'" );
 		}
@@ -149,6 +151,7 @@ public class FilterImpl implements Filter, Serializable {
 			parameters = new TreeMap<>();
 		}
 		parameters.put( name, values );
+		validated = false;
 		return this;
 	}
 
@@ -185,6 +188,9 @@ public class FilterImpl implements Filter, Serializable {
 	 * @throws HibernateException If the state is not currently valid.
 	 */
 	public void validate() throws HibernateException {
+		if ( validated ) {
+			return;
+		}
 		// for each of the defined parameters, make sure its argument
 		// has been set or a resolver has been implemented and specified
 		for ( final String parameterName : definition.getParameterNames() ) {
@@ -193,6 +199,7 @@ public class FilterImpl implements Filter, Serializable {
 						+ "' has neither an argument nor a resolver" );
 			}
 		}
+		validated = true;
 	}
 
 	private boolean hasResolver(String parameterName) {
@@ -212,7 +219,7 @@ public class FilterImpl implements Filter, Serializable {
 			return value;
 		}
 		else {
-			final Supplier<?> filterParamResolver = getParameterResolver( paramName );
+			final var filterParamResolver = getParameterResolver( paramName );
 			return filterParamResolver == null ? null : filterParamResolver.get();
 		}
 	}

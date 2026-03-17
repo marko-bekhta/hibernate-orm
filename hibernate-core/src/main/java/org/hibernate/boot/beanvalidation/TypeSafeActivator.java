@@ -106,7 +106,6 @@ class TypeSafeActivator {
 					// There is a Jakarta Validation provider, but it failed to bootstrap the factory for some reason,
 					// we should fail and let the user deal with it:
 					throw exception;
-
 				}
 			}
 		}
@@ -148,10 +147,10 @@ class TypeSafeActivator {
 			ValidatorFactory validatorFactory,
 			SessionFactoryServiceRegistry serviceRegistry,
 			SessionFactoryImplementor sessionFactory) {
-		final var classLoaderService = serviceRegistry.requireService( ClassLoaderService.class );
-		final var cfgService = serviceRegistry.requireService( ConfigurationService.class );
 		final var listener =
-				new BeanValidationEventListener( validatorFactory, cfgService.getSettings(), classLoaderService );
+				new BeanValidationEventListener( validatorFactory,
+						serviceRegistry.requireService( ConfigurationService.class ).getSettings(),
+						serviceRegistry.requireService( ClassLoaderService.class ) );
 		final var listenerRegistry = sessionFactory.getEventListenerRegistry();
 		listenerRegistry.addDuplicationStrategy( DuplicationStrategyImpl.INSTANCE );
 		listenerRegistry.appendListeners( EventType.PRE_INSERT, listener );
@@ -183,7 +182,8 @@ class TypeSafeActivator {
 					context.getMetadata().getEntityBindings(),
 					serviceRegistry.requireService( ConfigurationService.class ).getSettings(),
 					serviceRegistry.requireService( JdbcServices.class ).getDialect(),
-					new ClassLoaderAccessImpl( null, serviceRegistry.getService( ClassLoaderService.class ) )
+					new ClassLoaderAccessImpl( null,
+							serviceRegistry.getService( ClassLoaderService.class ) )
 			);
 		}
 	}
@@ -418,17 +418,16 @@ class TypeSafeActivator {
 
 	private static void markNotNull(Property property) {
 		// single table inheritance should not be forced to null due to shared state
-		if ( !( property.getPersistentClass() instanceof SingleTableSubclass ) ) {
-			// composite should not add not-null on all columns
-			if ( !property.isComposite() ) {
-				property.setOptional( false );
-				for ( var selectable : property.getSelectables() ) {
-					if ( selectable instanceof Column column ) {
-						column.setNullable( false );
-					}
-					else {
-						BEAN_VALIDATION_LOGGER.notNullOnFormulaPortion( property.getName() );
-					}
+		if ( !( property.getPersistentClass() instanceof SingleTableSubclass )
+				// composite should not add not-null on all columns
+				&& !property.isComposite() ) {
+			property.setOptional( false );
+			for ( var selectable : property.getSelectables() ) {
+				if ( selectable instanceof Column column ) {
+					column.setNullable( false );
+				}
+				else {
+					BEAN_VALIDATION_LOGGER.notNullOnFormulaPortion( property.getName() );
 				}
 			}
 		}

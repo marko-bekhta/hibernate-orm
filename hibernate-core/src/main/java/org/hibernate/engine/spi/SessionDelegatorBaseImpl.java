@@ -60,6 +60,7 @@ import org.hibernate.query.SelectionQuery;
 import org.hibernate.query.criteria.HibernateCriteriaBuilder;
 import org.hibernate.query.criteria.JpaCriteriaInsert;
 import org.hibernate.query.spi.QueryImplementor;
+import org.hibernate.query.spi.QueryParameterBindings;
 import org.hibernate.query.spi.QueryProducerImplementor;
 import org.hibernate.query.sql.spi.NativeQueryImplementor;
 import org.hibernate.resource.jdbc.spi.JdbcSessionContext;
@@ -418,8 +419,8 @@ public class SessionDelegatorBaseImpl implements SessionImplementor {
 	}
 
 	@Override
-	public void autoPreFlush() {
-		delegate.autoPreFlush();
+	public boolean autoPreFlushIfRequired(QueryParameterBindings parameterBindings) {
+		return delegate.autoPreFlushIfRequired( parameterBindings );
 	}
 
 	@Override
@@ -801,6 +802,11 @@ public class SessionDelegatorBaseImpl implements SessionImplementor {
 	}
 
 	@Override
+	public boolean isManaged(Object entity) {
+		return delegate.isManaged( entity );
+	}
+
+	@Override
 	public LockModeType getLockMode(Object entity) {
 		return delegate.getLockMode( entity );
 	}
@@ -846,7 +852,7 @@ public class SessionDelegatorBaseImpl implements SessionImplementor {
 	}
 
 	@Override
-	public <T> T merge(T object, EntityGraph<?> loadGraph) {
+	public <T> T merge(T object, EntityGraph<? super T> loadGraph) {
 		return delegate.merge( object, loadGraph );
 	}
 
@@ -1208,6 +1214,11 @@ public class SessionDelegatorBaseImpl implements SessionImplementor {
 	@Override
 	public int getPreferredSqlTypeCodeForBoolean() {
 		return delegate.getPreferredSqlTypeCodeForBoolean();
+	}
+
+	@Override
+	public boolean useLanguageTagForLocale() {
+		return delegate.useLanguageTagForLocale();
 	}
 
 	@Override

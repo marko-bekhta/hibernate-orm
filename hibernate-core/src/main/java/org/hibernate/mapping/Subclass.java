@@ -8,9 +8,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
+import org.hibernate.Internal;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.engine.OptimisticLockStyle;
-import org.hibernate.internal.FilterConfiguration;
 import org.hibernate.internal.util.collections.JoinedList;
 
 /**
@@ -107,6 +107,20 @@ public sealed class Subclass extends PersistentClass
 		getSuperclass().addSubclassProperty( property );
 	}
 
+	@Internal
+	@Override
+	public void movePropertyToJoin(Property property, Join join) {
+		super.movePropertyToJoin( property, join );
+		getSuperclass().moveSubclassPropertyToJoin( property );
+	}
+
+	@Internal
+	@Override
+	protected void moveSubclassPropertyToJoin(Property property) {
+		super.moveSubclassPropertyToJoin( property );
+		getSuperclass().moveSubclassPropertyToJoin( property );
+	}
+
 	@Override
 	public void addMappedSuperclassProperty(Property property) {
 		super.addMappedSuperclassProperty( property );
@@ -122,6 +136,11 @@ public sealed class Subclass extends PersistentClass
 	@Override
 	public List<Property> getPropertyClosure() {
 		return new JoinedList<>( getSuperclass().getPropertyClosure(), getProperties() );
+	}
+
+	@Override
+	public List<Property> getAllPropertyClosure() {
+		return new JoinedList<>( getSuperclass().getAllPropertyClosure(), getAllProperties() );
 	}
 
 	@Override
@@ -225,6 +244,11 @@ public sealed class Subclass extends PersistentClass
 	}
 
 	@Override
+	public int getAllPropertyClosureSpan() {
+		return getSuperclass().getAllPropertyClosureSpan() + super.getAllPropertyClosureSpan();
+	}
+
+	@Override
 	public List<Join> getJoinClosure() {
 		return new JoinedList<>( getSuperclass().getJoinClosure(), super.getJoinClosure() );
 	}
@@ -271,7 +295,7 @@ public sealed class Subclass extends PersistentClass
 
 	@Override
 	public java.util.List<FilterConfiguration> getFilters() {
-		final ArrayList<FilterConfiguration> filters = new ArrayList<>( super.getFilters() );
+		final var filters = new ArrayList<>( super.getFilters() );
 		filters.addAll( getSuperclass().getFilters() );
 		return filters;
 	}

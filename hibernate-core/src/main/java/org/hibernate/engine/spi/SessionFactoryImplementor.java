@@ -23,6 +23,8 @@ import org.hibernate.engine.profile.FetchProfile;
 import org.hibernate.event.service.spi.EventListenerRegistry;
 import org.hibernate.event.spi.EntityCopyObserverFactory;
 import org.hibernate.event.spi.EventEngine;
+import org.hibernate.graph.GraphParser;
+import org.hibernate.graph.RootGraph;
 import org.hibernate.graph.spi.RootGraphImplementor;
 import org.hibernate.event.service.spi.EventListenerGroups;
 import org.hibernate.metamodel.model.domain.JpaMetamodel;
@@ -34,6 +36,8 @@ import org.hibernate.query.sql.spi.SqlTranslationEngine;
 import org.hibernate.resource.beans.spi.ManagedBeanRegistry;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
 import org.hibernate.sql.ast.spi.ParameterMarkerStrategy;
+import org.hibernate.sql.exec.internal.JdbcSelectWithActions;
+import org.hibernate.sql.exec.spi.JdbcSelectWithActionsBuilder;
 import org.hibernate.sql.results.jdbc.spi.JdbcValuesMappingProducerProvider;
 import org.hibernate.stat.spi.StatisticsImplementor;
 import org.hibernate.generator.Generator;
@@ -315,4 +319,23 @@ public interface SessionFactoryImplementor extends SessionFactory {
 	 */
 	String bestGuessEntityName(Object object);
 
+	@Incubating
+	default JdbcSelectWithActionsBuilder getJdbcSelectWithActionsBuilder(){
+		return new JdbcSelectWithActions.Builder();
+	}
+
+	@Override
+	default <T> RootGraph<T> parseEntityGraph(Class<T> rootEntityClass, CharSequence graphText) {
+		return GraphParser.parse( rootEntityClass, graphText.toString(), unwrap( SessionFactoryImplementor.class ) );
+	}
+
+	@Override @Incubating
+	default <T> RootGraph<T> parseEntityGraph(String rootEntityName, CharSequence graphText) {
+		return GraphParser.parse( rootEntityName, graphText.toString(), unwrap( SessionFactoryImplementor.class ) );
+	}
+
+	@Override @Incubating
+	default <T> RootGraph<T> parseEntityGraph(CharSequence graphText) {
+		return GraphParser.parse( graphText.toString(), unwrap( SessionFactoryImplementor.class ) );
+	}
 }

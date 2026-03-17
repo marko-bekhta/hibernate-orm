@@ -10,7 +10,7 @@ import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.dialect.H2Dialect;
 import org.hibernate.orm.test.jpa.schemagen.JpaSchemaGeneratorTest;
 
-import org.hibernate.testing.RequiresDialect;
+import org.hibernate.testing.orm.junit.RequiresDialect;
 
 /**
  * @author Vlad Mihalcea
@@ -25,8 +25,8 @@ public class JpaSchemaGeneratorWithHbm2DdlCharsetNameTest
 	}
 
 	@Override
-	protected Map buildSettings() {
-		Map settings = super.buildSettings();
+	protected Map<String,Object> buildSettings() {
+		Map<String,Object> settings = super.buildSettings();
 		settings.put( AvailableSettings.HBM2DDL_CHARSET_NAME, "ISO-8859-1" );
 		return settings;
 	}

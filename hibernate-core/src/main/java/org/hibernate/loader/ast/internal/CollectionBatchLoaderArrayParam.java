@@ -16,17 +16,18 @@ import org.hibernate.internal.build.AllowReflection;
 import org.hibernate.loader.ast.spi.CollectionBatchLoader;
 import org.hibernate.loader.ast.spi.SqlArrayMultiKeyLoader;
 import org.hibernate.metamodel.mapping.ForeignKeyDescriptor;
-import org.hibernate.metamodel.mapping.JdbcMapping;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
+import org.hibernate.metamodel.mapping.SqlTypedMapping;
+import org.hibernate.metamodel.mapping.internal.SqlTypedMappingImpl;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.sql.ast.tree.expression.JdbcParameter;
 import org.hibernate.sql.ast.tree.select.SelectStatement;
 import org.hibernate.sql.exec.internal.JdbcParameterBindingImpl;
 import org.hibernate.sql.exec.internal.JdbcParameterBindingsImpl;
-import org.hibernate.sql.exec.internal.JdbcParameterImpl;
-import org.hibernate.sql.exec.internal.JdbcOperationQuerySelect;
+import org.hibernate.sql.exec.internal.SqlTypedMappingJdbcParameter;
 import org.hibernate.sql.exec.spi.JdbcParameterBindings;
 import org.hibernate.sql.exec.spi.JdbcParametersList;
+import org.hibernate.sql.exec.spi.JdbcSelect;
 import org.hibernate.sql.results.internal.RowTransformerStandardImpl;
 import org.hibernate.sql.results.spi.ListResultsConsumer;
 
@@ -44,10 +45,10 @@ public class CollectionBatchLoaderArrayParam
 		extends AbstractCollectionBatchLoader
 		implements SqlArrayMultiKeyLoader {
 
-	private final JdbcMapping arrayJdbcMapping;
+	private final SqlTypedMapping arraySqlTypedMapping;
 	private final JdbcParameter jdbcParameter;
 	private final SelectStatement sqlSelect;
-	private final JdbcOperationQuerySelect jdbcSelectOperation;
+	private final JdbcSelect jdbcSelectOperation;
 
 	public CollectionBatchLoaderArrayParam(
 			int domainBatchSize,
@@ -64,16 +65,24 @@ public class CollectionBatchLoaderArrayParam
 		}
 
 		final var keyDescriptor = getLoadable().getKeyDescriptor();
-		final var jdbcMapping = keyDescriptor.getSingleJdbcMapping();
+		final var selectable = keyDescriptor.getSelectable( 0 );
+		final var jdbcMapping = selectable.getJdbcMapping();
 		final var jdbcJavaTypeClass = jdbcMapping.getJdbcJavaType().getJavaTypeClass();
 
-		arrayJdbcMapping = MultiKeyLoadHelper.resolveArrayJdbcMapping(
-				jdbcMapping,
-				jdbcJavaTypeClass,
-				getSessionFactory()
+		arraySqlTypedMapping = new SqlTypedMappingImpl(
+				selectable.getColumnDefinition(),
+				selectable.getLength(),
+				selectable.getPrecision(),
+				selectable.getScale(),
+				selectable.getTemporalPrecision(),
+				MultiKeyLoadHelper.resolveArrayJdbcMapping(
+						jdbcMapping,
+						jdbcJavaTypeClass,
+						getSessionFactory()
+				)
 		);
 
-		jdbcParameter = new JdbcParameterImpl( arrayJdbcMapping );
+		jdbcParameter = new SqlTypedMappingJdbcParameter( arraySqlTypedMapping );
 		sqlSelect = LoaderSelectBuilder.createSelectBySingleArrayParameter(
 				getLoadable(),
 				keyDescriptor.getKeyPart(),
@@ -93,12 +102,14 @@ public class CollectionBatchLoaderArrayParam
 				.buildSelectTranslator( getSessionFactory(), sqlSelect )
 				.translate( JdbcParameterBindings.NO_BINDINGS, QueryOptions.NONE );
 	}
+
 	@Override
 	public PersistentCollection<?> load(Object keyBeingLoaded, SharedSessionContractImplementor session) {
 		final var keyDescriptor = getLoadable().getKeyDescriptor();
-		if ( keyDescriptor.isEmbedded() ) {
+		if ( keyDescriptor.isEmbedded()
+			|| keyDescriptor.getKeyPart().getSingleJdbcMapping().getValueConverter() != null ) {
 			assert keyDescriptor.getJdbcTypeCount() == 1;
-			return loadEmbeddable( keyBeingLoaded, session, keyDescriptor );
+			return loadWithConversion( keyBeingLoaded, session, keyDescriptor );
 		}
 		else {
 			return super.load( keyBeingLoaded, session );
@@ -106,7 +117,7 @@ public class CollectionBatchLoaderArrayParam
 	}
 
 	@AllowReflection
-	private PersistentCollection<?> loadEmbeddable(
+	private PersistentCollection<?> loadWithConversion(
 			Object keyBeingLoaded,
 			SharedSessionContractImplementor session,
 			ForeignKeyDescriptor keyDescriptor) {
@@ -117,7 +128,7 @@ public class CollectionBatchLoaderArrayParam
 
 		final int length = getDomainBatchSize();
 		final Object[] keysToInitialize = new Object[length];
-		final Object[] embeddedKeys = new Object[length];
+		final Object[] domainKeys = new Object[length];
 		session.getPersistenceContextInternal().getBatchFetchQueue()
 				.collectBatchLoadableCollectionKeys(
 						length,
@@ -126,7 +137,7 @@ public class CollectionBatchLoaderArrayParam
 										key,
 										(i, value, jdbcMapping) -> {
 											keysToInitialize[index] = value;
-											embeddedKeys[index] = key;
+											domainKeys[index] = key;
 										},
 										session
 								)
@@ -143,7 +154,7 @@ public class CollectionBatchLoaderArrayParam
 
 		initializeKeys( keyBeingLoaded, keys, session );
 
-		for ( Object initializedKey : embeddedKeys ) {
+		for ( Object initializedKey : domainKeys ) {
 			if ( initializedKey != null ) {
 				finishInitializingKey( initializedKey, session );
 			}
@@ -166,10 +177,10 @@ public class CollectionBatchLoaderArrayParam
 		assert jdbcSelectOperation != null;
 		assert jdbcParameter != null;
 
-		final var jdbcParameterBindings = new JdbcParameterBindingsImpl(1);
+		final var jdbcParameterBindings = new JdbcParameterBindingsImpl( 1 );
 		jdbcParameterBindings.addBinding(
 				jdbcParameter,
-				new JdbcParameterBindingImpl( arrayJdbcMapping, keysToInitialize )
+				new JdbcParameterBindingImpl( arraySqlTypedMapping.getJdbcMapping(), keysToInitialize )
 		);
 
 		session.getJdbcServices().getJdbcSelectExecutor().list(
@@ -197,31 +208,10 @@ public class CollectionBatchLoaderArrayParam
 	}
 
 	@Override
-	@AllowReflection
 	Object[] resolveKeysToInitialize(Object keyBeingLoaded, SharedSessionContractImplementor session) {
-		final var keyDescriptor = getLoadable().getKeyDescriptor();
-		if( keyDescriptor.isEmbedded()){
-			assert keyDescriptor.getJdbcTypeCount() == 1;
-			final int length = getDomainBatchSize();
-			final var keysToInitialize = new Object[length];
-			session.getPersistenceContextInternal().getBatchFetchQueue()
-					.collectBatchLoadableCollectionKeys(
-							length,
-							(index, key) ->
-									keyDescriptor.forEachJdbcValue(
-											key,
-											(i, value, jdbcMapping) -> {
-												keysToInitialize[index] = value;
-											},
-											session
-									)
-							,
-							keyBeingLoaded,
-							getLoadable()
-					);
-			// now trim down the array to the number of keys we found
-			return trimIdBatch( length, keysToInitialize );
-		}
+		assert !getLoadable().getKeyDescriptor().isEmbedded()
+			&& getLoadable().getKeyDescriptor().getKeyPart().getSingleJdbcMapping().getValueConverter() == null
+				: "Should use loadWithConversion() instead";
 		return super.resolveKeysToInitialize( keyBeingLoaded, session );
 	}
 }

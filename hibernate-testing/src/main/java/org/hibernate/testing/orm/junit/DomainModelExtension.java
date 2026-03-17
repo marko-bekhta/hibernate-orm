@@ -32,15 +32,15 @@ import org.junit.platform.commons.support.AnnotationSupport;
 
 import jakarta.persistence.SharedCacheMode;
 
-/**
- * hibernate-testing implementation of a few JUnit5 contracts to support SessionFactory-based testing,
- * including argument injection (or see {@link DomainModelScopeAware})
- *
- * @see ServiceRegistryScope
- * @see DomainModelExtension
- *
- * @author Steve Ebersole
- */
+/// Support for defining the [domain model][MetadataImplementor] used in a test.
+///
+/// @see DomainModel
+/// @see DomainModelFunctionalTesting
+/// @see DomainModelProducer
+///
+/// @implNote Leverages the [service registry][ServiceRegistryScope] defined using the [ServiceRegistryExtension].
+///
+/// @author Steve Ebersole
 public class DomainModelExtension
 		implements TestInstancePostProcessor, BeforeEachCallback, TestExecutionExceptionHandler {
 
@@ -203,6 +203,9 @@ public class DomainModelExtension
 					try {
 						final DomainModelDescriptor modelDescriptor = modelDescriptorClass.newInstance();
 						modelDescriptor.applyDomainModel( metadataSources );
+						for ( Class<?> annotatedClass : modelDescriptor.getAnnotatedClasses() ) {
+							metadataSources.addAnnotatedClass( annotatedClass );
+						}
 					}
 					catch (IllegalAccessException | InstantiationException e) {
 						throw new RuntimeException( "Error instantiating DomainModelDescriptor - " + modelDescriptorClass.getName(), e );
@@ -332,7 +335,7 @@ public class DomainModelExtension
 			this.serviceRegistryScope = serviceRegistryScope;
 			this.producer = producer;
 
-			this.model = createDomainModel();
+			model = createDomainModel();
 		}
 
 		private MetadataImplementor createDomainModel() {
@@ -366,6 +369,7 @@ public class DomainModelExtension
 			releaseModel();
 		}
 
+		@Override
 		public void releaseModel() {
 			model = null;
 		}

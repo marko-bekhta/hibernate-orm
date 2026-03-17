@@ -5,6 +5,7 @@
 package org.hibernate.boot.internal;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -77,7 +78,7 @@ import org.hibernate.resource.jdbc.spi.PhysicalConnectionHandlingMode;
 import org.hibernate.resource.jdbc.spi.StatementInspector;
 import org.hibernate.resource.transaction.spi.TransactionCoordinatorBuilder;
 import org.hibernate.type.format.FormatMapper;
-import org.hibernate.type.format.jaxb.JaxbXmlFormatMapper;
+import org.hibernate.type.format.FormatMapperCreationContext;
 
 import jakarta.persistence.criteria.Nulls;
 
@@ -99,11 +100,14 @@ import static org.hibernate.internal.util.config.ConfigurationHelper.getString;
 import static org.hibernate.jpa.internal.util.CacheModeHelper.interpretCacheMode;
 import static org.hibernate.jpa.internal.util.ConfigurationHelper.getFlushMode;
 import static org.hibernate.stat.Statistics.DEFAULT_QUERY_STATISTICS_MAX_SIZE;
+import static org.hibernate.type.format.jackson.JacksonIntegration.getJsonJackson3FormatMapperOrNull;
 import static org.hibernate.type.format.jackson.JacksonIntegration.getJsonJacksonFormatMapperOrNull;
 import static org.hibernate.type.format.jackson.JacksonIntegration.getOsonJacksonFormatMapperOrNull;
+import static org.hibernate.type.format.jackson.JacksonIntegration.getXMLJackson3FormatMapperOrNull;
 import static org.hibernate.type.format.jackson.JacksonIntegration.getXMLJacksonFormatMapperOrNull;
-import static org.hibernate.type.format.jackson.JacksonIntegration.isJacksonOsonExtensionAvailable;
 import static org.hibernate.type.format.jakartajson.JakartaJsonIntegration.getJakartaJsonBFormatMapperOrNull;
+import static org.hibernate.type.format.jaxb.JaxbIntegration.getJaxbLegacyXmlFormatMapperOrNull;
+import static org.hibernate.type.format.jaxb.JaxbIntegration.getJaxbXmlFormatMapperOrNull;
 
 /**
  * In-flight state of {@link SessionFactoryOptions} during {@link org.hibernate.boot.SessionFactoryBuilder}
@@ -187,6 +191,7 @@ public class SessionFactoryOptionsBuilder implements SessionFactoryOptions {
 	private boolean namedQueryStartupCheckingEnabled;
 	private final boolean preferJavaTimeJdbcTypes;
 	private final boolean preferNativeEnumTypes;
+	private final boolean preferLocaleLanguageTagEnabled;
 	private final int preferredSqlTypeCodeForBoolean;
 	private final int preferredSqlTypeCodeForDuration;
 	private final int preferredSqlTypeCodeForUuid;
@@ -292,10 +297,17 @@ public class SessionFactoryOptionsBuilder implements SessionFactoryOptions {
 				settings.get( JAKARTA_VALIDATION_FACTORY )
 		);
 
+		final var formatMapperCreationContext = new FormatMapperCreationContext() {
+			@Override
+			public BootstrapContext getBootstrapContext() {
+				return context;
+			}
+		};
 		jsonFormatMapper = jsonFormatMapper(
 				settings.get( JSON_FORMAT_MAPPER ),
 				!getBoolean( ORACLE_OSON_DISABLED, settings),
-				strategySelector
+				strategySelector,
+				formatMapperCreationContext
 		);
 
 		xmlFormatMapper = xmlFormatMapper(
@@ -303,7 +315,8 @@ public class SessionFactoryOptionsBuilder implements SessionFactoryOptions {
 				strategySelector,
 				xmlFormatMapperLegacyFormatEnabled =
 						context.getMetadataBuildingOptions()
-								.isXmlFormatMapperLegacyFormatEnabled()
+								.isXmlFormatMapperLegacyFormatEnabled(),
+				formatMapperCreationContext
 		);
 
 		sessionFactoryName = (String) settings.get( SESSION_FACTORY_NAME );
@@ -394,6 +407,7 @@ public class SessionFactoryOptionsBuilder implements SessionFactoryOptions {
 
 		preferJavaTimeJdbcTypes = MetadataBuildingContext.isPreferJavaTimeJdbcTypesEnabled( configurationService );
 		preferNativeEnumTypes = MetadataBuildingContext.isPreferNativeEnumTypesEnabled( configurationService );
+		preferLocaleLanguageTagEnabled = MetadataBuildingContext.isPreferNativeEnumTypesEnabled( configurationService );
 		preferredSqlTypeCodeForBoolean = ConfigurationHelper.getPreferredSqlTypeCodeForBoolean( serviceRegistry );
 		preferredSqlTypeCodeForDuration = ConfigurationHelper.getPreferredSqlTypeCodeForDuration( serviceRegistry );
 		preferredSqlTypeCodeForUuid = ConfigurationHelper.getPreferredSqlTypeCodeForUuid( serviceRegistry );
@@ -834,39 +848,83 @@ public class SessionFactoryOptionsBuilder implements SessionFactoryOptions {
 						.getDefaultConnectionHandlingMode();
 	}
 
-	private static FormatMapper jsonFormatMapper(Object setting, boolean osonExtensionEnabled, StrategySelector selector) {
+	private static FormatMapper jsonFormatMapper(Object setting, boolean osonExtensionEnabled, StrategySelector selector, FormatMapperCreationContext creationContext) {
 		return formatMapper(
 				setting,
 				selector,
 				() -> {
 					// Prefer the OSON Jackson FormatMapper by default if available
-					final FormatMapper jsonJacksonFormatMapper =
-							osonExtensionEnabled && isJacksonOsonExtensionAvailable()
-									? getOsonJacksonFormatMapperOrNull()
-									: getJsonJacksonFormatMapperOrNull();
-					return jsonJacksonFormatMapper != null
-							? jsonJacksonFormatMapper
-							: getJakartaJsonBFormatMapperOrNull();
-				}
+					final var jacksonOsonFormatMapper = osonExtensionEnabled
+							? getOsonJacksonFormatMapperOrNull( creationContext )
+							: null;
+					if ( jacksonOsonFormatMapper != null ) {
+						return jacksonOsonFormatMapper;
+					}
+
+					final var jacksonFormatMapper = getJsonJacksonFormatMapperOrNull( creationContext );
+					if ( jacksonFormatMapper != null ) {
+						return jacksonFormatMapper;
+					}
+
+					final var jackson3FormatMapper = getJsonJackson3FormatMapperOrNull( creationContext );
+					if ( jackson3FormatMapper != null ) {
+						return jackson3FormatMapper;
+					}
+
+					return getJakartaJsonBFormatMapperOrNull();
+				},
+				creationContext
 		);
 	}
 
-	private static FormatMapper xmlFormatMapper(Object setting, StrategySelector selector, boolean legacyFormat) {
+	private static FormatMapper xmlFormatMapper(Object setting, StrategySelector selector, boolean legacyFormat, FormatMapperCreationContext creationContext) {
 		return formatMapper(
 				setting,
 				selector,
 				() -> {
-					final FormatMapper jacksonFormatMapper =
-							getXMLJacksonFormatMapperOrNull( legacyFormat );
-					return jacksonFormatMapper != null
-							? jacksonFormatMapper
-							: new JaxbXmlFormatMapper( legacyFormat );
-				}
+					final var jacksonFormatMapper = getXMLJacksonFormatMapperOrNull( creationContext );
+					if ( jacksonFormatMapper != null ) {
+						return jacksonFormatMapper;
+					}
+
+					final var jackson3FormatMapper = getXMLJackson3FormatMapperOrNull( creationContext );
+					if ( jackson3FormatMapper != null ) {
+						return jackson3FormatMapper;
+					}
+
+					return legacyFormat
+							? getJaxbLegacyXmlFormatMapperOrNull()
+							: getJaxbXmlFormatMapperOrNull();
+				},
+				creationContext
 		);
 	}
 
-	private static FormatMapper formatMapper(Object setting, StrategySelector selector, Callable<FormatMapper> defaultResolver) {
-		return selector.resolveDefaultableStrategy( FormatMapper.class, setting, defaultResolver );
+	private static FormatMapper formatMapper(Object setting, StrategySelector selector, Callable<FormatMapper> defaultResolver, FormatMapperCreationContext creationContext) {
+		return selector.resolveStrategy( FormatMapper.class, setting, defaultResolver, strategyClass -> {
+			try {
+				return strategyClass.getDeclaredConstructor( FormatMapperCreationContext.class )
+						.newInstance( creationContext );
+			}
+			catch (NoSuchMethodException e) {
+				// Ignore
+			}
+			catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
+				throw new StrategySelectionException(
+						String.format( "Could not instantiate named strategy class [%s]", strategyClass.getName() ),
+						e
+				);
+			}
+			try {
+				return strategyClass.getDeclaredConstructor().newInstance();
+			}
+			catch (Exception e) {
+				throw new StrategySelectionException(
+						String.format( "Could not instantiate named strategy class [%s]", strategyClass.getName() ),
+						e
+				);
+			}
+		} );
 	}
 
 
@@ -1356,6 +1414,11 @@ public class SessionFactoryOptionsBuilder implements SessionFactoryOptions {
 	@Override
 	public boolean isPreferNativeEnumTypesEnabled() {
 		return preferNativeEnumTypes;
+	}
+
+	@Override
+	public boolean isPreferLocaleLanguageTagEnabled() {
+		return preferLocaleLanguageTagEnabled;
 	}
 
 	@Override

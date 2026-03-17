@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.Incubating;
 import org.hibernate.query.NullPrecedence;
 import org.hibernate.query.SortDirection;
@@ -635,7 +636,7 @@ public class HibernateCriteriaBuilderDelegate implements HibernateCriteriaBuilde
 	}
 
 	@Override
-	public <T> JpaExpression<T> literal(T value) {
+	public <T> JpaExpression<T> literal(@Nullable T value) {
 		return criteriaBuilder.literal( value );
 	}
 
@@ -840,7 +841,7 @@ public class HibernateCriteriaBuilderDelegate implements HibernateCriteriaBuilde
 	}
 
 	@Override
-	public <T> JpaExpression<T> value(T value) {
+	public <T> JpaExpression<T> value(@Nullable T value) {
 		return criteriaBuilder.value( value );
 	}
 
@@ -2558,6 +2559,45 @@ public class HibernateCriteriaBuilderDelegate implements HibernateCriteriaBuilde
 
 	@Override
 	@Incubating
+	public <T> JpaExpression<T[]> arrayReverse(Expression<T[]> arrayExpression) {
+		return criteriaBuilder.arrayReverse( arrayExpression );
+	}
+
+	@Override
+	@Incubating
+	public <T> JpaExpression<T[]> arraySort(Expression<T[]> arrayExpression) {
+		return criteriaBuilder.arraySort( arrayExpression );
+	}
+
+	@Override
+	@Incubating
+	public <T> JpaExpression<T[]> arraySort(Expression<T[]> arrayExpression, boolean descending) {
+		return criteriaBuilder.arraySort( arrayExpression, descending );
+	}
+
+	@Override
+	@Incubating
+	public <T> JpaExpression<T[]> arraySort(Expression<T[]> arrayExpression, Expression<Boolean> descendingExpression) {
+		return criteriaBuilder.arraySort( arrayExpression, descendingExpression );
+	}
+
+	@Override
+	@Incubating
+	public <T> JpaExpression<T[]> arraySort(Expression<T[]> arrayExpression, boolean descending, boolean nullsFirst) {
+		return criteriaBuilder.arraySort( arrayExpression, descending, nullsFirst );
+	}
+
+	@Override
+	@Incubating
+	public <T> JpaExpression<T[]> arraySort(
+			Expression<T[]> arrayExpression,
+			Expression<Boolean> descendingExpression,
+			Expression<Boolean> nullsFirstExpression) {
+		return criteriaBuilder.arraySort( arrayExpression, descendingExpression, nullsFirstExpression );
+	}
+
+	@Override
+	@Incubating
 	public <T> JpaExpression<T[]> arrayFill(
 			Expression<T> elementExpression,
 			Expression<Integer> elementCountExpression) {
@@ -3100,6 +3140,52 @@ public class HibernateCriteriaBuilderDelegate implements HibernateCriteriaBuilde
 			Expression<C> arrayExpression,
 			Integer elementCount) {
 		return criteriaBuilder.collectionTrim( arrayExpression, elementCount );
+	}
+
+	@Override
+	@Incubating
+	public <C extends Collection<?>> JpaExpression<C> collectionReverse(Expression<C> collectionExpression) {
+		return criteriaBuilder.collectionReverse( collectionExpression );
+	}
+
+	@Override
+	@Incubating
+	public <C extends Collection<?>> JpaExpression<C> collectionSort(Expression<C> collectionExpression) {
+		return criteriaBuilder.collectionSort( collectionExpression );
+	}
+
+	@Override
+	@Incubating
+	public <C extends Collection<?>> JpaExpression<C> collectionSort(
+			Expression<C> collectionExpression,
+			boolean descending) {
+		return criteriaBuilder.collectionSort( collectionExpression, descending );
+	}
+
+	@Override
+	@Incubating
+	public <C extends Collection<?>> JpaExpression<C> collectionSort(
+			Expression<C> collectionExpression,
+			Expression<Boolean> descendingExpression) {
+		return criteriaBuilder.collectionSort( collectionExpression, descendingExpression );
+	}
+
+	@Override
+	@Incubating
+	public <C extends Collection<?>> JpaExpression<C> collectionSort(
+			Expression<C> collectionExpression,
+			boolean descending,
+			boolean nullsFirst) {
+		return criteriaBuilder.collectionSort( collectionExpression, descending, nullsFirst );
+	}
+
+	@Override
+	@Incubating
+	public <C extends Collection<?>> JpaExpression<C> collectionSort(
+			Expression<C> collectionExpression,
+			Expression<Boolean> descendingExpression,
+			Expression<Boolean> nullsFirstExpression) {
+		return criteriaBuilder.collectionSort( collectionExpression, descendingExpression, nullsFirstExpression );
 	}
 
 	@Override

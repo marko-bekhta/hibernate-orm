@@ -7,6 +7,8 @@ package org.hibernate.orm.test.mapping.type.java;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.List;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -25,16 +27,15 @@ import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.junit.jupiter.api.Test;
 
-import org.hamcrest.Matchers;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 /**
  * Tests for implicit widening coercions
  *
  * @author Steve Ebersole
  */
+@SuppressWarnings("JUnitMalformedDeclaration")
 @DomainModel( annotatedClasses = CoercionTests.TheEntity.class )
 @SessionFactory
 public class CoercionTests {
@@ -69,65 +70,65 @@ public class CoercionTests {
 	}
 
 	private void checkDoubleConversions(JavaType<Double> doubleType, SessionImplementor session) {
-		assertThat( doubleType.coerce( (double) 1, session ), Matchers.is( 1.0 ) );
-		assertThat( doubleType.coerce( 1F, session ), Matchers.is( 1.0 ) );
-		assertThat( doubleType.coerce( doubleValue, session ), Matchers.is( doubleValue ) );
-		assertThat( doubleType.coerce( floatValue, session ), Matchers.is( doubleValue ) );
+		assertThat( doubleType.coerce( (double) 1 ) ).isEqualTo( 1.0 );
+		assertThat( doubleType.coerce( 1F ) ).isEqualTo( 1.0 );
+		assertThat( doubleType.coerce( doubleValue ) ).isEqualTo( doubleValue );
+		assertThat( doubleType.coerce( floatValue ) ).isEqualTo( doubleValue );
 
-		assertThat( doubleType.coerce( largeFloatValue, session ), Matchers.is( (double) largeFloatValue ) );
+		assertThat( doubleType.coerce( largeFloatValue ) ).isEqualTo( Double.valueOf( largeFloatValue ) );
 
-		assertThat( doubleType.coerce( shortValue, session ), Matchers.is( 1.0 ) );
-		assertThat( doubleType.coerce( byteValue, session ), Matchers.is( 1.0 ) );
-		assertThat( doubleType.coerce( longValue, session ), Matchers.is( 1.0 ) );
+		assertThat( doubleType.coerce( shortValue ) ).isEqualTo( 1.0 );
+		assertThat( doubleType.coerce( byteValue ) ).isEqualTo( 1.0 );
+		assertThat( doubleType.coerce( longValue ) ).isEqualTo( 1.0 );
 
-		assertThat( doubleType.coerce( BigInteger.ONE, session ), Matchers.is( 1.0 ) );
-		assertThat( doubleType.coerce( BigDecimal.ONE, session ), Matchers.is( 1.0 ) );
+		assertThat( doubleType.coerce( BigInteger.ONE ) ).isEqualTo( 1.0 );
+		assertThat( doubleType.coerce( BigDecimal.ONE ) ).isEqualTo( 1.0 );
 
 		// negative checks
 	}
 
 	private void checkIntegerConversions(JavaType<Integer> integerType, SessionImplementor session) {
-		assertThat( integerType.coerce( intValue, session ), Matchers.is( intValue) );
+		assertThat( integerType.coerce( intValue ) ).isEqualTo( intValue );
 
-		assertThat( integerType.coerce( shortValue, session ), Matchers.is( intValue) );
-		assertThat( integerType.coerce( byteValue, session ), Matchers.is( intValue) );
+		assertThat( integerType.coerce( shortValue ) ).isEqualTo( intValue );
+		assertThat( integerType.coerce( byteValue ) ).isEqualTo( intValue );
 
-		assertThat( integerType.coerce( longValue, session ), Matchers.is( intValue) );
+		assertThat( integerType.coerce( longValue ) ).isEqualTo( intValue );
 
-		assertThat( integerType.coerce( (double) 1, session ), Matchers.is( intValue) );
-		assertThat( integerType.coerce( 1F, session ), Matchers.is( intValue) );
+		assertThat( integerType.coerce( (double) 1 ) ).isEqualTo( intValue );
+		assertThat( integerType.coerce( 1F ) ).isEqualTo( intValue );
 
-		assertThat( integerType.coerce( BigInteger.ONE, session ), Matchers.is( intValue) );
-		assertThat( integerType.coerce( BigDecimal.ONE, session ), Matchers.is( intValue) );
+		assertThat( integerType.coerce( BigInteger.ONE ) ).isEqualTo( intValue );
+		assertThat( integerType.coerce( BigDecimal.ONE ) ).isEqualTo( intValue );
 
 		// negative checks
-		checkDisallowedConversion( () -> integerType.coerce( largeLongValue, session ) );
-		checkDisallowedConversion( () -> integerType.coerce( largeFloatValue, session ) );
-		checkDisallowedConversion( () -> integerType.coerce( doubleValue, session ) );
-		checkDisallowedConversion( () -> integerType.coerce( floatValue, session ) );
+		checkDisallowedConversion( () -> integerType.coerce( largeLongValue ) );
+		checkDisallowedConversion( () -> integerType.coerce( largeFloatValue ) );
+		checkDisallowedConversion( () -> integerType.coerce( doubleValue ) );
+		checkDisallowedConversion( () -> integerType.coerce( floatValue ) );
 	}
 
 	private void checkLongConversions(JavaType<Long> longType, SessionImplementor session) {
-		assertThat( longType.coerce( longValue, session ), Matchers.is( longValue ) );
-		assertThat( longType.coerce( largeLongValue, session ), Matchers.is( largeLongValue ) );
+		assertThat( longType.coerce( longValue ) ).isEqualTo( longValue );
+		assertThat( longType.coerce( largeLongValue ) ).isEqualTo( largeLongValue );
 
-		assertThat( longType.coerce( intValue, session ), Matchers.is( longValue ) );
-		assertThat( longType.coerce( shortValue, session ), Matchers.is( longValue ) );
-		assertThat( longType.coerce( byteValue, session ), Matchers.is( longValue ) );
+		assertThat( longType.coerce( intValue ) ).isEqualTo( longValue );
+		assertThat( longType.coerce( shortValue ) ).isEqualTo( longValue );
+		assertThat( longType.coerce( byteValue ) ).isEqualTo( longValue );
 
-		assertThat( longType.coerce( (double) 1, session ), Matchers.is( longValue ) );
-		assertThat( longType.coerce( 1F, session ), Matchers.is( longValue ) );
+		assertThat( longType.coerce( (double) 1 ) ).isEqualTo( longValue );
+		assertThat( longType.coerce( 1F ) ).isEqualTo( longValue );
 
-		assertThat( longType.coerce( BigInteger.ONE, session ), Matchers.is( longValue ) );
-		assertThat( longType.coerce( BigDecimal.ONE, session ), Matchers.is( longValue ) );
+		assertThat( longType.coerce( BigInteger.ONE ) ).isEqualTo( longValue );
+		assertThat( longType.coerce( BigDecimal.ONE ) ).isEqualTo( longValue );
 
 		// negative checks
-		checkDisallowedConversion( () -> longType.coerce( largeFloatValue, session ) );
-		checkDisallowedConversion( () -> longType.coerce( doubleValue, session ) );
-		checkDisallowedConversion( () -> longType.coerce( floatValue, session ) );
+		checkDisallowedConversion( () -> longType.coerce( largeFloatValue ) );
+		checkDisallowedConversion( () -> longType.coerce( doubleValue ) );
+		checkDisallowedConversion( () -> longType.coerce( floatValue ) );
 	}
 
-	private void checkDisallowedConversion(CoercionHelper.Coercer callback) {
+	private void checkDisallowedConversion(CoercionHelper.Coercer<?> callback) {
 		try {
 			callback.doCoercion();
 			fail( "Expecting coercion to fail" );
@@ -138,162 +139,132 @@ public class CoercionTests {
 
 	@Test
 	public void testLoading(SessionFactoryScope scope) {
-		scope.inTransaction(
-				(session) -> {
-					session.byId( TheEntity.class ).load( 1L );
+		scope.inTransaction( (session) -> {
+			session.find( TheEntity.class, 1L );
 
-					session.byId( TheEntity.class ).load( (byte) 1 );
-					session.byId( TheEntity.class ).load( (short) 1 );
-					session.byId( TheEntity.class ).load( 1 );
+			session.find( TheEntity.class, (byte) 1 );
+			session.find( TheEntity.class, (short) 1 );
+			session.find( TheEntity.class, 1 );
 
-					session.byId( TheEntity.class ).load( 1.0 );
-					session.byId( TheEntity.class ).load( 1.0F );
+			session.find( TheEntity.class, 1.0 );
+			session.find( TheEntity.class, 1.0F );
 
-					session.byId( TheEntity.class ).load( BigInteger.ONE );
-					session.byId( TheEntity.class ).load( BigDecimal.ONE );
-				}
-		);
-		scope.inTransaction(
-				(session) -> {
-					session.byId( TheEntity.class ).getReference( 1L );
-					session.byId( TheEntity.class ).getReference( 1 );
-				}
-		);
+			session.find( TheEntity.class, BigInteger.ONE );
+			session.find( TheEntity.class, BigDecimal.ONE );
+		} );
+
+		scope.inTransaction( (session) -> {
+			session.getReference( TheEntity.class, 1L );
+			session.getReference( TheEntity.class, 1 );
+		} );
 	}
 
 	@Test
 	public void testMultiIdLoading(SessionFactoryScope scope) {
-		scope.inTransaction(
-				(session) -> {
-					session.byMultipleIds( TheEntity.class ).multiLoad( 1L );
+		scope.inTransaction( (session) -> {
+			session.findMultiple( TheEntity.class, List.of(1L) );
 
-					session.byMultipleIds( TheEntity.class ).multiLoad( (byte) 1 );
-					session.byMultipleIds( TheEntity.class ).multiLoad( (short) 1 );
-					session.byMultipleIds( TheEntity.class ).multiLoad( 1 );
+			session.findMultiple( TheEntity.class, List.of((byte) 1) );
+			session.findMultiple( TheEntity.class, List.of((short) 1) );
+			session.findMultiple( TheEntity.class, List.of(1) );
 
-					session.byMultipleIds( TheEntity.class ).multiLoad( 1.0 );
-					session.byMultipleIds( TheEntity.class ).multiLoad( 1.0F );
+			session.findMultiple( TheEntity.class, List.of(1.0) );
+			session.findMultiple( TheEntity.class, List.of(1.0F) );
 
-					session.byMultipleIds( TheEntity.class ).multiLoad( BigInteger.ONE );
-					session.byMultipleIds( TheEntity.class ).multiLoad( BigDecimal.ONE );
-				}
-		);
-		scope.inTransaction(
-				(session) -> {
-					session.byMultipleIds( TheEntity.class ).multiLoad( Arrays.asList( 1L ) );
-					session.byMultipleIds( TheEntity.class ).multiLoad( Arrays.asList( 1 ) );
-				}
-		);
+			session.findMultiple( TheEntity.class, List.of(BigInteger.ONE) );
+			session.findMultiple( TheEntity.class, List.of(BigDecimal.ONE) );
+		} );
 	}
 
 	@Test
 	public void testNaturalIdLoading(SessionFactoryScope scope) {
-		scope.inTransaction(
-				(session) -> {
-					session.bySimpleNaturalId( TheEntity.class ).load( 1L );
+		scope.inTransaction( (session) -> {
+			session.bySimpleNaturalId( TheEntity.class ).load( 1L );
 
-					session.bySimpleNaturalId( TheEntity.class ).load( (byte) 1 );
-					session.bySimpleNaturalId( TheEntity.class ).load( (short) 1 );
-					session.bySimpleNaturalId( TheEntity.class ).load( 1 );
+			session.bySimpleNaturalId( TheEntity.class ).load( (byte) 1 );
+			session.bySimpleNaturalId( TheEntity.class ).load( (short) 1 );
+			session.bySimpleNaturalId( TheEntity.class ).load( 1 );
 
-					session.bySimpleNaturalId( TheEntity.class ).load( 1.0 );
-					session.bySimpleNaturalId( TheEntity.class ).load( 1.0F );
+			session.bySimpleNaturalId( TheEntity.class ).load( 1.0 );
+			session.bySimpleNaturalId( TheEntity.class ).load( 1.0F );
 
-					session.bySimpleNaturalId( TheEntity.class ).load( BigInteger.ONE );
-					session.bySimpleNaturalId( TheEntity.class ).load( BigDecimal.ONE );
-				}
-		);
-		scope.inTransaction(
-				(session) -> {
-					session.byMultipleIds( TheEntity.class ).multiLoad( Arrays.asList( 1L ) );
-					session.byMultipleIds( TheEntity.class ).multiLoad( Arrays.asList( 1 ) );
-				}
-		);
+			session.bySimpleNaturalId( TheEntity.class ).load( BigInteger.ONE );
+			session.bySimpleNaturalId( TheEntity.class ).load( BigDecimal.ONE );
+		} );
 	}
 
 	@Test
 	public void testMultiNaturalIdLoading(SessionFactoryScope scope) {
-		scope.inTransaction(
-				(session) -> {
-					session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( 1L );
+		scope.inTransaction( (session) -> {
+			session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( 1L );
 
-					session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( (byte) 1 );
-					session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( (short) 1 );
-					session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( 1 );
+			session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( (byte) 1 );
+			session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( (short) 1 );
+			session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( 1 );
 
-					session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( 1.0 );
-					session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( 1.0F );
+			session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( 1.0 );
+			session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( 1.0F );
 
-					session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( BigInteger.ONE );
-					session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( BigDecimal.ONE );
-				}
-		);
-		scope.inTransaction(
-				(session) -> {
-					session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( Arrays.asList( 1L ) );
-					session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( Arrays.asList( 1 ) );
-				}
-		);
+			session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( BigInteger.ONE );
+			session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( BigDecimal.ONE );
+		} );
+
+		scope.inTransaction( (session) -> {
+			session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( Arrays.asList( 1L ) );
+			session.byMultipleNaturalId( TheEntity.class ).enableOrderedReturn( false ).multiLoad( Arrays.asList( 1 ) );
+		} );
 	}
 
 	@Test
 	public void testQueryParameterIntegralWiden(SessionFactoryScope scope) {
 		final String qry = "select e from TheEntity e where e.longId = :id";
 
-		scope.inTransaction(
-				(session) -> {
-					final Query query = session.createQuery( qry );
+		scope.inTransaction( (session) -> {
+			final Query<TheEntity> query = session.createQuery( qry, TheEntity.class );
 
-					query.setParameter( "id", 1L ).list();
+			query.setParameter( "id", 1L ).list();
 
-					query.setParameter( "id", 1 ).list();
-				}
-		);
+			query.setParameter( "id", 1 ).list();
+		} );
 	}
 
 	@Test
 	public void testQueryParameterIntegralNarrow(SessionFactoryScope scope) {
 		final String qry = "select e from TheEntity e where e.intValue = ?1";
 
-		scope.inTransaction(
-				(session) -> {
-					final Query query = session.createQuery( qry );
+		scope.inTransaction( (session) -> {
+			final Query<TheEntity> query = session.createQuery( qry, TheEntity.class );
 
-					query.setParameter( 1, 1 ).list();
+			query.setParameter( 1, 1 ).list();
 
-					query.setParameter( 1, 1L ).list();
-				}
-		);
+			query.setParameter( 1, 1L ).list();
+		} );
 	}
 
 	@Test
 	public void testQueryParameterFloatingWiden(SessionFactoryScope scope) {
 		final String qry = "select e from TheEntity e where e.floatValue = :p";
 
-		scope.inTransaction(
-				(session) -> {
-					final Query query = session.createQuery( qry );
+		scope.inTransaction( (session) -> {
+			final Query<TheEntity> query = session.createQuery( qry, TheEntity.class );
 
-					query.setParameter( "p", 0.5f ).list();
+			query.setParameter( "p", 0.5f ).list();
 
-					query.setParameter( "p", 0.5 ).list();
-				}
-		);
+			query.setParameter( "p", 0.5 ).list();
+		} );
 	}
 
 	@Test
 	public void testQueryParameterFloatingNarrow(SessionFactoryScope scope) {
 		final String qry = "select e from TheEntity e where e.doubleValue = :p";
 
-		scope.inTransaction(
-				(session) -> {
-					final Query query = session.createQuery( qry );
+		scope.inTransaction( (session) -> {
+			final Query<TheEntity> query = session.createQuery( qry, TheEntity.class );
 
-					query.setParameter( "p", 0.5 ).list();
+			query.setParameter( "p", 0.5 ).list();
 
-					query.setParameter( "p", 0.5f ).list();
-				}
-		);
+			query.setParameter( "p", 0.5f ).list();
+		} );
 	}
 
 	@Entity( name = "TheEntity" )

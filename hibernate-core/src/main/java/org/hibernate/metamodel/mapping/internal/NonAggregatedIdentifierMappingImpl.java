@@ -65,12 +65,12 @@ public class NonAggregatedIdentifierMappingImpl extends AbstractCompositeIdentif
 		super( entityPersister, rootTableName, creationProcess );
 		entityDescriptor = entityPersister;
 
-		if ( bootEntityDescriptor.getIdentifierMapper() == null
-				|| bootEntityDescriptor.getIdentifierMapper() == bootEntityDescriptor.getIdentifier() ) {
+		final var identifierMapper = bootEntityDescriptor.getIdentifierMapper();
+		final var identifier = bootEntityDescriptor.getIdentifier();
+		if ( identifierMapper == null || identifierMapper == identifier ) {
 			// cid -> getIdentifier
 			// idClass -> null
-			final Component virtualIdSource = (Component) bootEntityDescriptor.getIdentifier();
-
+			final var virtualIdSource = (Component) identifier;
 			virtualIdEmbeddable = new VirtualIdEmbeddable(
 					virtualIdSource,
 					this,
@@ -85,9 +85,8 @@ public class NonAggregatedIdentifierMappingImpl extends AbstractCompositeIdentif
 		else {
 			// cid = getIdentifierMapper
 			// idClass = getIdentifier
-			final var virtualIdSource = bootEntityDescriptor.getIdentifierMapper();
-			final var idClassSource = (Component) bootEntityDescriptor.getIdentifier();
-
+			final var virtualIdSource = identifierMapper;
+			final var idClassSource = (Component) identifier;
 			virtualIdEmbeddable = new VirtualIdEmbeddable(
 					virtualIdSource,
 					this,
@@ -235,7 +234,7 @@ public class NonAggregatedIdentifierMappingImpl extends AbstractCompositeIdentif
 				return lazyInitializer.getInternalIdentifier();
 			}
 			final var embeddableTypeDescriptor = getEmbeddableTypeDescriptor();
-			final Object[] propertyValues = new Object[embeddableTypeDescriptor.getNumberOfAttributeMappings()];
+			final var propertyValues = new Object[embeddableTypeDescriptor.getNumberOfAttributeMappings()];
 			for ( int i = 0; i < propertyValues.length; i++ ) {
 				final var attributeMapping = embeddableTypeDescriptor.getAttributeMapping( i );
 				final Object o = attributeMapping.getValue( entity );
@@ -281,7 +280,7 @@ public class NonAggregatedIdentifierMappingImpl extends AbstractCompositeIdentif
 
 	@Override
 	public void setIdentifier(Object entity, Object id, SharedSessionContractImplementor session) {
-		final Object[] propertyValues = new Object[identifierValueMapper.getNumberOfAttributeMappings()];
+		final var propertyValues = new Object[identifierValueMapper.getNumberOfAttributeMappings()];
 		final var embeddableTypeDescriptor = getEmbeddableTypeDescriptor();
 		for ( int i = 0; i < propertyValues.length; i++ ) {
 			final var attribute = embeddableTypeDescriptor.getAttributeMapping( i );

@@ -5,6 +5,7 @@
 package org.hibernate.query.sqm.function;
 
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Stream;
@@ -33,15 +34,14 @@ import static org.hibernate.query.sqm.produce.function.StandardFunctionReturnTyp
  *
  * @author Steve Ebersole
  */
+@SuppressWarnings("UnusedReturnValue")
 public class SqmFunctionRegistry {
-//	private static final Logger LOG = Logger.getLogger( SqmFunctionRegistry.class );
 
 	private final CaseInsensitiveDictionary<SqmFunctionDescriptor> functionMap = new CaseInsensitiveDictionary<>();
 	private final CaseInsensitiveDictionary<SqmSetReturningFunctionDescriptor> setReturningFunctionMap = new CaseInsensitiveDictionary<>();
 	private final CaseInsensitiveDictionary<String> alternateKeyMap = new CaseInsensitiveDictionary<>();
 
 	public SqmFunctionRegistry() {
-//		LOG.trace( "SqmFunctionRegistry created" );
 	}
 
 	public Set<String> getValidFunctionKeys() {
@@ -81,18 +81,27 @@ public class SqmFunctionRegistry {
 	 * Returns {@code null} if no such function is found.
 	 */
 	public @Nullable SqmFunctionDescriptor findFunctionDescriptor(String functionName) {
-		SqmFunctionDescriptor found = null;
-
 		final String alternateKeyResolution = alternateKeyMap.get( functionName );
 		if ( alternateKeyResolution != null ) {
-			found = functionMap.get( alternateKeyResolution );
+			final var function = functionMap.get( alternateKeyResolution );
+			if ( function != null ) {
+				return function;
+			}
 		}
+		return functionMap.get( functionName );
+	}
 
-		if ( found == null ) {
-			found = functionMap.get( functionName );
+	/**
+	 * Find a {@link SqmFunctionDescriptor} by name.
+	 *
+	 * @throws NoSuchElementException if no such function is found
+	 */
+	public SqmFunctionDescriptor getFunctionDescriptor(String functionName) {
+		final var functionDescriptor = findFunctionDescriptor( functionName );
+		if ( functionDescriptor == null ) {
+			throw new NoSuchElementException( functionName );
 		}
-
-		return found;
+		return functionDescriptor;
 	}
 
 	/**
@@ -100,32 +109,34 @@ public class SqmFunctionRegistry {
 	 * Returns {@code null} if no such function is found.
 	 */
 	public @Nullable SqmSetReturningFunctionDescriptor findSetReturningFunctionDescriptor(String functionName) {
-		SqmSetReturningFunctionDescriptor found = null;
-
 		final String alternateKeyResolution = alternateKeyMap.get( functionName );
 		if ( alternateKeyResolution != null ) {
-			found = setReturningFunctionMap.get( alternateKeyResolution );
+			final var function = setReturningFunctionMap.get( alternateKeyResolution );
+			if ( function != null ) {
+				return function;
+			}
 		}
+		return setReturningFunctionMap.get( functionName );
+	}
 
-		if ( found == null ) {
-			found = setReturningFunctionMap.get( functionName );
+	/**
+	 * Find a {@link SqmSetReturningFunctionDescriptor} by name.
+	 *
+	 * @throws NoSuchElementException if no such function is found
+	 */
+	public SqmSetReturningFunctionDescriptor getSetReturningFunctionDescriptor(String functionName) {
+		final var functionDescriptor = findSetReturningFunctionDescriptor( functionName );
+		if ( functionDescriptor == null ) {
+			throw new NoSuchElementException( functionName );
 		}
-
-		return found;
+		return functionDescriptor;
 	}
 
 	/**
 	 * Register a function descriptor by name
 	 */
 	public SqmFunctionDescriptor register(String registrationKey, SqmFunctionDescriptor function) {
-		final SqmFunctionDescriptor priorRegistration = functionMap.put( registrationKey, function );
-		// Incredibly verbose logging disabled
-//		LOG.tracef(
-//				"Registered SqmFunctionTemplate [%s] under %s; prior registration was %s",
-//				function,
-//				registrationKey,
-//				priorRegistration
-//		);
+		functionMap.put( registrationKey, function );
 		alternateKeyMap.remove( registrationKey );
 		return function;
 	}
@@ -134,13 +145,7 @@ public class SqmFunctionRegistry {
 	 * Register a set-returning function descriptor by name
 	 */
 	public SqmSetReturningFunctionDescriptor register(String registrationKey, SqmSetReturningFunctionDescriptor function) {
-		final SqmSetReturningFunctionDescriptor priorRegistration = setReturningFunctionMap.put( registrationKey, function );
-//		LOG.tracef(
-//				"Registered SqmSetReturningFunctionTemplate [%s] under %s; prior registration was %s",
-//				function,
-//				registrationKey,
-//				priorRegistration
-//		);
+		setReturningFunctionMap.put( registrationKey, function );
 		alternateKeyMap.remove( registrationKey );
 		return function;
 	}
@@ -157,7 +162,7 @@ public class SqmFunctionRegistry {
 	 * Register a pattern-based descriptor by name and invariant return type.  Shortcut for building the descriptor
 	 * via {@link #patternDescriptorBuilder} accepting its defaults.
 	 */
-	public SqmFunctionDescriptor registerPattern(String name, String pattern, BasicType returnType) {
+	public SqmFunctionDescriptor registerPattern(String name, String pattern, BasicType<?> returnType) {
 		return patternDescriptorBuilder( name, pattern )
 				.setInvariantType( returnType )
 				.register();
@@ -205,7 +210,7 @@ public class SqmFunctionRegistry {
 	 *
 	 * @param name The function name (and registration key)
 	 */
-	public SqmFunctionDescriptor registerNamed(String name, BasicType returnType) {
+	public SqmFunctionDescriptor registerNamed(String name, BasicType<?> returnType) {
 		return namedDescriptorBuilder( name, name ).setInvariantType( returnType ).register();
 	}
 
@@ -366,26 +371,24 @@ public class SqmFunctionRegistry {
 		return noArgsBuilder( registrationKey, name ).register();
 	}
 
-	public SqmFunctionDescriptor registerNoArgs(String name, BasicType returnType) {
+	public SqmFunctionDescriptor registerNoArgs(String name, BasicType<?> returnType) {
 		return registerNoArgs( name, name, returnType );
 	}
 
-	public SqmFunctionDescriptor registerNoArgs(String registrationKey, String name, BasicType returnType) {
+	public SqmFunctionDescriptor registerNoArgs(String registrationKey, String name, BasicType<?> returnType) {
 		return noArgsBuilder( registrationKey, name )
 				.setInvariantType( returnType )
 				.register();
 	}
 
 	public SqmFunctionDescriptor wrapInJdbcEscape(String name, SqmFunctionDescriptor wrapped) {
-		final JdbcEscapeFunctionDescriptor wrapperTemplate = new JdbcEscapeFunctionDescriptor( name, wrapped );
+		final var wrapperTemplate = new JdbcEscapeFunctionDescriptor( name, wrapped );
 		register( name, wrapperTemplate );
 		return wrapperTemplate;
 	}
 
 	public void registerAlternateKey(String alternateKey, String mappedKey) {
 		assert functionMap.containsKey( mappedKey );
-		// Incredibly verbose logging disabled
-//		LOG.tracef( "Registering alternate key : %s -> %s", alternateKey, mappedKey );
 		alternateKeyMap.put( alternateKey, mappedKey );
 	}
 
@@ -396,7 +399,7 @@ public class SqmFunctionRegistry {
 	 */
 	public MultipatternSqmFunctionDescriptor registerNullaryUnaryPattern(
 			String name,
-			BasicType type,
+			BasicType<?> type,
 			String pattern0,
 			String pattern1,
 			FunctionParameterType parameterType,
@@ -520,8 +523,7 @@ public class SqmFunctionRegistry {
 			FunctionParameterType[] parameterTypes,
 			TypeConfiguration typeConfiguration,
 			String... patterns) {
-		SqmFunctionDescriptor[] descriptors =
-				new SqmFunctionDescriptor[patterns.length];
+		final var descriptors = new SqmFunctionDescriptor[patterns.length];
 		for ( int i = 0; i < patterns.length; i++ ) {
 			String pattern = patterns[i];
 			if ( pattern != null ) {
@@ -534,7 +536,7 @@ public class SqmFunctionRegistry {
 			}
 		}
 
-		MultipatternSqmFunctionDescriptor function =
+		final var function =
 				new MultipatternSqmFunctionDescriptor( name, descriptors, typeConfiguration, parameterTypes );
 		register( name, function );
 		return function;
@@ -546,8 +548,7 @@ public class SqmFunctionRegistry {
 			FunctionParameterType[] parameterTypes,
 			TypeConfiguration typeConfiguration,
 			String... patterns) {
-		SqmFunctionDescriptor[] descriptors =
-				new SqmFunctionDescriptor[patterns.length];
+		final var descriptors = new SqmFunctionDescriptor[patterns.length];
 		for ( int i = 0; i < patterns.length; i++ ) {
 			String pattern = patterns[i];
 			if ( pattern != null ) {
@@ -560,7 +561,7 @@ public class SqmFunctionRegistry {
 			}
 		}
 
-		MultipatternSqmFunctionDescriptor function =
+		final var function =
 				new MultipatternSqmFunctionDescriptor( name, descriptors, type, typeConfiguration, parameterTypes );
 		register( name, function );
 		return function;

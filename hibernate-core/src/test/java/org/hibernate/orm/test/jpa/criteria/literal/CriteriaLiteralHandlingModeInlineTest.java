@@ -10,7 +10,7 @@ import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.dialect.H2Dialect;
 import org.hibernate.query.criteria.ValueHandlingMode;
 
-import org.hibernate.testing.RequiresDialect;
+import org.hibernate.testing.orm.junit.RequiresDialect;
 
 /**
  * @author Vlad Mihalcea
@@ -19,8 +19,8 @@ import org.hibernate.testing.RequiresDialect;
 public class CriteriaLiteralHandlingModeInlineTest extends AbstractCriteriaLiteralHandlingModeTest {
 
 	@Override
-	protected Map getConfig() {
-		Map config = super.getConfig();
+	protected Map<String, Object> getConfig() {
+		Map<String, Object> config = super.getConfig();
 		config.put(
 				AvailableSettings.CRITERIA_VALUE_HANDLING_MODE,
 				ValueHandlingMode.INLINE

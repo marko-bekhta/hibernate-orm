@@ -7,6 +7,8 @@ package org.hibernate.metamodel.model.domain.internal;
 import java.io.Serializable;
 import java.lang.reflect.Member;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.metamodel.AttributeClassification;
 import org.hibernate.metamodel.mapping.CollectionPart;
 import org.hibernate.metamodel.model.domain.AnyMappingDomainType;
@@ -15,11 +17,9 @@ import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.metamodel.model.domain.PluralPersistentAttribute;
 import org.hibernate.metamodel.model.domain.SimpleDomainType;
 import org.hibernate.query.SemanticException;
-import org.hibernate.query.sqm.NodeBuilder;
 import org.hibernate.query.sqm.SqmBindableType;
 import org.hibernate.query.sqm.SqmPathSource;
 import org.hibernate.query.hql.spi.SqmCreationState;
-import org.hibernate.query.sqm.internal.SqmMappingModelHelper;
 import org.hibernate.query.sqm.tree.SqmJoinType;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
 import org.hibernate.query.sqm.tree.domain.SqmSingularJoin;
@@ -36,6 +36,7 @@ import org.hibernate.type.BasicPluralType;
 import org.hibernate.type.descriptor.java.JavaType;
 
 import static jakarta.persistence.metamodel.Bindable.BindableType.SINGULAR_ATTRIBUTE;
+import static org.hibernate.query.sqm.internal.SqmMappingModelHelper.resolveSqmPathSource;
 import static org.hibernate.query.sqm.spi.SqmCreationHelper.buildSubNavigablePath;
 import static org.hibernate.query.sqm.spi.SqmCreationHelper.determineAlias;
 
@@ -75,7 +76,7 @@ public class SingularAttributeImpl<D,J>
 		this.isVersion = isVersion;
 		this.isOptional = isOptional;
 
-		this.sqmPathSource = SqmMappingModelHelper.resolveSqmPathSource(
+		this.sqmPathSource = resolveSqmPathSource(
 				name,
 				this,
 				attributeType,
@@ -124,12 +125,12 @@ public class SingularAttributeImpl<D,J>
 	}
 
 	@Override
-	public SqmPathSource<?> findSubPathSource(String name) {
+	public @Nullable SqmPathSource<?> findSubPathSource(String name) {
 		return sqmPathSource.findSubPathSource( name );
 	}
 
 	@Override
-	public SqmPathSource<?> findSubPathSource(String name, boolean includeSubtypes) {
+	public @Nullable SqmPathSource<?> findSubPathSource(String name, boolean includeSubtypes) {
 		return sqmPathSource.findSubPathSource( name, includeSubtypes );
 	}
 
@@ -139,7 +140,7 @@ public class SingularAttributeImpl<D,J>
 	}
 
 	@Override
-	public SqmBindableType<J> getExpressible() {
+	public @NonNull SqmBindableType<J> getExpressible() {
 		return sqmPathSource.getExpressible();
 	}
 
@@ -152,18 +153,17 @@ public class SingularAttributeImpl<D,J>
 	public SqmJoin<D,J> createSqmJoin(
 			SqmFrom<?,D> lhs,
 			SqmJoinType joinType,
-			String alias,
+			@Nullable String alias,
 			boolean fetched,
 			SqmCreationState creationState) {
-		final NodeBuilder nodeBuilder = creationState.getCreationContext().getNodeBuilder();
+		final var nodeBuilder = creationState.getCreationContext().getNodeBuilder();
 		if ( getType() instanceof AnyMappingDomainType ) {
 			throw new SemanticException( "An @Any attribute cannot be join fetched" );
 		}
 		else if ( sqmPathSource.getPathType() instanceof BasicPluralType<?,?> ) {
 			final SqmSetReturningFunction<J> setReturningFunction =
 					nodeBuilder.unnestArray( lhs.get( getName() ) );
-			//noinspection unchecked
-			final SqmFunctionJoin<J> join = new SqmFunctionJoin<>(
+			final var join = new SqmFunctionJoin<>(
 					createNavigablePath( lhs, alias ),
 					setReturningFunction,
 					true,
@@ -187,7 +187,7 @@ public class SingularAttributeImpl<D,J>
 	}
 
 	@Override
-	public NavigablePath createNavigablePath(SqmPath<?> parent, String alias) {
+	public NavigablePath createNavigablePath(SqmPath<?> parent, @Nullable String alias) {
 		if ( parent == null ) {
 			throw new IllegalArgumentException(
 					"LHS cannot be null for a sub-navigable reference - " + getName()
@@ -224,17 +224,17 @@ public class SingularAttributeImpl<D,J>
 		}
 
 		@Override
-		public NavigablePath createNavigablePath(SqmPath<?> parent, String alias) {
+		public NavigablePath createNavigablePath(SqmPath<?> parent, @Nullable String alias) {
 			if ( parent == null ) {
 				throw new IllegalArgumentException(
 						"LHS cannot be null for a sub-navigable reference - " + getName()
 				);
 			}
-			final SqmPathSource<?> parentPathSource = parent.getResolvedModel();
-			final NavigablePath parentNavigablePath =
-					parentPathSource instanceof PluralPersistentAttribute<?, ?, ?>
-							? parent.getNavigablePath().append( CollectionPart.Nature.ELEMENT.getName() )
-							: parent.getNavigablePath();
+			final var navigablePath = parent.getNavigablePath();
+			final var parentNavigablePath =
+					parent.getResolvedModel() instanceof PluralPersistentAttribute<?, ?, ?>
+							? navigablePath.append( CollectionPart.Nature.ELEMENT.getName() )
+							: navigablePath;
 			if ( getDeclaringType() instanceof IdentifiableDomainType<?> declaringType
 					&& !declaringType.hasSingleIdAttribute() ) {
 				return new EntityIdentifierNavigablePath( parentNavigablePath, null )
@@ -289,7 +289,7 @@ public class SingularAttributeImpl<D,J>
 
 	@Override
 	public boolean isAssociation() {
-		final PersistentAttributeType persistentAttributeType = getPersistentAttributeType();
+		final var persistentAttributeType = getPersistentAttributeType();
 		return persistentAttributeType == PersistentAttributeType.MANY_TO_ONE
 			|| persistentAttributeType == PersistentAttributeType.ONE_TO_ONE;
 	}
@@ -305,7 +305,7 @@ public class SingularAttributeImpl<D,J>
 	}
 
 	@Override
-	public SqmPath<J> createSqmPath(SqmPath<?> lhs, SqmPathSource<?> intermediatePathSource) {
+	public SqmPath<J> createSqmPath(SqmPath<?> lhs, @Nullable SqmPathSource<?> intermediatePathSource) {
 		return sqmPathSource.createSqmPath( lhs, intermediatePathSource );
 	}
 

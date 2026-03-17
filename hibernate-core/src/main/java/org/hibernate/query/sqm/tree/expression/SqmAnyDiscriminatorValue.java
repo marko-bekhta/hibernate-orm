@@ -4,6 +4,7 @@
  */
 package org.hibernate.query.sqm.tree.expression;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.query.hql.HqlInterpretationException;
 import org.hibernate.query.hql.spi.SemanticPathPart;
@@ -42,7 +43,7 @@ public class SqmAnyDiscriminatorValue<T> extends AbstractSqmExpression<T>
 
 	@Override
 	public SqmAnyDiscriminatorValue<T> copy(SqmCopyContext context) {
-		final SqmAnyDiscriminatorValue<T> existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
@@ -99,7 +100,7 @@ public class SqmAnyDiscriminatorValue<T> extends AbstractSqmExpression<T>
 	}
 
 	@Override
-	public boolean equals(Object object) {
+	public boolean equals(@Nullable Object object) {
 		return object instanceof SqmAnyDiscriminatorValue<?> that
 			&& Objects.equals( this.value.getName(), that.value.getName() )
 			&& Objects.equals( this.pathName, that.pathName );

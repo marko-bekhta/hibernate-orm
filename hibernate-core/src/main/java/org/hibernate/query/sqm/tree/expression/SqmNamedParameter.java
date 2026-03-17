@@ -4,6 +4,7 @@
  */
 package org.hibernate.query.sqm.tree.expression;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.query.sqm.NodeBuilder;
 import org.hibernate.query.sqm.SemanticQueryWalker;
 import org.hibernate.query.sqm.SqmBindableType;
@@ -27,7 +28,7 @@ public class SqmNamedParameter<T> extends AbstractSqmParameter<T> {
 	public SqmNamedParameter(
 			String name,
 			boolean canBeMultiValued,
-			SqmBindableType<T> inherentType,
+			@Nullable SqmBindableType<T> inherentType,
 			NodeBuilder nodeBuilder) {
 		super( canBeMultiValued, inherentType, nodeBuilder );
 		this.name = name;
@@ -35,7 +36,7 @@ public class SqmNamedParameter<T> extends AbstractSqmParameter<T> {
 
 	@Override
 	public SqmNamedParameter<T> copy(SqmCopyContext context) {
-		final SqmNamedParameter<T> existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
@@ -74,7 +75,7 @@ public class SqmNamedParameter<T> extends AbstractSqmParameter<T> {
 
 	@Override
 	public SqmParameter<T> copy() {
-		return new SqmNamedParameter<>( getName(), allowMultiValuedBinding(), this.getNodeType(), nodeBuilder() );
+		return new SqmNamedParameter<>( getName(), allowMultiValuedBinding(), getNodeType(), nodeBuilder() );
 	}
 
 	@Override
@@ -83,7 +84,7 @@ public class SqmNamedParameter<T> extends AbstractSqmParameter<T> {
 	}
 
 	@Override
-	public boolean equals(Object object) {
+	public boolean equals(@Nullable Object object) {
 		return object instanceof SqmNamedParameter<?> that
 			&& Objects.equals( name, that.name );
 	}

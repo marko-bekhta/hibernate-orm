@@ -20,6 +20,7 @@ import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -32,6 +33,7 @@ import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.ResultCheckStyle;
 import org.hibernate.annotations.SecondaryRow;
 import org.hibernate.boot.internal.LimitedCollectionClassification;
+import org.hibernate.boot.jaxb.mapping.GenerationTiming;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAssociationOverrideImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbAttributeOverrideImpl;
 import org.hibernate.boot.jaxb.mapping.spi.JaxbBasicMapping;
@@ -90,6 +92,7 @@ import org.hibernate.boot.models.xml.internal.db.TableProcessing;
 import org.hibernate.boot.models.xml.spi.XmlDocument;
 import org.hibernate.boot.models.xml.spi.XmlDocumentContext;
 import org.hibernate.engine.spi.ExecuteUpdateResultCheckStyle;
+import org.hibernate.generator.EventType;
 import org.hibernate.internal.util.StringHelper;
 import org.hibernate.internal.util.collections.CollectionHelper;
 import org.hibernate.models.ModelsException;
@@ -132,6 +135,7 @@ import static org.hibernate.boot.models.JpaAnnotations.ATTRIBUTE_OVERRIDES;
 import static org.hibernate.boot.models.JpaAnnotations.CHECK_CONSTRAINT;
 import static org.hibernate.boot.models.JpaAnnotations.COLUMN;
 import static org.hibernate.boot.models.JpaAnnotations.CONVERT;
+import static org.hibernate.boot.models.JpaAnnotations.CONVERTS;
 import static org.hibernate.boot.models.JpaAnnotations.EXCLUDE_DEFAULT_LISTENERS;
 import static org.hibernate.boot.models.JpaAnnotations.EXCLUDE_SUPERCLASS_LISTENERS;
 import static org.hibernate.boot.models.JpaAnnotations.INDEX;
@@ -479,6 +483,27 @@ public class XmlAnnotationHelper {
 		memberDetails.applyAnnotationUsage( HibernateAnnotations.NATIONALIZED, xmlDocumentContext.getModelBuildingContext() );
 	}
 
+	public static void applyGenerated(
+			GenerationTiming timing,
+			MutableMemberDetails memberDetails,
+			XmlDocumentContext xmlDocumentContext) {
+		if ( timing == null ) {
+			return;
+		}
+
+		EnumSet<EventType> eventTypes = timing.getEventTypes();
+		if ( eventTypes == null ) {
+			return;
+		}
+
+		final GeneratedAnnotation generatedAnn = (GeneratedAnnotation) memberDetails.applyAnnotationUsage(
+				HibernateAnnotations.GENERATED,
+				xmlDocumentContext.getModelBuildingContext()
+		);
+
+		generatedAnn.event( eventTypes.toArray( new EventType[0] ) );
+	}
+
 	public static void applyGeneratedValue(
 			JaxbGeneratedValueImpl jaxbGeneratedValue,
 			MutableMemberDetails memberDetails,
@@ -782,6 +807,28 @@ public class XmlAnnotationHelper {
 
 	public static void applyConverts(
 			List<JaxbConvertImpl> jaxbConverts,
+			MutableAnnotationTarget target,
+			XmlDocumentContext xmlDocumentContext){
+		if ( isEmpty( jaxbConverts ) ) {
+			return;
+		}
+
+		final ConvertsJpaAnnotation convertsUsage = (ConvertsJpaAnnotation) target.replaceAnnotationUsage(
+				CONVERT,
+				CONVERTS,
+				xmlDocumentContext.getModelBuildingContext()
+		);
+
+		final Convert[] convertUsages = new Convert[jaxbConverts.size()];
+		convertsUsage.value( convertUsages );
+
+		for ( int i = 0; i < jaxbConverts.size(); i++ ) {
+			convertUsages[i] = transformConvert( jaxbConverts.get( i ), null, xmlDocumentContext );
+		}
+	}
+
+	public static void applyConverts(
+			List<JaxbConvertImpl> jaxbConverts,
 			String namePrefix,
 			MutableMemberDetails memberDetails,
 			XmlDocumentContext xmlDocumentContext) {
@@ -791,7 +838,7 @@ public class XmlAnnotationHelper {
 
 		final ConvertsJpaAnnotation convertsUsage = (ConvertsJpaAnnotation) memberDetails.replaceAnnotationUsage(
 				CONVERT,
-				JpaAnnotations.CONVERTS,
+				CONVERTS,
 				xmlDocumentContext.getModelBuildingContext()
 		);
 		final Convert[] convertUsages = new Convert[jaxbConverts.size()];

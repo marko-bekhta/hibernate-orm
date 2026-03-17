@@ -4,6 +4,7 @@
  */
 package org.hibernate.metamodel.model.domain.internal;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.query.sqm.DiscriminatorSqmPath;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
@@ -16,6 +17,8 @@ import org.hibernate.query.sqm.tree.domain.SqmPath;
 import org.hibernate.query.sqm.tree.expression.SqmLiteralEntityType;
 import org.hibernate.query.sqm.tree.domain.SqmEntityDomainType;
 import org.hibernate.spi.NavigablePath;
+
+import static org.hibernate.internal.util.NullnessUtil.castNonNull;
 
 
 /**
@@ -49,14 +52,19 @@ public class EntityDiscriminatorSqmPath<T> extends AbstractSqmPath<T> implements
 	}
 
 	@Override
-	public EntityDiscriminatorSqmPathSource getExpressible() {
+	public @NonNull SqmPath<?> getLhs() {
+		return castNonNull( super.getLhs() );
+	}
+
+	@Override
+	public @NonNull EntityDiscriminatorSqmPathSource getExpressible() {
 //		return (EntityDiscriminatorSqmPathSource) getNodeType();
 		return (EntityDiscriminatorSqmPathSource) getReferencedPathSource();
 	}
 
 	@Override
 	public EntityDiscriminatorSqmPath copy(SqmCopyContext context) {
-		final EntityDiscriminatorSqmPath existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
@@ -72,6 +80,7 @@ public class EntityDiscriminatorSqmPath<T> extends AbstractSqmPath<T> implements
 	public <X> X accept(SemanticQueryWalker<X> walker) {
 		return entityDescriptor.hasSubclasses()
 				? walker.visitDiscriminatorPath( this )
-				: walker.visitEntityTypeLiteralExpression( new SqmLiteralEntityType( entityDomainType, nodeBuilder() ) );
+				: walker.visitEntityTypeLiteralExpression(
+						new SqmLiteralEntityType( entityDomainType, nodeBuilder() ) );
 	}
 }

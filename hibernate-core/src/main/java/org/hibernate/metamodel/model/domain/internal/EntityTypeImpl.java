@@ -7,25 +7,26 @@ package org.hibernate.metamodel.model.domain.internal;
 import java.io.ObjectStreamException;
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Locale;
 
 import jakarta.persistence.metamodel.EntityType;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.metamodel.UnsupportedMappingException;
-import org.hibernate.metamodel.mapping.DiscriminatorType;
 import org.hibernate.metamodel.mapping.EntityDiscriminatorMapping;
 import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
 import org.hibernate.metamodel.mapping.EntityVersionMapping;
 import org.hibernate.metamodel.model.domain.IdentifiableDomainType;
 import org.hibernate.metamodel.model.domain.JpaMetamodel;
-import org.hibernate.metamodel.model.domain.PersistentAttribute;
+import org.hibernate.metamodel.model.domain.ManagedDomainType;
 import org.hibernate.metamodel.model.domain.spi.JpaMetamodelImplementor;
-import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.query.PathException;
 import org.hibernate.query.sqm.SqmPathSource;
-import org.hibernate.query.sqm.tree.domain.SqmManagedDomainType;
+import org.hibernate.query.sqm.tree.domain.SqmDomainType;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
 import org.hibernate.query.sqm.tree.domain.SqmPersistentAttribute;
 import org.hibernate.query.sqm.tree.domain.SqmEntityDomainType;
@@ -33,6 +34,7 @@ import org.hibernate.type.descriptor.java.JavaType;
 
 import static jakarta.persistence.metamodel.Bindable.BindableType.ENTITY_TYPE;
 import static jakarta.persistence.metamodel.Type.PersistenceType.ENTITY;
+import static jakarta.persistence.metamodel.Type.PersistenceType.MAPPED_SUPERCLASS;
 import static org.hibernate.metamodel.model.domain.internal.DomainModelHelper.isCompatible;
 
 /**
@@ -48,6 +50,7 @@ public class EntityTypeImpl<J>
 	private final String jpaEntityName;
 	private final JpaMetamodelImplementor metamodel;
 	private final SqmPathSource<?> discriminatorPathSource;
+	private final List<SqmEntityDomainType<? extends J>> subtypes = new ArrayList<>();
 
 	public EntityTypeImpl(
 			String entityName,
@@ -75,10 +78,10 @@ public class EntityTypeImpl<J>
 	}
 
 	private EntityDiscriminatorSqmPathSource<?> entityDiscriminatorPathSource(JpaMetamodelImplementor metamodel) {
-		final EntityPersister entityDescriptor =
+		final var entityDescriptor =
 				metamodel.getMappingMetamodel()
 						.getEntityDescriptor( getHibernateEntityName() );
-		final DiscriminatorType<?> discriminatorType = entityDescriptor.getDiscriminatorDomainType();
+		final var discriminatorType = entityDescriptor.getDiscriminatorDomainType();
 		return discriminatorType == null ? null
 				: new EntityDiscriminatorSqmPathSource<>( discriminatorType, this, entityDescriptor );
 	}
@@ -133,7 +136,7 @@ public class EntityTypeImpl<J>
 	}
 
 	@Override
-	public SqmEntityDomainType<J> getSqmType() {
+	public @Nullable SqmDomainType<J> getSqmType() {
 		return this;
 	}
 
@@ -148,8 +151,8 @@ public class EntityTypeImpl<J>
 	}
 
 	@Override
-	public SqmPathSource<?> findSubPathSource(String name) {
-		final PersistentAttribute<? super J,?> attribute = super.findAttribute( name );
+	public @Nullable SqmPathSource<?> findSubPathSource(String name) {
+		final var attribute = super.findAttribute( name );
 		if ( attribute != null ) {
 			return (SqmPathSource<?>) attribute;
 		}
@@ -168,19 +171,25 @@ public class EntityTypeImpl<J>
 	}
 
 	@Override
-	public SqmPathSource<?> getIdentifierDescriptor() {
+	public @Nullable SqmPathSource<?> getIdentifierDescriptor() {
 		return super.getIdentifierDescriptor();
 	}
 
 	@Override
-	public SqmPathSource<?> findSubPathSource(String name, boolean includeSubtypes) {
-		final PersistentAttribute<? super J,?> attribute = super.findAttribute( name );
+	public @Nullable SqmPathSource<?> findSubPathSource(String name, boolean includeSubtypes) {
+		final var attribute = super.findAttribute( name );
 		if ( attribute != null ) {
+			if ( attribute.getDeclaringType().getPersistenceType() == MAPPED_SUPERCLASS ) {
+				final var concreteGeneric = findConcreteGenericAttribute( name );
+				if ( concreteGeneric != null ) {
+					return (SqmPathSource<?>) concreteGeneric;
+				}
+			}
 			return (SqmPathSource<?>) attribute;
 		}
 		else {
 			if ( includeSubtypes ) {
-				final PersistentAttribute<?, ?> subtypeAttribute = findSubtypeAttribute( name );
+				final var subtypeAttribute = findSubtypeAttribute( name );
 				if ( subtypeAttribute != null ) {
 					return (SqmPathSource<?>) subtypeAttribute;
 				}
@@ -199,8 +208,8 @@ public class EntityTypeImpl<J>
 
 	private SqmPersistentAttribute<?, ?> findSubtypeAttribute(String name) {
 		SqmPersistentAttribute<?,?> subtypeAttribute = null;
-		for ( SqmManagedDomainType<?> subtype : getSubTypes() ) {
-			final SqmPersistentAttribute<?,?> candidate = subtype.findSubTypesAttribute( name );
+		for ( var subtype : super.getSubTypes() ) {
+			final var candidate = subtype.findSubTypesAttribute( name );
 			if ( candidate != null ) {
 				if ( subtypeAttribute != null
 						&& !isCompatible( subtypeAttribute, candidate, metamodel.getMappingMetamodel() ) ) {
@@ -222,7 +231,7 @@ public class EntityTypeImpl<J>
 	}
 
 	@Override
-	public SqmPersistentAttribute<? super J, ?> findAttribute(String name) {
+	public @Nullable SqmPersistentAttribute<? super J, ?> findAttribute(String name) {
 		final var attribute = super.findAttribute( name );
 		if ( attribute != null ) {
 			return attribute;
@@ -247,8 +256,15 @@ public class EntityTypeImpl<J>
 
 	@Override
 	public Collection<? extends SqmEntityDomainType<? extends J>> getSubTypes() {
-		//noinspection unchecked
-		return (Collection<? extends SqmEntityDomainType<? extends J>>) super.getSubTypes();
+		return subtypes;
+	}
+
+	@Override
+	public void addSubType(ManagedDomainType<? extends J> subType) {
+		super.addSubType( subType );
+		if ( subType instanceof SqmEntityDomainType<? extends J> entityDomainType ) {
+			subtypes.add( entityDomainType );
+		}
 	}
 
 	@Override
@@ -257,7 +273,7 @@ public class EntityTypeImpl<J>
 	}
 
 	@Override
-	public SqmPath<J> createSqmPath(SqmPath<?> lhs, SqmPathSource<?> intermediatePathSource) {
+	public SqmPath<J> createSqmPath(SqmPath<?> lhs, @Nullable SqmPathSource<?> intermediatePathSource) {
 		throw new UnsupportedMappingException(
 				"EntityType cannot be used to create an SqmPath - that would be an SqmFrom which are created directly"
 		);

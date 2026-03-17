@@ -4,6 +4,7 @@
  */
 package org.hibernate.testing.orm.junit;
 
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -13,9 +14,15 @@ import org.hibernate.engine.config.spi.ConfigurationService;
 import org.hibernate.jpa.HibernatePersistenceConfiguration;
 import org.hibernate.service.Service;
 
-/**
- * @author Steve Ebersole
- */
+/// Access to the service registry used for testing.
+/// Can be injected via [JUnit][ServiceRegistryParameterResolver] or via [ServiceRegistryScopeAware].
+///
+/// @see BootstrapServiceRegistry
+/// @see BootstrapServiceRegistryProducer
+/// @see ServiceRegistry
+/// @see ServiceRegistryProducer
+///
+/// @author Steve Ebersole
 public interface ServiceRegistryScope {
 	/**
 	 * Generalized support for running exception-safe code using a ServiceRegistry to
@@ -23,11 +30,23 @@ public interface ServiceRegistryScope {
 	 */
 	static void using(Supplier<StandardServiceRegistry> ssrProducer, Consumer<ServiceRegistryScope> action) {
 		try (final StandardServiceRegistry ssr = ssrProducer.get()) {
-			action.accept( () -> ssr );
+			action.accept( new ServiceRegistryScope() {
+				@Override
+				public StandardServiceRegistry getRegistry() {
+					return ssr;
+				}
+
+				@Override
+				public void releaseRegistry() {
+					ssr.close();
+				}
+			} );
 		}
 	}
 
 	StandardServiceRegistry getRegistry();
+
+	void releaseRegistry();
 
 	default <S extends Service> void withService(Class<S> role, Consumer<S> action) {
 		assert role != null;
@@ -59,8 +78,10 @@ public interface ServiceRegistryScope {
 
 		final ConfigurationService configurationService = registry.requireService( ConfigurationService.class );
 		configuration.properties( configurationService.getSettings() );
-
 		return configuration;
 	}
 
+	default Map<String, Object> getAdditionalSettings() {
+		throw new UnsupportedOperationException( "This service registry scope doesn't support additional settings." );
+	}
 }

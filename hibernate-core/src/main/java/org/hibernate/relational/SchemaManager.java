@@ -10,7 +10,8 @@ import org.hibernate.tool.schema.spi.GeneratorSynchronizer;
 /**
  * Allows programmatic {@linkplain #exportMappedObjects schema export},
  * {@linkplain #validateMappedObjects schema validation},
- * {@linkplain #truncateMappedObjects data cleanup}, and
+ * {@linkplain #truncateMappedObjects data cleanup},
+ * {@linkplain #populate data population}, and
  * {@linkplain #dropMappedObjects schema cleanup} as a convenience for
  * writing tests.
  *
@@ -77,13 +78,32 @@ public interface SchemaManager extends jakarta.persistence.SchemaManager {
 	 * Programmatic way to run {@link org.hibernate.tool.schema.spi.SchemaTruncator}.
 	 * <p>
 	 * This operation does not affect the {@linkplain org.hibernate.Cache second-level cache}.
-	 * Therefore, after calling {@code truncate()}, it might be necessary to also call
-	 * {@link org.hibernate.Cache#evictAllRegions} to clean up data held in the second-level
-	 * cache.
+	 * Therefore, after calling {@code truncateMappedObjects()}, it might be necessary to
+	 * also call {@link org.hibernate.Cache#evictAllRegions} to clean up data held in the
+	 * second-level cache.
 	 *
 	 * @apiNote This operation is a synonym for {@link #truncate}.
 	 */
 	void truncateMappedObjects();
+
+	/**
+	 * Truncate the given database table, and reset any associated
+	 * {@linkplain jakarta.persistence.SequenceGenerator sequence} or table backing a
+	 * {@linkplain jakarta.persistence.TableGenerator table generator}.
+	 * Do not repopulate the table.
+	 * <p>
+	 * This operation does not affect the {@linkplain org.hibernate.Cache second-level cache}.
+	 * Therefore, after calling {@code truncate()}, it might be necessary to also call
+	 * {@link org.hibernate.Cache#evictRegion(String)} to clean up data held in the
+	 * second-level cache.
+	 *
+	 * @param tableName The name of the table to truncate, which must be a table mapped by
+	 *                  some entity class or collection
+	 *
+	 * @since 7.2
+	 */
+	@Incubating
+	void truncateTable(String tableName);
 
 	/**
 	 * Populate the database by executing {@code /import.sql} and any other configured

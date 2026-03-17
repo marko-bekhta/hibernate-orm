@@ -29,6 +29,7 @@ import org.hibernate.engine.jdbc.LobCreationContext;
 import org.hibernate.engine.jdbc.spi.JdbcCoordinator;
 import org.hibernate.engine.jdbc.spi.JdbcServices;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.query.spi.QueryParameterBindings;
 import org.hibernate.query.spi.QueryProducerImplementor;
 import org.hibernate.resource.jdbc.spi.JdbcSessionOwner;
 import org.hibernate.resource.transaction.spi.TransactionCoordinator;
@@ -504,6 +505,15 @@ public interface SharedSessionContractImplementor
 	PersistenceContext getPersistenceContextInternal();
 
 	/**
+	 * Is the given entity managed by this session?
+	 *
+	 * @return true if this is a stateful session and
+	 *         the entity belongs to its persistence
+	 *         context and was not removed
+	 */
+	boolean isManaged(Object entity);
+
+	/**
 	 * detect in-memory changes, determine if the changes are to tables
 	 * named in the query and, if so, complete execution the flush
 	 *
@@ -526,7 +536,7 @@ public interface SharedSessionContractImplementor
 	 */
 	boolean autoFlushIfRequired(Set<String> querySpaces, boolean skipPreFlush);
 
-	void autoPreFlush();
+	boolean autoPreFlushIfRequired(QueryParameterBindings parameterBindings);
 
 	/**
 	 * Check if there is a Hibernate or JTA transaction in progress and,

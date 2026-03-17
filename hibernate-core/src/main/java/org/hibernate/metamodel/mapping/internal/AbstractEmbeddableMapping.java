@@ -58,6 +58,8 @@ import org.hibernate.type.descriptor.java.ImmutableMutabilityPlan;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.java.MutabilityPlan;
 
+import static org.hibernate.metamodel.mapping.internal.MappingModelCreationHelper.buildBasicAttributeMapping;
+
 /**
  * Base support for EmbeddableMappingType implementations
  */
@@ -132,7 +134,7 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 	}
 
 	protected Object[] getAttributeValues(Object compositeInstance) {
-		final Object[] results = new Object[getNumberOfAttributeMappings()];
+		final var results = new Object[getNumberOfAttributeMappings()];
 		for ( int i = 0; i < results.length; i++ ) {
 			results[i] = getValue( compositeInstance, i );
 		}
@@ -351,7 +353,7 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 					selectablePath = new SelectablePath( determineEmbeddablePrefix() + bootPropertyDescriptor.getName() );
 				}
 
-				attributeMapping = MappingModelCreationHelper.buildBasicAttributeMapping(
+				attributeMapping = buildBasicAttributeMapping(
 						bootPropertyDescriptor.getName(),
 						role,
 						attributeIndex,
@@ -659,7 +661,7 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 			return null;
 		}
 		final int size = attributeMappings.size();
-		final Object[] result = new Object[ size ];
+		final var result = new Object[ size ];
 		for ( int i = 0; i < size; i++ ) {
 			final var attributeMapping = attributeMappings.get( i );
 			final Object object = attributeMapping.getValue( value );
@@ -708,7 +710,7 @@ public abstract class AbstractEmbeddableMapping implements EmbeddableMappingType
 			}
 		}
 		else {
-			final Object[] values = (Object[]) value;
+			final var values = (Object[]) value;
 			for ( int i = 0; i < attributeMappings.size(); i++ ) {
 				final var mapping = attributeMappings.get( i );
 				span += mapping.forEachDisassembledJdbcValue( values[i], span + offset, x, y, valuesConsumer, session );

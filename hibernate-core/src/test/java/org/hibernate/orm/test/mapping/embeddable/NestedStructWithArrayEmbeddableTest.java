@@ -5,8 +5,6 @@
 package org.hibernate.orm.test.mapping.embeddable;
 
 import java.net.URL;
-import java.sql.Time;
-import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -90,12 +88,12 @@ public class NestedStructWithArrayEmbeddableTest {
 	@Test
 	public void testUpdate(SessionFactoryScope scope) {
 		scope.inTransaction(
-				entityManager -> {
-					StructHolder structHolder = entityManager.find( StructHolder.class, 1L );
+				session -> {
+					StructHolder structHolder = session.find( StructHolder.class, 1L );
 					structHolder.setAggregate( EmbeddableWithArrayAggregate.createAggregate2() );
-					entityManager.flush();
-					entityManager.clear();
-					structHolder = entityManager.find( StructHolder.class, 1L );
+					session.flush();
+					session.clear();
+					structHolder = session.find( StructHolder.class, 1L );
 					assertEquals( "XYZ", structHolder.struct.stringField );
 					assertArrayEquals( new Integer[]{ 10 }, structHolder.struct.simpleEmbeddable.integerField );
 					assertStructEquals( EmbeddableWithArrayAggregate.createAggregate2(), structHolder.getAggregate() );
@@ -106,8 +104,8 @@ public class NestedStructWithArrayEmbeddableTest {
 	@Test
 	public void testFetch(SessionFactoryScope scope) {
 		scope.inSession(
-				entityManager -> {
-					List<StructHolder> structHolders = entityManager.createQuery( "from StructHolder b where b.id = 1", StructHolder.class ).getResultList();
+				session -> {
+					List<StructHolder> structHolders = session.createQuery( "from StructHolder b where b.id = 1", StructHolder.class ).getResultList();
 					assertEquals( 1, structHolders.size() );
 					StructHolder structHolder = structHolders.get( 0 );
 					assertEquals( 1L, structHolder.getId() );
@@ -122,8 +120,8 @@ public class NestedStructWithArrayEmbeddableTest {
 	@Test
 	public void testFetchNull(SessionFactoryScope scope) {
 		scope.inSession(
-				entityManager -> {
-					List<StructHolder> structHolders = entityManager.createQuery( "from StructHolder b where b.id = 2", StructHolder.class ).getResultList();
+				session -> {
+					List<StructHolder> structHolders = session.createQuery( "from StructHolder b where b.id = 2", StructHolder.class ).getResultList();
 					assertEquals( 1, structHolders.size() );
 					StructHolder structHolder = structHolders.get( 0 );
 					assertEquals( 2L, structHolder.getId() );
@@ -137,8 +135,8 @@ public class NestedStructWithArrayEmbeddableTest {
 	@Test
 	public void testDomainResult(SessionFactoryScope scope) {
 		scope.inSession(
-				entityManager -> {
-					List<TheStruct> structs = entityManager.createQuery( "select b.struct from StructHolder b where b.id = 1", TheStruct.class ).getResultList();
+				session -> {
+					List<TheStruct> structs = session.createQuery( "select b.struct from StructHolder b where b.id = 1", TheStruct.class ).getResultList();
 					assertEquals( 1, structs.size() );
 					TheStruct theStruct = structs.get( 0 );
 					assertEquals( "XYZ", theStruct.stringField );
@@ -153,8 +151,8 @@ public class NestedStructWithArrayEmbeddableTest {
 	@SkipForDialect(dialectClass = OracleDialect.class, reason = "We have to use TABLE storage in this test because Oracle doesn't support LOBs in struct arrays, but TABLE is not indexed")
 	public void testSelectionItems(SessionFactoryScope scope) {
 		scope.inSession(
-				entityManager -> {
-					List<Tuple> tuples = entityManager.createQuery(
+				session -> {
+					List<Tuple> tuples = session.createQuery(
 							"select " +
 									"b.struct.nested[1].theInt," +
 									"b.struct.nested[1].theDouble," +
@@ -201,8 +199,8 @@ public class NestedStructWithArrayEmbeddableTest {
 					struct.setTheClob( tuple.get( 8, String[].class ) );
 					struct.setTheBinary( tuple.get( 9, byte[][].class ) );
 					struct.setTheDate( tuple.get( 10, Date[].class ) );
-					struct.setTheTime( tuple.get( 11, Time[].class ) );
-					struct.setTheTimestamp( tuple.get( 12, Timestamp[].class ) );
+					struct.setTheTime( tuple.get( 11, Date[].class ) );
+					struct.setTheTimestamp( tuple.get( 12, Date[].class ) );
 					struct.setTheInstant( tuple.get( 13, Instant[].class ) );
 					struct.setTheUuid( tuple.get( 14, UUID[].class ) );
 					struct.setGender( tuple.get( 15, EntityOfBasics.Gender[].class ) );
@@ -229,9 +227,9 @@ public class NestedStructWithArrayEmbeddableTest {
 	@Test
 	public void testDeleteWhere(SessionFactoryScope scope) {
 		scope.inTransaction(
-				entityManager -> {
-					entityManager.createMutationQuery( "delete StructHolder b where b.struct is not null" ).executeUpdate();
-					assertNull( entityManager.find( StructHolder.class, 1L ) );
+				session -> {
+					session.createMutationQuery( "delete StructHolder b where b.struct is not null" ).executeUpdate();
+					assertNull( session.find( StructHolder.class, 1L ) );
 
 				}
 		);
@@ -240,9 +238,9 @@ public class NestedStructWithArrayEmbeddableTest {
 	@Test
 	public void testUpdateAggregate(SessionFactoryScope scope) {
 		scope.inTransaction(
-				entityManager -> {
-					entityManager.createMutationQuery( "update StructHolder b set b.struct = null" ).executeUpdate();
-					assertNull( entityManager.find( StructHolder.class, 1L ).getAggregate() );
+				session -> {
+					session.createMutationQuery( "update StructHolder b set b.struct = null" ).executeUpdate();
+					assertNull( session.find( StructHolder.class, 1L ).getAggregate() );
 				}
 		);
 	}
@@ -252,11 +250,11 @@ public class NestedStructWithArrayEmbeddableTest {
 	@SkipForDialect(dialectClass = OracleDialect.class, reason = "We have to use TABLE storage in this test because Oracle doesn't support LOBs in struct arrays, but TABLE is not indexed")
 	public void testUpdateAggregateMember(SessionFactoryScope scope) {
 		scope.inTransaction(
-				entityManager -> {
-					entityManager.createMutationQuery( "update StructHolder b set b.struct.nested[1].theString = null" ).executeUpdate();
+				session -> {
+					session.createMutationQuery( "update StructHolder b set b.struct.nested[1].theString = null" ).executeUpdate();
 					EmbeddableWithArrayAggregate struct = EmbeddableWithArrayAggregate.createAggregate1();
 					struct.setTheString( null );
-					assertStructEquals( struct, entityManager.find( StructHolder.class, 1L ).getAggregate() );
+					assertStructEquals( struct, session.find( StructHolder.class, 1L ).getAggregate() );
 				}
 		);
 	}
@@ -266,12 +264,12 @@ public class NestedStructWithArrayEmbeddableTest {
 	@SkipForDialect(dialectClass = OracleDialect.class, reason = "We have to use TABLE storage in this test because Oracle doesn't support LOBs in struct arrays, but TABLE is not indexed")
 	public void testUpdateMultipleAggregateMembers(SessionFactoryScope scope) {
 		scope.inTransaction(
-				entityManager -> {
-					entityManager.createMutationQuery( "update StructHolder b set b.struct.nested[1].theString = null, b.struct.nested[1].theUuid = null" ).executeUpdate();
+				session -> {
+					session.createMutationQuery( "update StructHolder b set b.struct.nested[1].theString = null, b.struct.nested[1].theUuid = null" ).executeUpdate();
 					EmbeddableWithArrayAggregate struct = EmbeddableWithArrayAggregate.createAggregate1();
 					struct.setTheString( null );
 					struct.setTheUuid( null );
-					assertStructEquals( struct, entityManager.find( StructHolder.class, 1L ).getAggregate() );
+					assertStructEquals( struct, session.find( StructHolder.class, 1L ).getAggregate() );
 				}
 		);
 	}
@@ -281,9 +279,9 @@ public class NestedStructWithArrayEmbeddableTest {
 	@SkipForDialect(dialectClass = OracleDialect.class, reason = "We have to use TABLE storage in this test because Oracle doesn't support LOBs in struct arrays, but TABLE is not indexed")
 	public void testUpdateAllAggregateMembers(SessionFactoryScope scope) {
 		scope.inTransaction(
-				entityManager -> {
+				session -> {
 					EmbeddableWithArrayAggregate struct = EmbeddableWithArrayAggregate.createAggregate1();
-					entityManager.createMutationQuery(
+					session.createMutationQuery(
 							"update StructHolder b set " +
 									"b.struct.nested[1].theInt = :theInt," +
 									"b.struct.nested[1].theDouble = :theDouble," +
@@ -340,7 +338,7 @@ public class NestedStructWithArrayEmbeddableTest {
 							.setParameter( "mutableValue", struct.getMutableValue() )
 							.setParameter( "integerField", new Integer[]{ 5 } )
 							.executeUpdate();
-					StructHolder structHolder = entityManager.find( StructHolder.class, 2L );
+					StructHolder structHolder = session.find( StructHolder.class, 2L );
 					assertArrayEquals( new Integer[]{ 5 }, structHolder.struct.simpleEmbeddable.integerField );
 					assertStructEquals( EmbeddableWithArrayAggregate.createAggregate1(), structHolder.getAggregate() );
 				}
@@ -350,9 +348,9 @@ public class NestedStructWithArrayEmbeddableTest {
 	@Test
 	public void testNativeQuery(SessionFactoryScope scope) {
 		scope.inTransaction(
-				entityManager -> {
+				session -> {
 					//noinspection unchecked
-					List<Object> resultList = entityManager.createNativeQuery(
+					List<Object> resultList = session.createNativeQuery(
 									"select b.struct from StructHolder b where b.id = 1", Object.class
 							)
 							.getResultList();

@@ -4,9 +4,10 @@
  */
 package org.hibernate.query.sqm.tree.domain;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.metamodel.model.domain.EmbeddableDomainType;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
-import org.hibernate.query.PathException;
 import org.hibernate.query.hql.spi.SqmCreationState;
 import org.hibernate.query.sqm.NodeBuilder;
 import org.hibernate.query.sqm.SemanticQueryWalker;
@@ -40,7 +41,7 @@ public class SqmEmbeddedValuedSimplePath<T>
 			NavigablePath navigablePath,
 			SqmPathSource<T> referencedPathSource,
 			SqmPath<?> lhs,
-			String explicitAlias,
+			@Nullable String explicitAlias,
 			NodeBuilder nodeBuilder) {
 		super( navigablePath, referencedPathSource, lhs, explicitAlias, nodeBuilder );
 		assert referencedPathSource.getPathType() instanceof EmbeddableDomainType;
@@ -48,13 +49,13 @@ public class SqmEmbeddedValuedSimplePath<T>
 
 	@Override
 	public SqmEmbeddedValuedSimplePath<T> copy(SqmCopyContext context) {
-		final SqmEmbeddedValuedSimplePath<T> existing = context.getCopy( this );
+		final var existing = context.getCopy( this );
 		if ( existing != null ) {
 			return existing;
 		}
 
 		final SqmPath<?> lhsCopy = getLhs().copy( context );
-		final SqmEmbeddedValuedSimplePath<T> path = context.registerCopy(
+		final var path = context.registerCopy(
 				this,
 				new SqmEmbeddedValuedSimplePath<>(
 						getNavigablePathCopy( lhsCopy ),
@@ -69,7 +70,7 @@ public class SqmEmbeddedValuedSimplePath<T>
 	}
 
 	@Override
-	public SqmBindableType<T> getExpressible() {
+	public @NonNull SqmBindableType<T> getExpressible() {
 		return this;
 	}
 
@@ -79,13 +80,13 @@ public class SqmEmbeddedValuedSimplePath<T>
 	}
 
 	@Override
-	public SqmDomainType<T> getSqmType() {
+	public @Nullable SqmDomainType<T> getSqmType() {
 		return getResolvedModel().getSqmType();
 	}
 
 	@Override
 	public SqmPath<?> resolvePathPart(String name, boolean isTerminal, SqmCreationState creationState) {
-		final SqmPath<?> sqmPath = get( name, true );
+		final var sqmPath = get( name, true );
 		creationState.getProcessingStateStack().getCurrent().getPathRegistry().register( sqmPath );
 		return sqmPath;
 	}
@@ -97,12 +98,12 @@ public class SqmEmbeddedValuedSimplePath<T>
 
 
 	@Override
-	public <S extends T> SqmTreatedPath<T, S> treatAs(Class<S> treatJavaType) throws PathException {
+	public <S extends T> SqmTreatedPath<T, S> treatAs(Class<S> treatJavaType) {
 		return getTreatedPath( nodeBuilder().getDomainModel().embeddable( treatJavaType ) );
 	}
 
 	@Override
-	public <S extends T> SqmTreatedPath<T, S> treatAs(EntityDomainType<S> treatTarget) throws PathException {
+	public <S extends T> SqmTreatedPath<T, S> treatAs(EntityDomainType<S> treatTarget) {
 		throw new TreatException( "Embeddable paths cannot be TREAT-ed to an entity type" );
 	}
 
@@ -112,7 +113,7 @@ public class SqmEmbeddedValuedSimplePath<T>
 	}
 
 	@Override
-	public Class<T> getJavaType() {
+	public @NonNull Class<T> getJavaType() {
 		return getJavaTypeDescriptor().getJavaTypeClass();
 	}
 

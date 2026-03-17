@@ -36,6 +36,8 @@ public interface PropertyHolder {
 
 	void addProperty(Property prop, MemberDetails memberDetails, @Nullable AnnotatedColumns columns, ClassDetails declaringClass);
 
+	void movePropertyToJoin(Property prop, Join join, MemberDetails memberDetails, ClassDetails declaringClass);
+
 	KeyValue getIdentifier();
 
 	/**
@@ -59,12 +61,14 @@ public interface PropertyHolder {
 	String getPath();
 
 	/**
-	 * return null if the column is not overridden, or an array of column if true
+	 * return null if the column is not overridden,
+	 * or an array of columns if it is
 	 */
 	Column[] getOverriddenColumn(String propertyName);
 
 	/**
-	 * return null if the column is not overridden, or an array of column if true
+	 * return null if the column is not overridden,
+	 * or an array of columns if it is
 	 */
 	JoinColumn[] getOverriddenJoinColumn(String propertyName);
 

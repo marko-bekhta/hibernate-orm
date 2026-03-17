@@ -4,13 +4,14 @@
  */
 package org.hibernate.metamodel.model.domain.internal;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.mapping.MappedSuperclass;
 import org.hibernate.metamodel.UnsupportedMappingException;
 import org.hibernate.metamodel.mapping.EntityIdentifierMapping;
 import org.hibernate.metamodel.model.domain.IdentifiableDomainType;
-import org.hibernate.metamodel.model.domain.PersistentAttribute;
 import org.hibernate.metamodel.model.domain.spi.JpaMetamodelImplementor;
 import org.hibernate.query.sqm.SqmPathSource;
+import org.hibernate.query.sqm.tree.domain.SqmDomainType;
 import org.hibernate.query.sqm.tree.domain.SqmPath;
 import org.hibernate.query.sqm.tree.domain.SqmMappedSuperclassDomainType;
 import org.hibernate.query.sqm.tree.domain.SqmPersistentAttribute;
@@ -71,7 +72,7 @@ public class MappedSuperclassTypeImpl<J>
 	}
 
 	@Override
-	public SqmMappedSuperclassDomainType<J> getSqmType() {
+	public @Nullable SqmDomainType<J> getSqmType() {
 		return this;
 	}
 
@@ -86,8 +87,8 @@ public class MappedSuperclassTypeImpl<J>
 	}
 
 	@Override
-	public SqmPathSource<?> findSubPathSource(String name) {
-		final PersistentAttribute<?,?> attribute = findAttribute( name );
+	public @Nullable SqmPathSource<?> findSubPathSource(String name) {
+		final var attribute = findAttribute( name );
 		if ( attribute != null ) {
 			return (SqmPathSource<?>) attribute;
 		}
@@ -100,12 +101,12 @@ public class MappedSuperclassTypeImpl<J>
 	}
 
 	@Override
-	public SqmPathSource<?> getIdentifierDescriptor() {
-		return (SqmPathSource<?>) super.getIdentifierDescriptor();
+	public @Nullable SqmPathSource<?> getIdentifierDescriptor() {
+		return super.getIdentifierDescriptor();
 	}
 
 	@Override
-	public SqmPersistentAttribute<? super J, ?> findAttribute(String name) {
+	public @Nullable SqmPersistentAttribute<? super J, ?> findAttribute(String name) {
 		final var attribute = super.findAttribute( name );
 		if ( attribute != null ) {
 			return attribute;
@@ -134,7 +135,7 @@ public class MappedSuperclassTypeImpl<J>
 	}
 
 	@Override
-	public SqmPath<J> createSqmPath(SqmPath<?> lhs, SqmPathSource<?> intermediatePathSource) {
+	public SqmPath<J> createSqmPath(SqmPath<?> lhs, @Nullable SqmPathSource<?> intermediatePathSource) {
 		throw new UnsupportedMappingException(
 				"MappedSuperclassType cannot be used to create an SqmPath - that would be an SqmFrom which are created directly"
 		);

@@ -276,6 +276,7 @@ Modifications are automatically detected when the session is <<flush,flushed>>.
 
 On the other hand, except for `getReference()`, the following operations all result in immediate access to the database:
 
+[[methods-for-reading]]
 .Methods for reading and locking data
 [%breakable,cols="30,~"]
 |===
@@ -368,8 +369,29 @@ The following code results in a single SQL `select` statement:
 List<Book> books = session.findMultiple(Book.class, bookIds);
 ----
 
+[[load-by-natural-id]]
+As discussed <<natural-id-attributes,earlier>>, Hibernate offers the ability to map a natural id and perform load operations using that natural id.
+This is accomplished using the `KeyType#NATURAL` `FindOption` -
+
+[source,java]
+----
+var bookKey = new BookKey(...);
+var book = session.find(Book.class, bookKey, NATURAL);
+var books = session.findMultiple(Book.class, List.of(bookKey), NATURAL);
+----
+
+When loading by natural id, the type of value accepted depends on the type of natural id.
+For single-attribute natural ids, whether defined by a basic or embedded type, the attribute type should be used.
+For multi-attribute natural ids, Hibernate will accept a number of forms:
+
+* If a link:{doc-javadoc-url}org/hibernate/annotations/NaturalIdClass.html[`@NaturalIdClass`] is defined, an instance of the natural id class may be used.
+* An array of the individual attribute values, ordered alphabetically by name, may be used.
+* A `Map` of the individual attribute values, keyed by the attribute name, may be used.
+
 Each of the operations we've seen so far affects a single entity instance passed as an argument.
 But there's a way to set things up so that an operation will propagate to associated entities.
+
+See the link:{doc-user-guide-url}#find-by-natural-id[User Guide] for more details about loading by natural ids.
 
 [[cascade]]
 === Cascading persistence operations
@@ -595,7 +617,8 @@ Therefore, Hibernate has some APIs that streamline certain more complicated look
 
 [NOTE]
 ====
-Since the introduction of `FindOption` in JPA 3.2, `byId()` is now much less useful.
+Since the introduction of `FindOption` in JPA 3.2, `byId()` is now much less useful and deprecated.
+Instead, use `find()` and `findMultiple()` as discussed <<methods-for-reading,earlier>>.
 ====
 
 Batch loading is very useful when we need to retrieve multiple instances of the same entity class by id:
@@ -627,6 +650,8 @@ We also have some operations for working with lookups by <<natural-identifiers, 
 | `byMultipleNaturalId()` | Lets us load a _batch_ of natural ids at the same time
 |===
 
+Again, see the link:{doc-user-guide-url}#find-by-natural-id[User Guide] for more details about loading by natural ids.
+
 Here's how we can retrieve an entity by its composite natural id:
 
 [source,java]
@@ -639,6 +664,62 @@ Book book =
 ----
 
 Notice that this code fragment is completely typesafe, again thanks to <<metamodel-generator,Hibernate Processor>>.
+
+[[controlling-merge]]
+=== Controlling state retrieval during merge
+
+The <<persistence-operations,`merge()`>> operation is usually used when some interaction with a user or automated system spans multiple transactions, with each transaction having its own persistence context:
+
+1. an entity `e` is retrieved in one persistence context, and then the current transaction ends, resulting in destruction of the persistence context and in the entity becoming detached, then
+2.  `e` is modified in some way while detached, and then
+3. finally, the modification is made persistent by merging the detached instance in a second transaction, with a new persistence context, by calling `session.merge(e)`.
+
+In step 3, the original entity instance `e` remains detached, but `merge()` returns a distinct instance `f` representing the same row of the database and associated with the new persistence context.
+That is, `merge()` trades a detached instance for a <<persistence-contexts,persistent instance>> representing the same row.
+
+To determine the nature of the modification held in `e` and to guarantee correct semantics with respect to optimistic locking, Hibernate first ``select``s the current persistent state of the entity from the database before applying the modification to `f`.
+
+<<cascade,Cascade merge>> allows multiple modifications held in a graph of entity instances to be made persistent in one call to `merge()`.
+When `merge()` is used with cascading -- that is, when the `merge()` operation is applied to a root entity with associations mapped `cascade=MERGE` -- Hibernate issues a single `select` statement to retrieve the current database state of the root entity and all its associated entities.
+This behavior avoids the use of N+1 select statements for state retrieval during cascade merge but, in certain circumstances, the query might be suboptimal.
+On the other hand, this query does not occur if the root entity was already loaded into the persistence context before `merge()` is called.
+
+Therefore, when using the `EntityManager` API, we may gain control over the way state is loaded before a `merge()` just by calling `find()` before calling `merge()`.
+
+[source,java]
+----
+Book book = ... ;
+var graph = entityManager.createEntityGraph(Book.class);
+graph.addSubgraph(Book_.chapters);  // Book.chapters mapped cascade=MERGE
+entityManager.find(graph, book.getIsbn());  // force loading of the book
+entityManager.merge(book);  // merge the detached objet
+----
+
+The `Session` interface provides a streamlined alternative:
+
+[source,java]
+----
+Book book = ... ;
+var graph = session.createEntityGraph(Book.class);
+graph.addSubgraph(Book_.chapters);
+session.merge(book, graph);  // equivalent to find() then merge()
+----
+
+When merging multiple root entities, `findMultiple()` may be used instead of `find()`.
+
+[source,java]
+----
+List<Book> books = ... ;
+var isbns = books.stream().map(Book::getIsbn).toList();
+var graph = session.createEntityGraph(Book.class);
+graph.addSubgraph(Book_.chapters);  // Book.chapters mapped cascade=MERGE
+session.findMultiple(graph, isbns);  // force loading of the books
+for (var book in books) {
+    session.merge(book);
+}
+----
+
+TIP: In some cases, `merge()` is much less efficient than the `upsert()` operation of <<stateless-sessions,`StatelessSession`>>.
 
 [[flush]]
 === Flushing the session

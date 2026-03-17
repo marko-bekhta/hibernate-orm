@@ -153,6 +153,7 @@ import static org.hibernate.resource.jdbc.spi.PhysicalConnectionHandlingMode.DEL
  * @author Steve Ebersole
  * @author Chris Cranford
  */
+// Extended by Hibernate Reactive
 public class SessionFactoryImpl implements SessionFactoryImplementor {
 
 	private final String name;

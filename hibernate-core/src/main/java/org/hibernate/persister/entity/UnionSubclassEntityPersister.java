@@ -25,8 +25,8 @@ import org.hibernate.cache.spi.access.EntityDataAccess;
 import org.hibernate.cache.spi.access.NaturalIdDataAccess;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.id.IdentityGenerator;
-import org.hibernate.internal.FilterAliasGenerator;
-import org.hibernate.internal.StaticFilterAliasGenerator;
+import org.hibernate.persister.filter.FilterAliasGenerator;
+import org.hibernate.persister.filter.internal.StaticFilterAliasGenerator;
 import org.hibernate.internal.util.collections.JoinedList;
 import org.hibernate.jdbc.Expectation;
 import org.hibernate.mapping.Column;
@@ -89,7 +89,8 @@ public class UnionSubclassEntityPersister extends AbstractEntityPersister {
 			final PersistentClass persistentClass,
 			final EntityDataAccess cacheAccessStrategy,
 			final NaturalIdDataAccess naturalIdRegionAccessStrategy,
-			final RuntimeModelCreationContext creationContext) throws HibernateException {
+			final RuntimeModelCreationContext creationContext)
+					throws HibernateException {
 		super( persistentClass, cacheAccessStrategy, naturalIdRegionAccessStrategy, creationContext );
 
 		validateGenerator();
@@ -384,7 +385,11 @@ public class UnionSubclassEntityPersister extends AbstractEntityPersister {
 		consumer.consume(
 				tableName,
 				0,
-				() -> columnConsumer -> columnConsumer.accept( tableName, getIdentifierMapping(), getIdentifierColumnNames() )
+				() -> columnConsumer -> columnConsumer.accept(
+						getIdentifierMapping(),
+						tableName,
+						getIdentifierColumnNames()
+				)
 		);
 	}
 
@@ -536,13 +541,12 @@ public class UnionSubclassEntityPersister extends AbstractEntityPersister {
 						unionSubquery.append( dialect.getSelectClauseNullString( selectableMapping, typeConfiguration ) )
 								.append( " as " );
 					}
-					if ( selectableMapping.isFormula() ) {
-						unionSubquery.append( selectableMapping.getSelectableName() );
-					}
-					else {
-						unionSubquery.append( selectableMapping.getSelectionExpression() );
-					}
-					unionSubquery.append( ", " );
+					final String selectable =
+							selectableMapping.isFormula()
+									? selectableMapping.getSelectableName()
+									: selectableMapping.getSelectionExpression();
+					unionSubquery.append( selectable )
+							.append( ", " );
 				}
 				unionSubquery.append( persister.getDiscriminatorSQLValue() )
 						.append( " as clazz_ from " )
