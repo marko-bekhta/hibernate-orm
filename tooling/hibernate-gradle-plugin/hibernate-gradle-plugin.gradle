@@ -11,7 +11,7 @@ plugins {
 	id "local.javadoc"
 	id "local.code-quality"
 
-	id 'com.gradle.plugin-publish' version '2.0.0'
+    alias(libs.plugins.pluginPublish)
 	// for local publishing
 	id 'maven-publish'
 }
@@ -21,21 +21,21 @@ description = "Gradle plugin for integrating Hibernate aspects into your build"
 dependencies {
 	implementation project(':hibernate-core')
 	implementation libs.byteBuddy
-	implementation jakartaLibs.jaxbApi
+	implementation libs.jakarta.jaxbApi
 
 	implementation gradleApi()
 	implementation localGroovy()
 
 	// for Gradle
-	implementation jakartaLibs.inject
+	implementation libs.jakarta.inject
 	implementation localGroovy()
 
 	testImplementation gradleTestKit()
-	testImplementation testLibs.assertjCore
-	testImplementation testLibs.junitJupiterApi
+	testImplementation libs.test.assertjCore
+	testImplementation libs.test.junitJupiterApi
 
-	testRuntimeOnly testLibs.junitJupiterEngine
-	testRuntimeOnly testLibs.junitJupiterLauncher
+	testRuntimeOnly libs.test.junitJupiterEngine
+	testRuntimeOnly libs.test.junitJupiterLauncher
 }
 
 gradlePlugin {

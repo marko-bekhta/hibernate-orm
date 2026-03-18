@@ -19,7 +19,7 @@ dependencies {
     testImplementation libs.jandex
 
     // todo : to get rid of these
-    testImplementation testLibs.junit4
-    testImplementation testLibs.junit4Engine
+    testImplementation libs.test.junit4
+    testImplementation libs.test.junit4Engine
 
 }

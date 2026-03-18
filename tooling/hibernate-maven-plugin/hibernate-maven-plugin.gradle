@@ -5,7 +5,7 @@
 
 plugins {
     id "local.publishing-java-module"
-    id "org.gradlex.maven-plugin-development" version "1.0.3"
+    alias(libs.plugins.mavenPluginDev)
 }
 
 description = 'Maven plugin to integrate aspects of Hibernate into your build.'
@@ -25,6 +25,7 @@ configurations {
 dependencies {
     implementation project( ":hibernate-core" )
 
+    // TODO: fix these:
     implementation "org.apache.maven:maven-plugin-api:3.9.12"
     implementation ("org.apache.maven:maven-core:3.9.12") {
         exclude group: 'com.google.guava', module: 'guava'
