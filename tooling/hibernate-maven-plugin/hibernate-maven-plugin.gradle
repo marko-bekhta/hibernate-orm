@@ -5,7 +5,7 @@
 
 plugins {
     id "local.publishing-java-module"
-    id "org.gradlex.maven-plugin-development" version "1.0.3"
+    alias(libs.plugins.mavenPluginDev)
 }
 
 description = 'Maven plugin to integrate aspects of Hibernate into your build.'
@@ -25,21 +25,23 @@ configurations {
 dependencies {
     implementation project( ":hibernate-core" )
 
-    implementation "org.apache.maven:maven-plugin-api:3.9.12"
-    implementation ("org.apache.maven:maven-core:3.9.12") {
+    implementation(libs.maven.core) {
         exclude group: 'com.google.guava', module: 'guava'
     }
-    implementation "org.apache.maven.shared:file-management:3.1.0"
+    implementation(libs.maven.pluginApi) {
+        exclude group: 'com.google.guava', module: 'guava'
+    }
+    implementation libs.maven.fileManagement
 
-    compileOnly "org.apache.maven.plugin-tools:maven-plugin-tools-annotations:3.15.1"
+    compileOnly libs.maven.pluginToolsAnnotations
 
-    intTestImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
-    intTestImplementation 'org.apache.maven:maven-embedder:3.9.12'
-    intTestRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    intTestRuntimeOnly 'ch.qos.logback:logback-classic:1.5.18'
-    intTestRuntimeOnly 'org.apache.maven:maven-compat:3.9.12'
-    intTestRuntimeOnly 'org.apache.maven.resolver:maven-resolver-transport-http:1.9.24'
-    intTestRuntimeOnly 'org.apache.maven.resolver:maven-resolver-connector-basic:1.9.24'
+    intTestImplementation libs.test.junitJupiter
+    intTestImplementation libs.maven.embedder
+    intTestRuntimeOnly libs.maven.compat
+    intTestRuntimeOnly libs.test.junitJupiterLauncher
+    intTestRuntimeOnly libs.maven.resolverHttp
+    intTestRuntimeOnly libs.maven.resolverBasic
+    intTestRuntimeOnly libs.test.logbackClassic
 }
 
 tasks.register('integrationTest', Test) {
