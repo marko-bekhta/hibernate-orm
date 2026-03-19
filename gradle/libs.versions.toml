@@ -90,7 +90,7 @@ spanner = "2.35.4"
 
 # Maven
 maven = "3.9.14"
-mavenPluginTools = "3.15.1"
+mavenPluginTools = "3.15.2"
 mavenFileManagement = "3.1.0"
 mavenTransport = "1.9.24"
 
