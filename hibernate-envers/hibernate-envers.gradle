@@ -25,6 +25,7 @@ dependencies {
     compileOnly jakartaLibs.annotation
 
     testImplementation project( ':hibernate-testing' )
+    testImplementation libs.accessor
 
     testAnnotationProcessor project( ':hibernate-processor' )
 }

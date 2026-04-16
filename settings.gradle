@@ -28,6 +28,7 @@ dependencyResolutionManagement {
             url( rootProject.property( "mavenMirror" ) )
         }
 
+        mavenLocal()
         mavenCentral()
 
         if (System.getProperty('JPA_PREVIEW') != null) {
@@ -97,6 +98,8 @@ dependencyResolutionManagement {
 
             def antVersion = version "ant", "1.10.15"
 
+            def accessorVersion = version "accessor", "0.0.1-SNAPSHOT"
+
             library( "antlr", "org.antlr", "antlr4" ).versionRef( antlrVersion )
             library( "antlrRuntime", "org.antlr", "antlr4-runtime" ).versionRef( antlrVersion)
 
@@ -138,6 +141,8 @@ dependencyResolutionManagement {
             library( "commonsCollections4", "org.apache.commons", "commons-collections4" ).version( "4.5.0" )
             library( "eclipseJdtCore", "org.eclipse.jdt", "org.eclipse.jdt.core" ).version( "3.42.0" )
             library( "freemarker", "org.freemarker", "freemarker" ).version( "2.3.34" )
+
+            library( "accessor", "org.hibernate.accessor", "hibernate-accessor-core" ).versionRef( accessorVersion)
         }
         jakartaLibs {
             // `jakartaJpaVersion` comes from the local-build-plugins to allow for command-line overriding of the JPA version to use

@@ -4,6 +4,7 @@
  */
 package org.hibernate.orm.test.serialization;
 
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.internal.util.ReflectHelper;
 import org.hibernate.orm.test.serialization.entity.AnEntity;
 import org.hibernate.orm.test.serialization.entity.PK;
@@ -38,6 +39,7 @@ public class GetterSetterSerializationTest {
 
 		final String propertyName = "pk";
 		final Getter getter = new GetterFieldImpl(
+				HibernateAccessorFactory.reflection(),
 				AnEntity.class,
 				propertyName,
 				ReflectHelper.findField( AnEntity.class, propertyName )
@@ -65,11 +67,13 @@ public class GetterSetterSerializationTest {
 
 		final String propertyName = "pk";
 		final Getter getter = new GetterFieldImpl(
+				HibernateAccessorFactory.reflection(),
 				AnEntity.class,
 				propertyName,
 				ReflectHelper.findField( AnEntity.class, propertyName )
 		);
 		final Setter setter = new SetterFieldImpl(
+				HibernateAccessorFactory.reflection(),
 				AnEntity.class,
 				propertyName,
 				ReflectHelper.findField( AnEntity.class, propertyName )
@@ -98,6 +102,7 @@ public class GetterSetterSerializationTest {
 		final AnEntity entity = new AnEntity( new PK( 1L ) );
 
 		final Getter getter = new GetterMethodImpl(
+				HibernateAccessorFactory.reflection(),
 				AnEntity.class,
 				"pk",
 				ReflectHelper.findGetterMethod( AnEntity.class, "pk" )
@@ -124,11 +129,13 @@ public class GetterSetterSerializationTest {
 		final AnEntity entity = new AnEntity( new PK( 1L ) );
 
 		final Getter getter = new GetterMethodImpl(
+				HibernateAccessorFactory.reflection(),
 				AnEntity.class,
 				"pk",
 				ReflectHelper.findGetterMethod( AnEntity.class, "pk" )
 		);
 		final Setter setter = new SetterMethodImpl(
+				HibernateAccessorFactory.reflection(),
 				AnEntity.class,
 				"pk",
 				ReflectHelper.findSetterMethod( AnEntity.class, "pk", PK.class )

@@ -35,6 +35,8 @@ dependencies {
 
     implementation libs.antlrRuntime
 
+    implementation libs.accessor
+
     compileOnly jakartaLibs.jacc
     compileOnly jakartaLibs.validation
     compileOnly jakartaLibs.cdi

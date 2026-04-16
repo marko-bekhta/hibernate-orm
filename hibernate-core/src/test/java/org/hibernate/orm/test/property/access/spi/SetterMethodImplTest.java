@@ -5,6 +5,7 @@
 package org.hibernate.orm.test.property.access.spi;
 
 import org.hibernate.PropertyAccessException;
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.internal.util.ReflectHelper;
 import org.hibernate.property.access.spi.Setter;
 import org.hibernate.property.access.spi.SetterMethodImpl;
@@ -124,6 +125,6 @@ public class SetterMethodImplTest {
 
 	private Setter setter(Class<?> clazz, String property, Class<?> type) {
 		final Method setterMethod = ReflectHelper.findSetterMethod( clazz, property, type );
-		return new SetterMethodImpl( clazz, property, setterMethod );
+		return new SetterMethodImpl( HibernateAccessorFactory.reflection(), clazz, property, setterMethod );
 	}
 }

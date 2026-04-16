@@ -42,7 +42,7 @@ public class PersisterFactoryInitiator implements StandardServiceInitiator<Persi
 						? (Class<? extends PersisterFactory>) customImpl
 						: locate( registry, customImpl.toString() );
 		try {
-			return customImplClass.newInstance();
+			return customImplClass.getDeclaredConstructor().newInstance();
 		}
 		catch (Exception e) {
 			throw new ServiceException( "Could not initialize custom PersisterFactory impl [" + customImplClass.getName() + "]", e );
