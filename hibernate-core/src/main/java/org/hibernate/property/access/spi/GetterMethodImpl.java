@@ -7,7 +7,6 @@ package org.hibernate.property.access.spi;
 import java.io.ObjectStreamException;
 import java.io.Serial;
 import java.io.Serializable;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
@@ -15,9 +14,10 @@ import java.util.Map;
 
 import org.hibernate.Internal;
 import org.hibernate.PropertyAccessException;
+import org.hibernate.accessor.HibernateAccessorFactory;
+import org.hibernate.accessor.HibernateAccessorValueReader;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.ReflectHelper;
-import org.hibernate.internal.util.collections.ArrayHelper;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -33,19 +33,24 @@ public class GetterMethodImpl implements Getter {
 	private final String propertyName;
 	private final Method getterMethod;
 
-	public GetterMethodImpl(Class<?> containerClass, String propertyName, Method getterMethod) {
+	private final HibernateAccessorFactory accessorFactory;
+	private final HibernateAccessorValueReader<?> reader;
+
+	public GetterMethodImpl(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Method getterMethod) {
 		this.containerClass = containerClass;
 		this.propertyName = propertyName;
 		this.getterMethod = getterMethod;
+		this.accessorFactory = accessorFactory;
+		this.reader = this.accessorFactory.valueReader( getterMethod );
 	}
 
 	@Override
 	public @Nullable Object get(Object owner) {
 		try {
-			return getterMethod.invoke( owner, ArrayHelper.EMPTY_OBJECT_ARRAY );
+			return reader.get( owner );
 		}
-		catch (InvocationTargetException ite) {
-			final var cause = ite.getCause();
+		catch (org.hibernate.accessor.HibernateAccessorException e) {
+			final var cause = e.getCause();
 			if ( cause instanceof Error error ) {
 				// HHH-16403 Don't wrap Error
 				throw error;
@@ -57,16 +62,6 @@ public class GetterMethodImpl implements Getter {
 					containerClass,
 					propertyName
 			);
-		}
-		catch (IllegalAccessException iae) {
-			throw new PropertyAccessException(
-					iae,
-					"IllegalAccessException occurred while calling",
-					false,
-					containerClass,
-					propertyName
-			);
-			//cannot occur
 		}
 		catch (IllegalArgumentException iae) {
 			CORE_LOGGER.illegalPropertyGetterArgument( containerClass.getName(), propertyName );
@@ -112,7 +107,7 @@ public class GetterMethodImpl implements Getter {
 
 	@Serial
 	private Object writeReplace() throws ObjectStreamException {
-		return new SerialForm( containerClass, propertyName, getterMethod );
+		return new SerialForm( containerClass, propertyName, getterMethod, accessorFactory );
 	}
 
 	private static class SerialForm implements Serializable {
@@ -122,16 +117,19 @@ public class GetterMethodImpl implements Getter {
 		private final Class<?> declaringClass;
 		private final String methodName;
 
-		private SerialForm(Class<?> containerClass, String propertyName, Method method) {
+		private final HibernateAccessorFactory factory;
+
+		private SerialForm(Class<?> containerClass, String propertyName, Method method, HibernateAccessorFactory factory) {
 			this.containerClass = containerClass;
 			this.propertyName = propertyName;
 			this.declaringClass = method.getDeclaringClass();
 			this.methodName = method.getName();
+			this.factory = factory;
 		}
 
 		@Serial
 		private Object readResolve() {
-			return new GetterMethodImpl( containerClass, propertyName, resolveMethod() );
+			return new GetterMethodImpl( factory, containerClass, propertyName, resolveMethod() );
 		}
 
 		private Method resolveMethod() {

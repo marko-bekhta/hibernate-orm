@@ -4,6 +4,7 @@
  */
 package org.hibernate.orm.test.property.access.spi;
 
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.property.access.spi.Getter;
 import org.hibernate.property.access.spi.GetterFieldImpl;
 import org.junit.jupiter.api.Test;
@@ -51,7 +52,7 @@ public class GetterFieldImplTest {
 		try {
 			Field field = Target.class.getDeclaredField( property );
 			field.setAccessible( true );
-			return new GetterFieldImpl( Target.class, property, field );
+			return new GetterFieldImpl( HibernateAccessorFactory.reflection(), Target.class, property, field );
 		}
 		catch (NoSuchFieldException e) {
 			throw new IllegalArgumentException( e );

@@ -7,6 +7,7 @@ package org.hibernate.property.access.internal;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.property.access.spi.Getter;
 import org.hibernate.property.access.spi.GetterFieldImpl;
 import org.hibernate.property.access.spi.GetterMethodImpl;
@@ -35,7 +36,7 @@ public class PropertyAccessMixedImpl implements PropertyAccess {
 	private final Getter getter;
 	private final Setter setter;
 
-	public PropertyAccessMixedImpl(PropertyAccessStrategy strategy, Class<?> containerJavaType, String propertyName) {
+	public PropertyAccessMixedImpl(PropertyAccessStrategy strategy, HibernateAccessorFactory accessorFactory, Class<?> containerJavaType, String propertyName) {
 		this.strategy = strategy;
 
 		final var propertyAccessType = getAccessType( containerJavaType, propertyName );
@@ -47,8 +48,8 @@ public class PropertyAccessMixedImpl implements PropertyAccess {
 							"Could not locate field for property named [" + containerJavaType.getName() + "#" + propertyName + "]"
 					);
 				}
-				getter = fieldGetter( containerJavaType, propertyName, field );
-				setter = fieldSetter( containerJavaType, propertyName, field );
+				getter = fieldGetter( accessorFactory, containerJavaType, propertyName, field );
+				setter = fieldSetter( accessorFactory, containerJavaType, propertyName, field );
 				break;
 			}
 			case PROPERTY: {
@@ -60,8 +61,8 @@ public class PropertyAccessMixedImpl implements PropertyAccess {
 				}
 				final var setterMethod = findSetterMethod( containerJavaType, propertyName, getterMethod.getReturnType() );
 
-				getter = propertyGetter( containerJavaType, propertyName, getterMethod );
-				setter = propertySetter( containerJavaType, propertyName, setterMethod );
+				getter = propertyGetter( accessorFactory, containerJavaType, propertyName, getterMethod );
+				setter = propertySetter( accessorFactory, containerJavaType, propertyName, setterMethod );
 				break;
 			}
 			default: {
@@ -74,20 +75,20 @@ public class PropertyAccessMixedImpl implements PropertyAccess {
 
 	// --- //
 
-	private static Getter fieldGetter(Class<?> containerJavaType, String propertyName, Field field) {
-		return new GetterFieldImpl( containerJavaType, propertyName, field );
+	private static Getter fieldGetter(HibernateAccessorFactory accessorFactory, Class<?> containerJavaType, String propertyName, Field field) {
+		return new GetterFieldImpl( accessorFactory, containerJavaType, propertyName, field );
 	}
 
-	private static Setter fieldSetter(Class<?> containerJavaType, String propertyName, Field field) {
-		return new SetterFieldImpl( containerJavaType, propertyName, field );
+	private static Setter fieldSetter(HibernateAccessorFactory accessorFactory, Class<?> containerJavaType, String propertyName, Field field) {
+		return new SetterFieldImpl( accessorFactory, containerJavaType, propertyName, field );
 	}
 
-	private static Getter propertyGetter(Class<?> containerJavaType, String propertyName, Method method) {
-		return new GetterMethodImpl( containerJavaType, propertyName, method );
+	private static Getter propertyGetter(HibernateAccessorFactory accessorFactory, Class<?> containerJavaType, String propertyName, Method method) {
+		return new GetterMethodImpl( accessorFactory, containerJavaType, propertyName, method );
 	}
 
-	private static @PolyNull Setter propertySetter(Class<?> containerJavaType, String propertyName, @PolyNull Method method) {
-		return method == null ? null : new SetterMethodImpl( containerJavaType, propertyName, method );
+	private static @PolyNull Setter propertySetter(HibernateAccessorFactory accessorFactory, Class<?> containerJavaType, String propertyName, @PolyNull Method method) {
+		return method == null ? null : new SetterMethodImpl( accessorFactory, containerJavaType, propertyName, method );
 	}
 
 	@Override

@@ -7,6 +7,7 @@ package org.hibernate.orm.test.bootstrap.binding.annotations.access;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.annotations.AttributeAccessor;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataSources;
@@ -92,6 +93,10 @@ public class AttributeAccessorTest {
 	}
 
 	public static class BasicAttributeAccessor extends PropertyAccessStrategyBasicImpl {
+		public BasicAttributeAccessor() {
+			super( HibernateAccessorFactory.reflection());
+		}
+
 		@Override
 		public PropertyAccess buildPropertyAccess(Class<?> containerJavaType, String propertyName, boolean setterRequired) {
 			return super.buildPropertyAccess( containerJavaType, propertyName, setterRequired );

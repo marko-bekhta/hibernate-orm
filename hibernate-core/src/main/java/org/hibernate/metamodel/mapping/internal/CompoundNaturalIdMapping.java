@@ -8,6 +8,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.AssertionFailure;
 import org.hibernate.HibernateException;
 import org.hibernate.MappingException;
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.cache.MutableCacheKeyBuilder;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
@@ -833,19 +834,19 @@ public class CompoundNaturalIdMapping extends AbstractNaturalIdMapping implement
 		if ( naturalIdClass.isRecord() ) {
 			final var component = naturalIdClassComponents.get( keyName );
 			if ( component != null ) {
-				return new GetterMethodImpl( naturalIdClass, keyName, component.getAccessor() );
+				return new GetterMethodImpl( HibernateAccessorFactory.reflection(), naturalIdClass, keyName, component.getAccessor() );
 			}
 		}
 
 		// next look for a getter method
 		final var getterMethod = getterMethodAccess.apply( keyName );
 		if ( getterMethod != null ) {
-			return new GetterMethodImpl( naturalIdClass, keyName, getterMethod );
+			return new GetterMethodImpl( HibernateAccessorFactory.reflection(), naturalIdClass, keyName, getterMethod );
 		}
 
 		// lastly, look for a field
 		try {
-			return new GetterFieldImpl( naturalIdClass, keyName,
+			return new GetterFieldImpl( HibernateAccessorFactory.reflection(), naturalIdClass, keyName,
 					naturalIdClass.getDeclaredField( keyName ) );
 		}
 		catch (NoSuchFieldException ignore) {

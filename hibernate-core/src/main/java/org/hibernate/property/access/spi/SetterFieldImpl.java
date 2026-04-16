@@ -12,6 +12,8 @@ import java.util.Locale;
 
 import org.hibernate.Internal;
 import org.hibernate.PropertyAccessException;
+import org.hibernate.accessor.HibernateAccessorFactory;
+import org.hibernate.accessor.HibernateAccessorValueWriter;
 import org.hibernate.property.access.internal.AbstractFieldSerialForm;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -26,15 +28,19 @@ import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
  */
 @Internal
 public class SetterFieldImpl implements Setter {
+	private final HibernateAccessorFactory accessorFactory;
 	private final Class<?> containerClass;
 	private final String propertyName;
 	private final Field field;
+	private final HibernateAccessorValueWriter writer;
 	private final @Nullable Method setterMethod;
 
-	public SetterFieldImpl(Class<?> containerClass, String propertyName, Field field) {
+	public SetterFieldImpl(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Field field) {
+		this.accessorFactory = accessorFactory;
 		this.containerClass = containerClass;
 		this.propertyName = propertyName;
 		this.field = field;
+		this.writer = this.accessorFactory.valueWriter( field );
 		this.setterMethod = setterMethodOrNull( containerClass, propertyName, field.getType() );
 	}
 
@@ -53,7 +59,7 @@ public class SetterFieldImpl implements Setter {
 	@Override
 	public void set(Object target, @Nullable Object value) {
 		try {
-			field.set( target, value );
+			writer.set( target, value );
 		}
 		catch (Exception e) {
 			if ( value == null && field.getType().isPrimitive() ) {
@@ -111,7 +117,11 @@ public class SetterFieldImpl implements Setter {
 
 	@Serial
 	private Object writeReplace() {
-		return new SerialForm( containerClass, propertyName, field );
+		return new SerialForm( accessorFactory, containerClass, propertyName, field );
+	}
+
+	public HibernateAccessorFactory getAccessorFactory() {
+		return accessorFactory;
 	}
 
 	private static class SerialForm extends AbstractFieldSerialForm implements Serializable {
@@ -119,15 +129,15 @@ public class SetterFieldImpl implements Setter {
 		private final String propertyName;
 
 
-		private SerialForm(Class<?> containerClass, String propertyName, Field field) {
-			super( field );
+		private SerialForm(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Field field) {
+			super( accessorFactory, field );
 			this.containerClass = containerClass;
 			this.propertyName = propertyName;
 		}
 
 		@Serial
 		private Object readResolve() {
-			return new SetterFieldImpl( containerClass, propertyName, resolveField() );
+			return new SetterFieldImpl( getAccessorFactory(), containerClass, propertyName, resolveField() );
 		}
 
 	}

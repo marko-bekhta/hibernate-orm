@@ -5,6 +5,7 @@
 package org.hibernate.orm.test.bytecode;
 import java.util.Date;
 
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.property.access.internal.PropertyAccessStrategyBasicImpl;
 import org.hibernate.property.access.spi.Getter;
 import org.hibernate.property.access.spi.PropertyAccess;
@@ -24,7 +25,8 @@ public class BeanReflectionHelper {
 	private static final Class[] types = new Class[7];
 
 	static {
-		final PropertyAccessStrategyBasicImpl propertyAccessStrategy = new PropertyAccessStrategyBasicImpl();
+		final PropertyAccessStrategyBasicImpl propertyAccessStrategy = new PropertyAccessStrategyBasicImpl(
+				HibernateAccessorFactory.reflection() );
 
 		PropertyAccess propertyAccess = propertyAccessStrategy.buildPropertyAccess( Bean.class, "someString", true );
 		Getter getter = propertyAccess.getGetter();

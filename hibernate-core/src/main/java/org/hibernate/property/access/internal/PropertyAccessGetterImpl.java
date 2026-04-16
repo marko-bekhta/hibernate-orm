@@ -5,6 +5,7 @@
 package org.hibernate.property.access.internal;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.property.access.spi.Getter;
 import org.hibernate.property.access.spi.GetterFieldImpl;
 import org.hibernate.property.access.spi.GetterMethodImpl;
@@ -30,7 +31,7 @@ public class PropertyAccessGetterImpl implements PropertyAccess {
 
 	private final Getter getter;
 
-	public PropertyAccessGetterImpl(PropertyAccessStrategy strategy, Class<?> containerJavaType, String propertyName) {
+	public PropertyAccessGetterImpl(PropertyAccessStrategy strategy, HibernateAccessorFactory accessorFactory, Class<?> containerJavaType, String propertyName) {
 		this.strategy = strategy;
 
 		final var propertyAccessType = getAccessType( containerJavaType, propertyName );
@@ -42,7 +43,7 @@ public class PropertyAccessGetterImpl implements PropertyAccess {
 							"Could not locate field for property named [" + containerJavaType.getName() + "#" + propertyName + "]"
 					);
 				}
-				getter = fieldGetter( containerJavaType, propertyName, field );
+				getter = fieldGetter( accessorFactory, containerJavaType, propertyName, field );
 				break;
 			}
 			case PROPERTY: {
@@ -52,7 +53,7 @@ public class PropertyAccessGetterImpl implements PropertyAccess {
 							"Could not locate getter for property named [" + containerJavaType.getName() + "#" + propertyName + "]"
 					);
 				}
-				getter = propertyGetter( containerJavaType, propertyName, getterMethod );
+				getter = propertyGetter( accessorFactory, containerJavaType, propertyName, getterMethod );
 				break;
 			}
 			default: {
@@ -65,12 +66,12 @@ public class PropertyAccessGetterImpl implements PropertyAccess {
 
 	// --- //
 
-	private static Getter fieldGetter(Class<?> containerJavaType, String propertyName, Field field) {
-		return new GetterFieldImpl( containerJavaType, propertyName, field );
+	private static Getter fieldGetter(HibernateAccessorFactory accessorFactory, Class<?> containerJavaType, String propertyName, Field field) {
+		return new GetterFieldImpl( accessorFactory, containerJavaType, propertyName, field );
 	}
 
-	private static Getter propertyGetter(Class<?> containerJavaType, String propertyName, Method method) {
-		return new GetterMethodImpl( containerJavaType, propertyName, method );
+	private static Getter propertyGetter(HibernateAccessorFactory accessorFactory, Class<?> containerJavaType, String propertyName, Method method) {
+		return new GetterMethodImpl( accessorFactory, containerJavaType, propertyName, method );
 	}
 
 	@Override

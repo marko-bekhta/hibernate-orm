@@ -4,6 +4,8 @@
  */
 package org.hibernate.property.access.internal;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.property.access.spi.PropertyAccessStrategy;
 
@@ -18,27 +20,17 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  * @author Gavin King
  */
 public class PropertyAccessStrategyEnhancedImpl implements PropertyAccessStrategy {
-	public static PropertyAccessStrategy with(AccessType getterAccessType) {
-		return getterAccessType == null
-				? STANDARD
-				: switch ( getterAccessType ) {
-					case FIELD -> FIELD;
-					case PROPERTY -> PROPERTY;
-				};
-	}
 
 	private final @Nullable AccessType classAccessType;
+	private final @NonNull HibernateAccessorFactory accessorFactory;
 
-	public static PropertyAccessStrategy STANDARD = new PropertyAccessStrategyEnhancedImpl( null );
-	public static PropertyAccessStrategy FIELD = new PropertyAccessStrategyEnhancedImpl( AccessType.FIELD );
-	public static PropertyAccessStrategy PROPERTY = new PropertyAccessStrategyEnhancedImpl( AccessType.PROPERTY );
-
-	public PropertyAccessStrategyEnhancedImpl(@Nullable AccessType classAccessType) {
+	public PropertyAccessStrategyEnhancedImpl(@NonNull HibernateAccessorFactory accessorFactory, @Nullable AccessType classAccessType) {
+		this.accessorFactory = accessorFactory;
 		this.classAccessType = classAccessType;
 	}
 
 	@Override
 	public PropertyAccess buildPropertyAccess(Class<?> containerJavaType, final String propertyName, boolean setterRequired) {
-		return new PropertyAccessEnhancedImpl( this, containerJavaType, propertyName, classAccessType );
+		return new PropertyAccessEnhancedImpl( this, accessorFactory, containerJavaType, propertyName, classAccessType );
 	}
 }

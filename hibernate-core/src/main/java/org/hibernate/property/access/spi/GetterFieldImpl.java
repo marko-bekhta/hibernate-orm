@@ -15,6 +15,8 @@ import java.util.Locale;
 import java.util.Map;
 
 import org.hibernate.Internal;
+import org.hibernate.accessor.HibernateAccessorFactory;
+import org.hibernate.accessor.HibernateAccessorValueReader;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.property.access.internal.AbstractFieldSerialForm;
 
@@ -29,26 +31,31 @@ import static org.hibernate.internal.util.ReflectHelper.findGetterMethodForField
  */
 @Internal
 public class GetterFieldImpl implements Getter {
+	private final HibernateAccessorFactory accessorFactory;
 	private final Class<?> containerClass;
 	private final String propertyName;
 	private final Field field;
+	private final HibernateAccessorValueReader<?> reader;
 	private final @Nullable Method getterMethod;
 
-	public GetterFieldImpl(Class<?> containerClass, String propertyName, Field field) {
-		this ( containerClass, propertyName, field, findGetterMethodForFieldAccess( field, propertyName ) );
+	public GetterFieldImpl(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Field field) {
+		this ( accessorFactory,
+				containerClass, propertyName, field, findGetterMethodForFieldAccess( field, propertyName ) );
 	}
 
-	GetterFieldImpl(Class<?> containerClass, String propertyName, Field field, Method getterMethod) {
+	GetterFieldImpl(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Field field, Method getterMethod) {
+		this.accessorFactory = accessorFactory;
 		this.containerClass = containerClass;
 		this.propertyName = propertyName;
 		this.field = field;
+		this.reader = accessorFactory.valueReader( field );
 		this.getterMethod = getterMethod;
 	}
 
 	@Override
 	public @Nullable Object get(Object owner) {
 		try {
-			return field.get( owner );
+			return reader.get( owner );
 		}
 		catch (Exception e) {
 			throw new PropertyAccessException(
@@ -101,22 +108,22 @@ public class GetterFieldImpl implements Getter {
 
 	@Serial
 	private Object writeReplace() throws ObjectStreamException {
-		return new SerialForm( containerClass, propertyName, field );
+		return new SerialForm( accessorFactory, containerClass, propertyName, field );
 	}
 
 	private static class SerialForm extends AbstractFieldSerialForm implements Serializable {
 		private final Class<?> containerClass;
 		private final String propertyName;
 
-		private SerialForm(Class<?> containerClass, String propertyName, Field field) {
-			super( field );
+		private SerialForm(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Field field) {
+			super( accessorFactory, field );
 			this.containerClass = containerClass;
 			this.propertyName = propertyName;
 		}
 
 		@Serial
 		private Object readResolve() {
-			return new GetterFieldImpl( containerClass, propertyName, resolveField() );
+			return new GetterFieldImpl( getAccessorFactory(), containerClass, propertyName, resolveField() );
 		}
 
 	}

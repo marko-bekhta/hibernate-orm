@@ -4,6 +4,7 @@
  */
 package org.hibernate.property.access.internal;
 
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.property.access.spi.Getter;
 import org.hibernate.property.access.spi.GetterMethodImpl;
 import org.hibernate.property.access.spi.PropertyAccess;
@@ -33,19 +34,20 @@ public class PropertyAccessBasicImpl implements PropertyAccess {
 
 	public PropertyAccessBasicImpl(
 			PropertyAccessStrategyBasicImpl strategy,
+			HibernateAccessorFactory accessorFactory,
 			Class<?> containerJavaType,
 			final String propertyName,
 			boolean setterRequired) {
 		this.strategy = strategy;
 
 		final var getterMethod = findGetterMethod( containerJavaType, propertyName );
-		getter = new GetterMethodImpl( containerJavaType, propertyName, getterMethod );
+		getter = new GetterMethodImpl( accessorFactory, containerJavaType, propertyName, getterMethod );
 
 		final var setterMethod = setterRequired
 				? findSetterMethod( containerJavaType, propertyName, getterMethod.getReturnType() )
 				: setterMethodOrNull( containerJavaType, propertyName, getterMethod.getReturnType() );
 		setter = setterMethod != null
-				? new SetterMethodImpl( containerJavaType, propertyName, setterMethod )
+				? new SetterMethodImpl( accessorFactory, containerJavaType, propertyName, setterMethod )
 				: null;
 	}
 
