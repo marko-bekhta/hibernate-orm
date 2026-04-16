@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.lang.reflect.Method;
 
 import org.hibernate.PropertyAccessException;
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.internal.util.ReflectHelper;
 import org.hibernate.property.access.spi.Getter;
 import org.hibernate.property.access.spi.GetterMethodImpl;
@@ -114,6 +115,6 @@ public class GetterMethodImplTest {
 
 	private Getter getter(Class<?> clazz, String property) {
 		final Method getterMethod = ReflectHelper.findGetterMethod( clazz, property );
-		return new GetterMethodImpl( clazz, property, getterMethod );
+		return new GetterMethodImpl( HibernateAccessorFactory.reflection(), clazz, property, getterMethod );
 	}
 }

@@ -4,13 +4,18 @@
  */
 package org.hibernate.property.access.internal;
 
+import jakarta.persistence.AccessType;
 import org.hibernate.HibernateException;
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.boot.registry.selector.spi.StrategySelector;
 import org.hibernate.metamodel.RepresentationMode;
 import org.hibernate.property.access.spi.BuiltInPropertyAccessStrategies;
+import org.hibernate.property.access.spi.HibernateAccessorFactoryResolver;
 import org.hibernate.property.access.spi.PropertyAccessStrategy;
 import org.hibernate.property.access.spi.PropertyAccessStrategyResolver;
 import org.hibernate.service.ServiceRegistry;
+
+import java.lang.invoke.MethodHandles;
 
 import static org.hibernate.engine.internal.ManagedTypeHelper.isManagedType;
 import static org.hibernate.internal.util.StringHelper.isNotEmpty;
@@ -26,9 +31,21 @@ import static org.hibernate.property.access.spi.BuiltInPropertyAccessStrategies.
  */
 public class PropertyAccessStrategyResolverStandardImpl implements PropertyAccessStrategyResolver {
 	private final ServiceRegistry serviceRegistry;
+	private final HibernateAccessorFactory hibernateAccessorFactory;
+
+	private final PropertyAccessStrategy propertyAccessStrategy;
+	private final PropertyAccessStrategy fieldAccessStrategy;
+	private final PropertyAccessStrategy standardAccessStrategy;
 
 	public PropertyAccessStrategyResolverStandardImpl(ServiceRegistry serviceRegistry) {
 		this.serviceRegistry = serviceRegistry;
+		this.hibernateAccessorFactory = serviceRegistry.requireService( HibernateAccessorFactoryResolver.class )
+				// TODO: where do we get the lookup from ?!
+				.resolveHibernateAccessorFactoryResolver( MethodHandles.lookup() );
+
+		this.propertyAccessStrategy = new PropertyAccessStrategyEnhancedImpl( hibernateAccessorFactory, AccessType.PROPERTY );
+		this.fieldAccessStrategy =  new PropertyAccessStrategyEnhancedImpl( hibernateAccessorFactory, AccessType.FIELD );
+		this.standardAccessStrategy =  new PropertyAccessStrategyEnhancedImpl( hibernateAccessorFactory, null );
 	}
 
 	@Override
@@ -39,13 +56,13 @@ public class PropertyAccessStrategyResolverStandardImpl implements PropertyAcces
 
 		if ( isManagedType( containerClass ) ) {
 			if ( BASIC.getExternalName().equals( explicitAccessStrategyName ) ) {
-				return PropertyAccessStrategyEnhancedImpl.PROPERTY;
+				return propertyAccessStrategy;
 			}
 			else if ( FIELD.getExternalName().equals( explicitAccessStrategyName ) ) {
-				return PropertyAccessStrategyEnhancedImpl.FIELD;
+				return fieldAccessStrategy;
 			}
 			else if ( MIXED.getExternalName().equals( explicitAccessStrategyName ) ) {
-				return PropertyAccessStrategyEnhancedImpl.STANDARD;
+				return standardAccessStrategy;
 			}
 		}
 

@@ -5,6 +5,7 @@
 package org.hibernate.property.access.internal;
 
 
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.property.access.spi.Getter;
 import org.hibernate.property.access.spi.GetterFieldImpl;
 import org.hibernate.property.access.spi.PropertyAccess;
@@ -25,13 +26,14 @@ public class PropertyAccessFieldImpl implements PropertyAccess {
 
 	public PropertyAccessFieldImpl(
 			PropertyAccessStrategyFieldImpl strategy,
+			HibernateAccessorFactory accessorFactory,
 			Class<?> containerJavaType,
 			final String propertyName) {
 		this.strategy = strategy;
 
 		final var field = findField( containerJavaType, propertyName );
-		getter = new GetterFieldImpl( containerJavaType, propertyName, field );
-		setter = new SetterFieldImpl( containerJavaType, propertyName, field );
+		getter = new GetterFieldImpl( accessorFactory, containerJavaType, propertyName, field );
+		setter = new SetterFieldImpl( accessorFactory, containerJavaType, propertyName, field );
 	}
 
 	@Override

@@ -4,6 +4,7 @@
  */
 package org.hibernate.property.access.internal;
 
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.property.access.spi.PropertyAccessStrategy;
 
@@ -16,10 +17,17 @@ public class PropertyAccessStrategyGetterImpl implements PropertyAccessStrategy 
 	/**
 	 * Singleton access
 	 */
-	public static final PropertyAccessStrategy INSTANCE = new PropertyAccessStrategyGetterImpl();
+	public static final PropertyAccessStrategy INSTANCE = new PropertyAccessStrategyGetterImpl(
+			HibernateAccessorFactory.reflection() );
+
+	private final HibernateAccessorFactory accessorFactory;
+
+	public PropertyAccessStrategyGetterImpl(HibernateAccessorFactory accessorFactory) {
+		this.accessorFactory = accessorFactory;
+	}
 
 	@Override
 	public PropertyAccess buildPropertyAccess(Class<?> containerJavaType, String propertyName, boolean setterRequired) {
-		return new PropertyAccessGetterImpl( this, containerJavaType, propertyName );
+		return new PropertyAccessGetterImpl( this, accessorFactory, containerJavaType, propertyName );
 	}
 }

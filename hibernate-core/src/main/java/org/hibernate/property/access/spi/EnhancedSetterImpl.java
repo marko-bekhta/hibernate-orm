@@ -9,6 +9,7 @@ import java.io.Serializable;
 import java.lang.reflect.Field;
 
 import org.hibernate.Internal;
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.property.access.internal.AbstractFieldSerialForm;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -30,8 +31,8 @@ public class EnhancedSetterImpl extends SetterFieldImpl {
 	private final String propertyName;
 	private final int enhancementState;
 
-	public EnhancedSetterImpl(Class<?> containerClass, String propertyName, Field field) {
-		super( containerClass, propertyName, field );
+	public EnhancedSetterImpl(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Field field) {
+		super( accessorFactory, containerClass, propertyName, field );
 		this.propertyName = propertyName;
 		this.enhancementState = determineEnhancementState( containerClass, field.getType() );
 	}
@@ -48,7 +49,7 @@ public class EnhancedSetterImpl extends SetterFieldImpl {
 
 	@Serial
 	private Object writeReplace() {
-		return new SerialForm( getContainerClass(), propertyName, getField() );
+		return new SerialForm( getAccessorFactory(), getContainerClass(), propertyName, getField() );
 	}
 
 	private static class SerialForm extends AbstractFieldSerialForm implements Serializable {
@@ -56,15 +57,15 @@ public class EnhancedSetterImpl extends SetterFieldImpl {
 		private final String propertyName;
 
 
-		private SerialForm(Class<?> containerClass, String propertyName, Field field) {
-			super( field );
+		private SerialForm(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Field field) {
+			super( accessorFactory, field );
 			this.containerClass = containerClass;
 			this.propertyName = propertyName;
 		}
 
 		@Serial
 		private Object readResolve() {
-			return new EnhancedSetterImpl( containerClass, propertyName, resolveField() );
+			return new EnhancedSetterImpl( getAccessorFactory(), containerClass, propertyName, resolveField() );
 		}
 	}
 }

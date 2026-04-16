@@ -4,6 +4,7 @@
  */
 package org.hibernate.property.access.internal;
 
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.property.access.spi.PropertyAccessStrategy;
 
@@ -16,10 +17,16 @@ public class PropertyAccessStrategyMixedImpl implements PropertyAccessStrategy {
 	/**
 	 * Singleton access
 	 */
-	public static final PropertyAccessStrategy INSTANCE = new PropertyAccessStrategyMixedImpl();
+	public static final PropertyAccessStrategy INSTANCE = new PropertyAccessStrategyMixedImpl(HibernateAccessorFactory.reflection());
+
+	private final HibernateAccessorFactory accessorFactory;
+
+	public PropertyAccessStrategyMixedImpl(HibernateAccessorFactory accessorFactory) {
+		this.accessorFactory = accessorFactory;
+	}
 
 	@Override
 	public PropertyAccess buildPropertyAccess(Class<?> containerJavaType, String propertyName, boolean setterRequired) {
-		return new PropertyAccessMixedImpl( this, containerJavaType, propertyName );
+		return new PropertyAccessMixedImpl( this, accessorFactory, containerJavaType, propertyName );
 	}
 }

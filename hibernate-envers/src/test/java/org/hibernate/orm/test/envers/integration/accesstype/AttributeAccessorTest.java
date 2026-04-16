@@ -89,6 +89,11 @@ public class AttributeAccessorTest {
 
 	public static class BasicAttributeAccessor extends PropertyAccessStrategyBasicImpl {
 		static boolean invoked;
+
+		public BasicAttributeAccessor() {
+			super(org.hibernate.accessor.HibernateAccessorFactory.reflection());
+		}
+
 		@Override
 		public PropertyAccess buildPropertyAccess(Class containerJavaType, String propertyName, boolean setterRequired) {
 			invoked = true;
