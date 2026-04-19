@@ -106,7 +106,7 @@ spotless {
 tasks.compileJava.dependsOn tasks.spotlessJavaApply
 
 dependencies {
-    compileOnly libs.checkerFramework
+    implementation libs.checkerFramework
     testCompileOnly libs.checkerFramework
     checkerFramework libs.checkerFrameworkChecker
 }

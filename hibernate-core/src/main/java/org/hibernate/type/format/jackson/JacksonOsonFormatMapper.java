@@ -10,7 +10,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import oracle.jdbc.provider.oson.OsonModule;
+// import oracle.jdbc.provider.oson.OsonModule;
 import org.hibernate.type.descriptor.WrapperOptions;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.format.AbstractJsonFormatMapper;
@@ -53,7 +53,7 @@ public final class JacksonOsonFormatMapper extends AbstractJsonFormatMapper {
 	}
 
 	public JacksonOsonFormatMapper(ObjectMapper objectMapper) {
-		objectMapper.registerModule( new OsonModule() );
+		// objectMapper.registerModule( new OsonModule() );
 		objectMapper.disable( SerializationFeature.WRITE_DATES_AS_TIMESTAMPS );
 		this.objectMapper = objectMapper;
 	}

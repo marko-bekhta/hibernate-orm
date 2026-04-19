@@ -5,7 +5,7 @@
 package org.hibernate.dialect;
 
 import com.fasterxml.jackson.core.JsonFactory;
-import oracle.jdbc.provider.oson.OsonFactory;
+// import oracle.jdbc.provider.oson.OsonFactory;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.type.format.jackson.JacksonIntegration;
 
@@ -51,7 +51,7 @@ public class OracleOsonJacksonHelper {
 		// Intentionally storing the jackson typed factory in a different class,
 		// to avoid linkage errors for the outer class if Jackson is not available
 		private static final JsonFactory JACKSON_FACTORY = isJacksonOsonExtensionAvailable()
-				? new OsonFactory()
+				? new JsonFactory()
 				: new JsonFactory();
 
 	}
