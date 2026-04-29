@@ -6,6 +6,7 @@ package org.hibernate.metamodel.mapping.internal;
 
 import java.util.function.Consumer;
 
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.engine.FetchStyle;
 import org.hibernate.engine.FetchTiming;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
@@ -68,7 +69,11 @@ public class IdClassEmbeddable extends AbstractEmbeddableMapping implements Iden
 				creationProcess.getCreationContext().getTypeConfiguration().getJavaTypeRegistry()
 						.resolveManagedTypeDescriptor( idClassSource.getComponentClass() );
 
+		HibernateAccessorFactory hibernateAccessorFactory = creationProcess.getCreationContext()
+				.getHibernateAccessorFactory();
+
 		representationStrategy = new IdClassRepresentationStrategy(
+				hibernateAccessorFactory,
 				this,
 				idClassSource.sortProperties() == null,
 				idClassSource::getPropertyNames
@@ -125,11 +130,14 @@ public class IdClassEmbeddable extends AbstractEmbeddableMapping implements Iden
 			MappingModelCreationProcess creationProcess) {
 		super( new MutableAttributeMappingList( inverseMappingType.attributeMappings.size() ) );
 
+		HibernateAccessorFactory hibernateAccessorFactory = creationProcess.getCreationContext()
+				.getHibernateAccessorFactory();
+
 		this.navigableRole = inverseMappingType.getNavigableRole();
 		this.idMapping = (NonAggregatedIdentifierMapping) valueMapping;
 		this.virtualIdEmbeddable = (VirtualIdEmbeddable) valueMapping.getEmbeddableTypeDescriptor();
 		this.javaType = inverseMappingType.javaType;
-		this.representationStrategy = new IdClassRepresentationStrategy( this, false, () -> {
+		this.representationStrategy = new IdClassRepresentationStrategy( hibernateAccessorFactory,this, false, () -> {
 			final var attributeNames = new String[inverseMappingType.getNumberOfAttributeMappings()];
 			for ( int i = 0; i < attributeNames.length; i++ ) {
 				attributeNames[i] = inverseMappingType.getAttributeMapping( i ).getAttributeName();

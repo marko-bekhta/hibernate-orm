@@ -18,7 +18,9 @@ public class HibernateAccessorFactoryResolverImpl implements HibernateAccessorFa
 
 	@Override
 	public HibernateAccessorFactory resolveHibernateAccessorFactoryResolver(MethodHandles.Lookup lookup) {
-		// TODO: switch to HibernateAccessorFactory.lambda(lookup)
+		// TODO: Switch to HibernateAccessorFactory.lambda(lookup)
+		// TODO: If we go with lambda ... where do we get our hands on lookup ???
+		//  Ideally we want that lookup to be passed to us by a user...
 		return HibernateAccessorFactory.reflection();
 	}
 }

@@ -13,6 +13,7 @@ import java.util.Set;
 
 import org.hibernate.HibernateException;
 import org.hibernate.MappingException;
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.boot.registry.selector.spi.StrategySelector;
 import org.hibernate.bytecode.spi.BytecodeProvider;
 import org.hibernate.bytecode.spi.ReflectionOptimizer;
@@ -121,7 +122,7 @@ public class EntityRepresentationStrategyPojoStandard implements EntityRepresent
 		propertyAccessMap = buildPropertyAccessMap( bootDescriptor, strategySelector );
 		reflectionOptimizer = resolveReflectionOptimizer( bytecodeProvider );
 
-		instantiator = determineInstantiator( bootDescriptor, runtimeDescriptor );
+		instantiator = determineInstantiator( bootDescriptor, runtimeDescriptor, creationContext );
 	}
 
 	private ProxyFactory resolveProxyFactory(
@@ -171,7 +172,7 @@ public class EntityRepresentationStrategyPojoStandard implements EntityRepresent
 	/*
 	 * Used by Hibernate Reactive
 	 */
-	protected EntityInstantiator determineInstantiator(PersistentClass bootDescriptor, EntityPersister persister) {
+	protected EntityInstantiator determineInstantiator(PersistentClass bootDescriptor, EntityPersister persister, RuntimeModelCreationContext creationContext) {
 		if ( reflectionOptimizer != null && reflectionOptimizer.getInstantiationOptimizer() != null ) {
 			return new EntityInstantiatorPojoOptimized(
 					persister,
@@ -181,7 +182,8 @@ public class EntityRepresentationStrategyPojoStandard implements EntityRepresent
 			);
 		}
 		else {
-			return new EntityInstantiatorPojoStandard( persister, bootDescriptor, mappedJtd );
+			HibernateAccessorFactory hibernateAccessorFactory = creationContext.getHibernateAccessorFactory();
+			return new EntityInstantiatorPojoStandard( hibernateAccessorFactory, persister, bootDescriptor, mappedJtd );
 		}
 	}
 

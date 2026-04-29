@@ -4,6 +4,7 @@
  */
 package org.hibernate.metamodel.spi;
 
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.boot.spi.BootstrapContext;
 import org.hibernate.boot.spi.MetadataImplementor;
@@ -15,11 +16,13 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.generator.Generator;
 import org.hibernate.mapping.GeneratorSettings;
 import org.hibernate.mapping.PersistentClass;
+import org.hibernate.property.access.spi.HibernateAccessorFactoryResolver;
 import org.hibernate.query.sqm.function.SqmFunctionRegistry;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.type.descriptor.java.spi.JavaTypeRegistry;
 import org.hibernate.type.spi.TypeConfiguration;
 
+import java.lang.invoke.MethodHandles;
 import java.util.Map;
 
 /**
@@ -63,6 +66,11 @@ public interface RuntimeModelCreationContext {
 	Map<String, Generator> getGenerators();
 
 	GeneratorSettings getGeneratorSettings();
+
+	default HibernateAccessorFactory getHibernateAccessorFactory() {
+		return getServiceRegistry().requireService( HibernateAccessorFactoryResolver.class )
+				.resolveHibernateAccessorFactoryResolver( MethodHandles.lookup() );
+	}
 
 	// For Hibernate Reactive
 	Generator getOrCreateIdGenerator(String rootName, PersistentClass persistentClass);
