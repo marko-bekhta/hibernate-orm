@@ -7,6 +7,7 @@ package org.hibernate.metamodel.internal;
 
 import java.util.function.Supplier;
 
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.mapping.Component;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.metamodel.mapping.EmbeddableMappingType;
@@ -97,6 +98,7 @@ public class ManagedTypeRepresentationResolverStandard implements ManagedTypeRep
 
 	private static EmbeddableInstantiator getCustomInstantiator(
 			Component bootDescriptor, RuntimeModelCreationContext creationContext, CompositeUserType<?> compositeUserType) {
+		HibernateAccessorFactory hibernateAccessorFactory = creationContext.getHibernateAccessorFactory();
 		if ( bootDescriptor.getCustomInstantiator() != null ) {
 			return beanInstance( creationContext, bootDescriptor.getCustomInstantiator() );
 		}
@@ -107,10 +109,13 @@ public class ManagedTypeRepresentationResolverStandard implements ManagedTypeRep
 		else if ( bootDescriptor.getComponentClassName() != null
 				&& bootDescriptor.getComponentClass().isRecord() ) {
 			if ( bootDescriptor.sortProperties() == null ) {
-				return new EmbeddableInstantiatorRecordStandard( bootDescriptor.getComponentClass() );
+				return new EmbeddableInstantiatorRecordStandard(
+						hibernateAccessorFactory,
+						bootDescriptor.getComponentClass() );
 			}
 			else {
 				return EmbeddableInstantiatorRecordIndirecting.of(
+						hibernateAccessorFactory,
 						bootDescriptor.getComponentClass(),
 						bootDescriptor.getPropertyNames()
 				);
@@ -121,6 +126,7 @@ public class ManagedTypeRepresentationResolverStandard implements ManagedTypeRep
 			return EmbeddableInstantiatorPojoIndirecting.of(
 					bootDescriptor.getPropertyNames(),
 					bootDescriptor.getInstantiator(),
+					hibernateAccessorFactory.instantiator( bootDescriptor.getInstantiator() ),
 					bootDescriptor.getInstantiatorPropertyNames()
 			);
 		}

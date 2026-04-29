@@ -8,6 +8,8 @@ import java.lang.reflect.Constructor;
 
 import org.hibernate.InstantiationException;
 import org.hibernate.PropertyNotFoundException;
+import org.hibernate.accessor.HibernateAccessorFactory;
+import org.hibernate.accessor.HibernateAccessorInstantiator;
 import org.hibernate.bytecode.enhance.spi.interceptor.LazyAttributeLoadingInterceptor;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.persister.entity.EntityPersister;
@@ -26,15 +28,16 @@ public class EntityInstantiatorPojoStandard extends AbstractEntityInstantiatorPo
 	private final Class<?> proxyInterface;
 	private final boolean applyBytecodeInterception;
 	private final LazyAttributeLoadingInterceptor.EntityRelatedState loadingInterceptorState;
-	private final Constructor<?> constructor;
+	private final HibernateAccessorInstantiator<?> instantiator;
 
 	public EntityInstantiatorPojoStandard(
+			HibernateAccessorFactory hibernateAccessorFactory,
 			EntityPersister persister,
 			PersistentClass persistentClass,
 			JavaType<?> javaType) {
 		super( persister, persistentClass, javaType );
 		proxyInterface = persistentClass.getProxyInterface();
-		constructor = isAbstract() ? null : resolveConstructor( getMappedPojoClass() );
+		Constructor<?> constructor = isAbstract() ? null : resolveConstructor( getMappedPojoClass() );
 		applyBytecodeInterception = isPersistentAttributeInterceptableType( persistentClass.getMappedClass() );
 		if ( applyBytecodeInterception ) {
 			loadingInterceptorState = new LazyAttributeLoadingInterceptor.EntityRelatedState(
@@ -47,6 +50,7 @@ public class EntityInstantiatorPojoStandard extends AbstractEntityInstantiatorPo
 		else {
 			loadingInterceptorState = null;
 		}
+		instantiator = constructor != null ? hibernateAccessorFactory.instantiator( constructor ) : null;
 	}
 
 	protected static Constructor<?> resolveConstructor(Class<?> mappedPojoClass) {
@@ -61,7 +65,7 @@ public class EntityInstantiatorPojoStandard extends AbstractEntityInstantiatorPo
 
 	@Override
 	public boolean canBeInstantiated() {
-		return constructor != null;
+		return instantiator != null;
 	}
 
 	@Override
@@ -90,12 +94,12 @@ public class EntityInstantiatorPojoStandard extends AbstractEntityInstantiatorPo
 		if ( isAbstract() ) {
 			throw new InstantiationException( "Cannot instantiate abstract class or interface", getMappedPojoClass() );
 		}
-		else if ( constructor == null ) {
+		else if ( instantiator == null ) {
 			throw new InstantiationException( "No default constructor for entity", getMappedPojoClass() );
 		}
 		else {
 			try {
-				return applyInterception( constructor.newInstance( (Object[]) null ) );
+				return applyInterception( instantiator.create( (Object[]) null ) );
 			}
 			catch ( Exception e ) {
 				throw new InstantiationException( "Could not instantiate entity", getMappedPojoClass(), e );

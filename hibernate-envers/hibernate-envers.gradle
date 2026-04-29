@@ -17,7 +17,7 @@ dependencies {
     implementation jakartaLibs.jaxbApi
     implementation jakartaLibs.jaxb
     implementation libs.jandex
-    implementation libs.hibernateModels
+    implementation libs.accessor
 
     compileOnly libs.ant
 

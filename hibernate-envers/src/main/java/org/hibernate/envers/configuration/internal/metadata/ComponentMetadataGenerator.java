@@ -4,8 +4,10 @@
  */
 package org.hibernate.envers.configuration.internal.metadata;
 
+import java.lang.invoke.MethodHandles;
 import java.util.Map;
 
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.envers.boot.model.AttributeContainer;
 import org.hibernate.envers.boot.registry.classloading.ClassLoaderAccessHelper;
 import org.hibernate.envers.boot.spi.EnversMetadataBuildingContext;
@@ -21,6 +23,7 @@ import org.hibernate.metamodel.internal.EmbeddableInstantiatorPojoIndirecting;
 import org.hibernate.metamodel.internal.EmbeddableInstantiatorRecordIndirecting;
 import org.hibernate.metamodel.internal.EmbeddableInstantiatorRecordStandard;
 import org.hibernate.metamodel.spi.EmbeddableInstantiator;
+import org.hibernate.property.access.spi.HibernateAccessorFactoryResolver;
 import org.hibernate.resource.beans.internal.FallbackBeanInstanceProducer;
 import org.hibernate.usertype.CompositeUserType;
 
@@ -51,6 +54,9 @@ public final class ComponentMetadataGenerator extends AbstractMetadataGenerator 
 			boolean firstPass) {
 		final Component propComponent = (Component) value;
 		final EmbeddableInstantiator instantiator;
+		HibernateAccessorFactory hibernateAccessorFactory = getMetadataBuildingContext().getServiceRegistry()
+				.requireService( HibernateAccessorFactoryResolver.class )
+				.resolveHibernateAccessorFactoryResolver( MethodHandles.lookup() );
 		if ( propComponent.getCustomInstantiator() != null ) {
 			if ( !getMetadataBuildingContext().getBuildingOptions().isAllowExtensionsInCdi() ) {
 				instantiator = FallbackBeanInstanceProducer.INSTANCE.produceBeanInstance( propComponent.getCustomInstantiator() );
@@ -83,17 +89,20 @@ public final class ComponentMetadataGenerator extends AbstractMetadataGenerator 
 			instantiator = EmbeddableInstantiatorPojoIndirecting.of(
 					propComponent.getPropertyNames(),
 					propComponent.getInstantiator(),
+					hibernateAccessorFactory.instantiator( propComponent.getInstantiator() ),
 					propComponent.getInstantiatorPropertyNames()
 			);
 		}
 		else if ( propComponent.getComponentClass() != null &&
 					propComponent.getComponentClass().isRecord() ) {
 			if ( propComponent.sortProperties() == null ) {
-				instantiator = new EmbeddableInstantiatorRecordStandard( propComponent.getComponentClass() );
+				instantiator = new EmbeddableInstantiatorRecordStandard(
+						hibernateAccessorFactory,
+						propComponent.getComponentClass() );
 			}
 			else {
 				instantiator = EmbeddableInstantiatorRecordIndirecting.of(
-						propComponent.getComponentClass(),
+						hibernateAccessorFactory, propComponent.getComponentClass(),
 						propComponent.getPropertyNames()
 				);
 			}

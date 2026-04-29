@@ -7,6 +7,8 @@ package org.hibernate.metamodel.internal;
 import java.lang.reflect.Constructor;
 
 import org.hibernate.InstantiationException;
+import org.hibernate.accessor.HibernateAccessorFactory;
+import org.hibernate.accessor.HibernateAccessorInstantiator;
 import org.hibernate.metamodel.spi.EmbeddableInstantiator;
 import org.hibernate.metamodel.spi.ValueAccess;
 
@@ -18,21 +20,22 @@ import static org.hibernate.internal.util.ReflectHelper.getRecordComponentTypes;
  */
 public class EmbeddableInstantiatorRecordStandard extends AbstractPojoInstantiator implements EmbeddableInstantiator {
 
-	protected final Constructor<?> constructor;
+	protected final HibernateAccessorInstantiator<?> instantiator;
 
-	public EmbeddableInstantiatorRecordStandard(Class<?> javaType) {
+	public EmbeddableInstantiatorRecordStandard(HibernateAccessorFactory hibernateAccessorFactory, Class<?> javaType) {
 		super( javaType );
-		constructor = getConstructorOrNull( javaType, getRecordComponentTypes( javaType ) );
+		Constructor<?> constructor = getConstructorOrNull( javaType, getRecordComponentTypes( javaType ) );
+		this.instantiator = constructor != null ? hibernateAccessorFactory.instantiator( constructor ) : null;
 	}
 
 	@Override
 	public Object instantiate(ValueAccess valuesAccess) {
-		if ( constructor == null ) {
+		if ( instantiator == null ) {
 			throw new InstantiationException( "Unable to locate constructor for embeddable", getMappedPojoClass() );
 		}
 
 		try {
-			return constructor.newInstance( valuesAccess.getValues() );
+			return instantiator.create( valuesAccess.getValues() );
 		}
 		catch ( Exception e ) {
 			throw new InstantiationException( "Could not instantiate entity", getMappedPojoClass(), e );

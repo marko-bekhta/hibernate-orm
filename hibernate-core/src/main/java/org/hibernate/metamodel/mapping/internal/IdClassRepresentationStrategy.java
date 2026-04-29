@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.function.Supplier;
 
 import org.hibernate.HibernateException;
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.bytecode.spi.ReflectionOptimizer;
 import org.hibernate.mapping.Property;
 import org.hibernate.metamodel.RepresentationMode;
@@ -27,6 +28,7 @@ public class IdClassRepresentationStrategy implements EmbeddableRepresentationSt
 	private final EmbeddableInstantiator instantiator;
 
 	public IdClassRepresentationStrategy(
+			HibernateAccessorFactory hibernateAccessorFactory,
 			IdClassEmbeddable idClassEmbeddable,
 			boolean simplePropertyOrder,
 			Supplier<String[]> attributeNamesAccess) {
@@ -34,8 +36,8 @@ public class IdClassRepresentationStrategy implements EmbeddableRepresentationSt
 		final var javaTypeClass = idClassType.getJavaTypeClass();
 		if ( javaTypeClass.isRecord() ) {
 			instantiator = simplePropertyOrder
-					? new EmbeddableInstantiatorRecordStandard( javaTypeClass )
-					: EmbeddableInstantiatorRecordIndirecting.of( javaTypeClass, attributeNamesAccess.get() );
+					? new EmbeddableInstantiatorRecordStandard( hibernateAccessorFactory, javaTypeClass )
+					: EmbeddableInstantiatorRecordIndirecting.of( hibernateAccessorFactory, javaTypeClass, attributeNamesAccess.get() );
 		}
 		else {
 			instantiator = new EmbeddableInstantiatorPojoStandard(

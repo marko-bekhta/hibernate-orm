@@ -31,7 +31,6 @@ import static org.hibernate.property.access.spi.BuiltInPropertyAccessStrategies.
  */
 public class PropertyAccessStrategyResolverStandardImpl implements PropertyAccessStrategyResolver {
 	private final ServiceRegistry serviceRegistry;
-	private final HibernateAccessorFactory hibernateAccessorFactory;
 
 	private final PropertyAccessStrategy propertyAccessStrategy;
 	private final PropertyAccessStrategy fieldAccessStrategy;
@@ -39,8 +38,8 @@ public class PropertyAccessStrategyResolverStandardImpl implements PropertyAcces
 
 	public PropertyAccessStrategyResolverStandardImpl(ServiceRegistry serviceRegistry) {
 		this.serviceRegistry = serviceRegistry;
-		this.hibernateAccessorFactory = serviceRegistry.requireService( HibernateAccessorFactoryResolver.class )
-				// TODO: where do we get the lookup from ?!
+		HibernateAccessorFactory hibernateAccessorFactory = serviceRegistry.requireService(
+						HibernateAccessorFactoryResolver.class )
 				.resolveHibernateAccessorFactoryResolver( MethodHandles.lookup() );
 
 		this.propertyAccessStrategy = new PropertyAccessStrategyEnhancedImpl( hibernateAccessorFactory, AccessType.PROPERTY );
