@@ -15,8 +15,6 @@ import org.hibernate.property.access.spi.PropertyAccessStrategy;
 import org.hibernate.property.access.spi.PropertyAccessStrategyResolver;
 import org.hibernate.service.ServiceRegistry;
 
-import java.lang.invoke.MethodHandles;
-
 import static org.hibernate.engine.internal.ManagedTypeHelper.isManagedType;
 import static org.hibernate.internal.util.StringHelper.isNotEmpty;
 import static org.hibernate.property.access.spi.BuiltInPropertyAccessStrategies.BASIC;
@@ -40,7 +38,7 @@ public class PropertyAccessStrategyResolverStandardImpl implements PropertyAcces
 		this.serviceRegistry = serviceRegistry;
 		HibernateAccessorFactory hibernateAccessorFactory = serviceRegistry.requireService(
 						HibernateAccessorFactoryResolver.class )
-				.resolveHibernateAccessorFactoryResolver( MethodHandles.lookup() );
+				.resolveHibernateAccessorFactoryResolver();
 
 		this.propertyAccessStrategy = new PropertyAccessStrategyEnhancedImpl( hibernateAccessorFactory, AccessType.PROPERTY );
 		this.fieldAccessStrategy =  new PropertyAccessStrategyEnhancedImpl( hibernateAccessorFactory, AccessType.FIELD );
@@ -78,10 +76,20 @@ public class PropertyAccessStrategyResolverStandardImpl implements PropertyAcces
 
 	protected PropertyAccessStrategy resolveExplicitlyNamedPropertyAccessStrategy(String explicitAccessStrategyName) {
 		final var builtInStrategyEnum = BuiltInPropertyAccessStrategies.interpret( explicitAccessStrategyName );
-		return builtInStrategyEnum != null
-				? builtInStrategyEnum.getStrategy()
-				: strategySelectorService().resolveStrategy( PropertyAccessStrategy.class, explicitAccessStrategyName );
-
+		if ( builtInStrategyEnum != null ) {
+			return switch ( builtInStrategyEnum ) {
+				case BASIC -> propertyAccessStrategy;
+				case FIELD -> fieldAccessStrategy;
+				case MIXED -> standardAccessStrategy;
+				case MAP -> PropertyAccessStrategyMapImpl.INSTANCE;
+				case EMBEDDED -> PropertyAccessStrategyEmbeddedImpl.INSTANCE;
+				case NOOP -> PropertyAccessStrategyNoopImpl.INSTANCE;
+			};
+		}
+		else {
+			return strategySelectorService().resolveStrategy( PropertyAccessStrategy.class,
+					explicitAccessStrategyName );
+		}
 	}
 
 	private StrategySelector strategySelectorService;
