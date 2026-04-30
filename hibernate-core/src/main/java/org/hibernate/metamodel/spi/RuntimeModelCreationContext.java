@@ -22,7 +22,6 @@ import org.hibernate.service.ServiceRegistry;
 import org.hibernate.type.descriptor.java.spi.JavaTypeRegistry;
 import org.hibernate.type.spi.TypeConfiguration;
 
-import java.lang.invoke.MethodHandles;
 import java.util.Map;
 
 /**
@@ -69,7 +68,7 @@ public interface RuntimeModelCreationContext {
 
 	default HibernateAccessorFactory getHibernateAccessorFactory() {
 		return getServiceRegistry().requireService( HibernateAccessorFactoryResolver.class )
-				.resolveHibernateAccessorFactoryResolver( MethodHandles.lookup() );
+				.resolveHibernateAccessorFactoryResolver();
 	}
 
 	// For Hibernate Reactive
