@@ -68,7 +68,7 @@ public interface RuntimeModelCreationContext {
 
 	default HibernateAccessorFactory getHibernateAccessorFactory() {
 		return getServiceRegistry().requireService( HibernateAccessorFactoryResolver.class )
-				.resolveHibernateAccessorFactoryResolver();
+				.resolveHibernateAccessorFactory();
 	}
 
 	// For Hibernate Reactive

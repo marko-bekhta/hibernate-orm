@@ -17,7 +17,7 @@ import java.util.Map;
 public class HibernateAccessorFactoryResolverInitiator
 		implements StandardServiceInitiator<HibernateAccessorFactoryResolver> {
 
-	static final String HIBERNATE_ACCESSOR_FACTORY_RESOLVER = "hibernate.hibernate_accessor_factory_resolver";
+	static final String HIBERNATE_ACCESSOR_FACTORY_RESOLVER = "hibernate.accessor_factory_resolver";
 
 	/**
 	 * Singleton access

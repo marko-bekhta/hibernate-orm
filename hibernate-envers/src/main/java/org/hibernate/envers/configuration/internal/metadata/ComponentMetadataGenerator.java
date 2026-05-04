@@ -55,7 +55,7 @@ public final class ComponentMetadataGenerator extends AbstractMetadataGenerator 
 		final EmbeddableInstantiator instantiator;
 		HibernateAccessorFactory hibernateAccessorFactory = getMetadataBuildingContext().getServiceRegistry()
 				.requireService( HibernateAccessorFactoryResolver.class )
-				.resolveHibernateAccessorFactoryResolver();
+				.resolveHibernateAccessorFactory();
 		if ( propComponent.getCustomInstantiator() != null ) {
 			if ( !getMetadataBuildingContext().getBuildingOptions().isAllowExtensionsInCdi() ) {
 				instantiator = FallbackBeanInstanceProducer.INSTANCE.produceBeanInstance( propComponent.getCustomInstantiator() );
