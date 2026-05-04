@@ -6,11 +6,9 @@ package org.hibernate.property.access.internal;
 
 import jakarta.persistence.AccessType;
 import org.hibernate.HibernateException;
-import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.boot.registry.selector.spi.StrategySelector;
 import org.hibernate.metamodel.RepresentationMode;
 import org.hibernate.property.access.spi.BuiltInPropertyAccessStrategies;
-import org.hibernate.property.access.spi.HibernateAccessorFactoryResolver;
 import org.hibernate.property.access.spi.PropertyAccessStrategy;
 import org.hibernate.property.access.spi.PropertyAccessStrategyResolver;
 import org.hibernate.service.ServiceRegistry;
@@ -36,13 +34,10 @@ public class PropertyAccessStrategyResolverStandardImpl implements PropertyAcces
 
 	public PropertyAccessStrategyResolverStandardImpl(ServiceRegistry serviceRegistry) {
 		this.serviceRegistry = serviceRegistry;
-		HibernateAccessorFactory hibernateAccessorFactory = serviceRegistry.requireService(
-						HibernateAccessorFactoryResolver.class )
-				.resolveHibernateAccessorFactoryResolver();
 
-		this.propertyAccessStrategy = new PropertyAccessStrategyEnhancedImpl( hibernateAccessorFactory, AccessType.PROPERTY );
-		this.fieldAccessStrategy =  new PropertyAccessStrategyEnhancedImpl( hibernateAccessorFactory, AccessType.FIELD );
-		this.standardAccessStrategy =  new PropertyAccessStrategyEnhancedImpl( hibernateAccessorFactory, null );
+		this.propertyAccessStrategy = new PropertyAccessStrategyEnhancedImpl( AccessType.PROPERTY );
+		this.fieldAccessStrategy = new PropertyAccessStrategyEnhancedImpl( AccessType.FIELD );
+		this.standardAccessStrategy = new PropertyAccessStrategyEnhancedImpl( null );
 	}
 
 	@Override

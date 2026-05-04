@@ -4,7 +4,6 @@
  */
 package org.hibernate.property.access.internal;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.property.access.spi.PropertyAccessStrategy;
@@ -22,15 +21,19 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 public class PropertyAccessStrategyEnhancedImpl implements PropertyAccessStrategy {
 
 	private final @Nullable AccessType classAccessType;
-	private final @NonNull HibernateAccessorFactory accessorFactory;
 
-	public PropertyAccessStrategyEnhancedImpl(@NonNull HibernateAccessorFactory accessorFactory, @Nullable AccessType classAccessType) {
-		this.accessorFactory = accessorFactory;
+	public PropertyAccessStrategyEnhancedImpl(@Nullable AccessType classAccessType) {
 		this.classAccessType = classAccessType;
 	}
 
 	@Override
 	public PropertyAccess buildPropertyAccess(Class<?> containerJavaType, final String propertyName, boolean setterRequired) {
+		return buildPropertyAccess( containerJavaType, propertyName, setterRequired, HibernateAccessorFactory.reflection() );
+	}
+
+	@Override
+	public PropertyAccess buildPropertyAccess(Class<?> containerJavaType, String propertyName, boolean setterRequired,
+			HibernateAccessorFactory accessorFactory) {
 		return new PropertyAccessEnhancedImpl( this, accessorFactory, containerJavaType, propertyName, classAccessType );
 	}
 }

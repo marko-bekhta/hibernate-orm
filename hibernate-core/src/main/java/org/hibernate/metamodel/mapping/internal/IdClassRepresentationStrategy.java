@@ -25,6 +25,7 @@ import org.hibernate.type.descriptor.java.JavaType;
  */
 public class IdClassRepresentationStrategy implements EmbeddableRepresentationStrategy {
 	private final JavaType<?> idClassType;
+	private final HibernateAccessorFactory accessorFactory;
 	private final EmbeddableInstantiator instantiator;
 
 	public IdClassRepresentationStrategy(
@@ -32,6 +33,7 @@ public class IdClassRepresentationStrategy implements EmbeddableRepresentationSt
 			IdClassEmbeddable idClassEmbeddable,
 			boolean simplePropertyOrder,
 			Supplier<String[]> attributeNamesAccess) {
+		this.accessorFactory = hibernateAccessorFactory;
 		idClassType = idClassEmbeddable.getMappedJavaType();
 		final var javaTypeClass = idClassType.getJavaTypeClass();
 		if ( javaTypeClass.isRecord() ) {
@@ -85,7 +87,8 @@ public class IdClassRepresentationStrategy implements EmbeddableRepresentationSt
 		return strategy.buildPropertyAccess(
 				idClassType.getJavaTypeClass(),
 				bootAttributeDescriptor.getName(),
-				false
+				false,
+				accessorFactory
 		);
 	}
 }

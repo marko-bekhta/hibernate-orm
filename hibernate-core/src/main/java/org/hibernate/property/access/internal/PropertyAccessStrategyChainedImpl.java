@@ -5,6 +5,7 @@
 package org.hibernate.property.access.internal;
 
 import org.hibernate.PropertyNotFoundException;
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.property.access.spi.PropertyAccessStrategy;
 
@@ -24,6 +25,21 @@ public class PropertyAccessStrategyChainedImpl implements PropertyAccessStrategy
 		for ( var candidate : chain ) {
 			try {
 				return candidate.buildPropertyAccess( containerJavaType, propertyName, true );
+			}
+			catch (Exception ignore) {
+				// ignore
+			}
+		}
+
+		throw new PropertyNotFoundException( "Could not resolve PropertyAccess for " + propertyName + " on " + containerJavaType );
+	}
+
+	@Override
+	public PropertyAccess buildPropertyAccess(Class<?> containerJavaType, String propertyName, boolean setterRequired,
+			HibernateAccessorFactory accessorFactory) {
+		for ( var candidate : chain ) {
+			try {
+				return candidate.buildPropertyAccess( containerJavaType, propertyName, true, accessorFactory );
 			}
 			catch (Exception ignore) {
 				// ignore

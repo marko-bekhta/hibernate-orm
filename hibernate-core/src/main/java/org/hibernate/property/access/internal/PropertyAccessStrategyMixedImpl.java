@@ -17,16 +17,10 @@ public class PropertyAccessStrategyMixedImpl implements PropertyAccessStrategy {
 	/**
 	 * Singleton access
 	 */
-	public static final PropertyAccessStrategy INSTANCE = new PropertyAccessStrategyMixedImpl(HibernateAccessorFactory.reflection());
-
-	private final HibernateAccessorFactory accessorFactory;
-
-	public PropertyAccessStrategyMixedImpl(HibernateAccessorFactory accessorFactory) {
-		this.accessorFactory = accessorFactory;
-	}
+	public static final PropertyAccessStrategy INSTANCE = new PropertyAccessStrategyMixedImpl();
 
 	@Override
 	public PropertyAccess buildPropertyAccess(Class<?> containerJavaType, String propertyName, boolean setterRequired) {
-		return new PropertyAccessMixedImpl( this, accessorFactory, containerJavaType, propertyName );
+		return new PropertyAccessMixedImpl( this, HibernateAccessorFactory.reflection(), containerJavaType, propertyName );
 	}
 }

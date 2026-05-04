@@ -26,6 +26,7 @@ import org.hibernate.metamodel.RepresentationMode;
 import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.property.access.spi.Getter;
+import org.hibernate.property.access.spi.HibernateAccessorFactoryResolver;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.property.access.spi.PropertyAccessStrategy;
 import org.hibernate.property.access.spi.PropertyAccessStrategyResolver;
@@ -413,7 +414,10 @@ public class Property implements Serializable, MetaAttributable {
 	}
 
 	private PropertyAccess buildPropertyAccess(Class<?> clazz) {
-		return getPropertyAccessStrategy( clazz ).buildPropertyAccess( clazz, name, true );
+		final var factory = resolveServiceRegistry()
+				.requireService( HibernateAccessorFactoryResolver.class )
+				.resolveHibernateAccessorFactoryResolver();
+		return getPropertyAccessStrategy( clazz ).buildPropertyAccess( clazz, name, true, factory );
 	}
 
 	// todo : remove

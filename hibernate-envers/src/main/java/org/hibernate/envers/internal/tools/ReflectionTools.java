@@ -8,12 +8,14 @@ import java.lang.reflect.Field;
 import java.util.Locale;
 import java.util.Map;
 
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
 import org.hibernate.boot.registry.classloading.spi.ClassLoadingException;
 import org.hibernate.envers.exception.AuditException;
 import org.hibernate.envers.internal.entities.PropertyData;
 import org.hibernate.envers.tools.Pair;
 import org.hibernate.property.access.spi.Getter;
+import org.hibernate.property.access.spi.HibernateAccessorFactoryResolver;
 import org.hibernate.property.access.spi.PropertyAccessStrategy;
 import org.hibernate.property.access.spi.PropertyAccessStrategyResolver;
 import org.hibernate.property.access.spi.Setter;
@@ -41,6 +43,11 @@ public abstract class ReflectionTools {
 				.resolvePropertyAccessStrategy( cls, accessorType, null );
 	}
 
+	private static HibernateAccessorFactory getAccessorFactory(ServiceRegistry serviceRegistry) {
+		return serviceRegistry.requireService( HibernateAccessorFactoryResolver.class )
+				.resolveHibernateAccessorFactoryResolver();
+	}
+
 	public static Getter getGetter(Class cls, PropertyData propertyData, ServiceRegistry serviceRegistry) {
 		if ( propertyData.getPropertyAccessStrategy() == null ) {
 			return getGetter( cls, propertyData.getBeanName(), propertyData.getAccessType(), serviceRegistry );
@@ -52,7 +59,8 @@ public abstract class ReflectionTools {
 			if ( value == null ) {
 				value = propertyData.getPropertyAccessStrategy().buildPropertyAccess(
 						cls,
-						propertyData.getBeanName(), false
+						propertyData.getBeanName(), false,
+						getAccessorFactory( serviceRegistry )
 				).getGetter();
 				// It's ok if two getters are generated concurrently
 				GETTER_CACHE.put( key, value );
@@ -65,7 +73,9 @@ public abstract class ReflectionTools {
 		final Pair<Class, String> key = Pair.make( cls, propertyName );
 		Getter value = GETTER_CACHE.get( key );
 		if ( value == null ) {
-			value = getAccessStrategy( cls, serviceRegistry, accessorType ).buildPropertyAccess( cls, propertyName, true ).getGetter();
+			final var factory = getAccessorFactory( serviceRegistry );
+			value = getAccessStrategy( cls, serviceRegistry, accessorType )
+					.buildPropertyAccess( cls, propertyName, true, factory ).getGetter();
 			// It's ok if two getters are generated concurrently
 			GETTER_CACHE.put( key, value );
 		}
@@ -81,7 +91,9 @@ public abstract class ReflectionTools {
 		final Pair<Class, String> key = Pair.make( cls, propertyName );
 		Setter value = SETTER_CACHE.get( key );
 		if ( value == null ) {
-			value = getAccessStrategy( cls, serviceRegistry, accessorType ).buildPropertyAccess( cls, propertyName, true ).getSetter();
+			final var factory = getAccessorFactory( serviceRegistry );
+			value = getAccessStrategy( cls, serviceRegistry, accessorType )
+					.buildPropertyAccess( cls, propertyName, true, factory ).getSetter();
 			// It's ok if two setters are generated concurrently
 			SETTER_CACHE.put( key, value );
 		}

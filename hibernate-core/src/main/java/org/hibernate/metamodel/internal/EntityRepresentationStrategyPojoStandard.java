@@ -75,6 +75,7 @@ public class EntityRepresentationStrategyPojoStandard implements EntityRepresent
 		final var strategySelector =
 				creationContext.getServiceRegistry()
 						.getService( StrategySelector.class );
+		final var accessorFactory = creationContext.getHibernateAccessorFactory();
 
 		final var identifierProperty = bootDescriptor.getIdentifierProperty();
 		if ( identifierProperty == null ) {
@@ -104,7 +105,7 @@ public class EntityRepresentationStrategyPojoStandard implements EntityRepresent
 		else {
 			mapsIdRepresentationStrategy = null;
 			identifierPropertyName = identifierProperty.getName();
-			identifierPropertyAccess = makePropertyAccess( identifierProperty, strategySelector );
+			identifierPropertyAccess = makePropertyAccess( identifierProperty, strategySelector, accessorFactory );
 		}
 
 		final var bytecodeProvider =
@@ -119,7 +120,7 @@ public class EntityRepresentationStrategyPojoStandard implements EntityRepresent
 				creationContext
 		);
 
-		propertyAccessMap = buildPropertyAccessMap( bootDescriptor, strategySelector );
+		propertyAccessMap = buildPropertyAccessMap( bootDescriptor, strategySelector, accessorFactory );
 		reflectionOptimizer = resolveReflectionOptimizer( bytecodeProvider );
 
 		instantiator = determineInstantiator( bootDescriptor, runtimeDescriptor, creationContext );
@@ -161,10 +162,11 @@ public class EntityRepresentationStrategyPojoStandard implements EntityRepresent
 	}
 
 	private Map<String, PropertyAccess> buildPropertyAccessMap(
-			PersistentClass bootDescriptor, StrategySelector strategySelector) {
+			PersistentClass bootDescriptor, StrategySelector strategySelector,
+			HibernateAccessorFactory accessorFactory) {
 		final Map<String, PropertyAccess> propertyAccessMap = new LinkedHashMap<>();
 		for ( var property : bootDescriptor.getAllPropertyClosure() ) {
-			propertyAccessMap.put( property.getName(), makePropertyAccess( property, strategySelector ) );
+			propertyAccessMap.put( property.getName(), makePropertyAccess( property, strategySelector, accessorFactory ) );
 		}
 		return propertyAccessMap;
 	}
@@ -316,7 +318,8 @@ public class EntityRepresentationStrategyPojoStandard implements EntityRepresent
 		return bytecodeProvider.getReflectionOptimizer( mappedJtd.getJavaTypeClass(), propertyAccessMap );
 	}
 
-	private PropertyAccess makePropertyAccess(Property bootAttributeDescriptor, StrategySelector strategySelector) {
+	private PropertyAccess makePropertyAccess(Property bootAttributeDescriptor, StrategySelector strategySelector,
+			HibernateAccessorFactory accessorFactory) {
 		final var mappedClass = mappedJtd.getJavaTypeClass();
 		final String descriptorName = bootAttributeDescriptor.getName();
 		final var strategy = propertyAccessStrategy( bootAttributeDescriptor, mappedClass, strategySelector );
@@ -330,7 +333,7 @@ public class EntityRepresentationStrategyPojoStandard implements EntityRepresent
 					)
 			);
 		}
-		return strategy.buildPropertyAccess( mappedClass, descriptorName, true );
+		return strategy.buildPropertyAccess( mappedClass, descriptorName, true, accessorFactory );
 	}
 
 	@Override

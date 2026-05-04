@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 import org.hibernate.HibernateException;
+import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.boot.registry.selector.spi.StrategySelector;
 import org.hibernate.bytecode.spi.BytecodeProvider;
 import org.hibernate.bytecode.spi.ProxyFactoryFactory;
@@ -59,6 +60,7 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 		final var strategySelector =
 				creationContext.getServiceRegistry()
 						.getService( StrategySelector.class );
+		final var accessorFactory = creationContext.getHibernateAccessorFactory();
 
 		// We need access to the Class objects, used only during initialization
 		final var subclassesByName = getSubclassesByName( bootDescriptor, creationContext );
@@ -71,7 +73,8 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 							property,
 							embeddableClass,
 							customInstantiator == null,
-							strategySelector
+							strategySelector,
+							accessorFactory
 					);
 			attributeNameToPositionMap.put( property.getName(), i );
 
@@ -179,7 +182,8 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 			Property property,
 			Class<?> embeddableClass,
 			boolean requireSetters,
-			StrategySelector strategySelector) {
+			StrategySelector strategySelector,
+			HibernateAccessorFactory accessorFactory) {
 		final var strategy = propertyAccessStrategy( property, embeddableClass, strategySelector );
 		if ( strategy == null ) {
 			throw new HibernateException(
@@ -191,7 +195,7 @@ public class EmbeddableRepresentationStrategyPojo implements EmbeddableRepresent
 					)
 			);
 		}
-		return strategy.buildPropertyAccess( embeddableClass, property.getName(), requireSetters );
+		return strategy.buildPropertyAccess( embeddableClass, property.getName(), requireSetters, accessorFactory );
 	}
 
 	private static ReflectionOptimizer buildReflectionOptimizer(

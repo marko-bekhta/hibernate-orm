@@ -18,17 +18,10 @@ public class PropertyAccessStrategyFieldImpl implements PropertyAccessStrategy {
 	/**
 	 * Singleton access
 	 */
-	public static final PropertyAccessStrategy INSTANCE = new PropertyAccessStrategyFieldImpl(
-			HibernateAccessorFactory.reflection() );
-
-	private final HibernateAccessorFactory accessorFactory;
-
-	public PropertyAccessStrategyFieldImpl(HibernateAccessorFactory accessorFactory) {
-		this.accessorFactory = accessorFactory;
-	}
+	public static final PropertyAccessStrategy INSTANCE = new PropertyAccessStrategyFieldImpl();
 
 	@Override
 	public PropertyAccess buildPropertyAccess(Class<?> containerJavaType, String propertyName, boolean setterRequired) {
-		return new PropertyAccessFieldImpl( this, accessorFactory, containerJavaType, propertyName );
+		return new PropertyAccessFieldImpl( this, HibernateAccessorFactory.reflection(), containerJavaType, propertyName );
 	}
 }
