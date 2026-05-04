@@ -7,7 +7,6 @@ package org.hibernate.property.access.internal;
 import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.property.access.spi.HibernateAccessorFactoryResolver;
 
-
 public class HibernateAccessorFactoryResolverImpl implements HibernateAccessorFactoryResolver {
 
 	public static final HibernateAccessorFactoryResolver INSTANCE = new HibernateAccessorFactoryResolverImpl();
@@ -22,7 +21,7 @@ public class HibernateAccessorFactoryResolverImpl implements HibernateAccessorFa
 	}
 
 	@Override
-	public HibernateAccessorFactory resolveHibernateAccessorFactoryResolver() {
+	public HibernateAccessorFactory resolveHibernateAccessorFactory() {
 		return accessorFactory;
 	}
 }

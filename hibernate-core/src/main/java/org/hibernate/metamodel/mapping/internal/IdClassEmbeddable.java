@@ -137,7 +137,7 @@ public class IdClassEmbeddable extends AbstractEmbeddableMapping implements Iden
 		this.idMapping = (NonAggregatedIdentifierMapping) valueMapping;
 		this.virtualIdEmbeddable = (VirtualIdEmbeddable) valueMapping.getEmbeddableTypeDescriptor();
 		this.javaType = inverseMappingType.javaType;
-		this.representationStrategy = new IdClassRepresentationStrategy( hibernateAccessorFactory,this, false, () -> {
+		this.representationStrategy = new IdClassRepresentationStrategy( hibernateAccessorFactory, this, false, () -> {
 			final var attributeNames = new String[inverseMappingType.getNumberOfAttributeMappings()];
 			for ( int i = 0; i < attributeNames.length; i++ ) {
 				attributeNames[i] = inverseMappingType.getAttributeMapping( i ).getAttributeName();
