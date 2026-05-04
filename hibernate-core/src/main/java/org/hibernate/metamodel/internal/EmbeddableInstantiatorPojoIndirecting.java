@@ -60,7 +60,7 @@ public class EmbeddableInstantiatorPojoIndirecting
 	// Handles gaps, by leaving the value null for that index
 	private static class EmbeddableInstantiatorPojoIndirectingWithGap extends EmbeddableInstantiatorPojoIndirecting {
 
-		public EmbeddableInstantiatorPojoIndirectingWithGap(Constructor<?> constructor,HibernateAccessorInstantiator<?> instantiator, int[] index) {
+		public EmbeddableInstantiatorPojoIndirectingWithGap(Constructor<?> constructor, HibernateAccessorInstantiator<?> instantiator, int[] index) {
 			super( constructor, instantiator, index );
 		}
 

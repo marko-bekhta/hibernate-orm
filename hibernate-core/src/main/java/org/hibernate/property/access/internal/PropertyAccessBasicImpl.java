@@ -32,42 +32,6 @@ public class PropertyAccessBasicImpl implements PropertyAccess {
 	private final GetterMethodImpl getter;
 	private final @Nullable SetterMethodImpl setter;
 
-
-	/**
-	 * Caused by: jakarta.persistence.PersistenceException: [PersistenceUnit: <default>] Unable to build Hibernate SessionFactory
-	 * 	at io.quarkus.hibernate.orm.runtime.boot.FastBootEntityManagerFactoryBuilder.persistenceException(FastBootEntityManagerFactoryBuilder.java:146)
-	 * 	at io.quarkus.hibernate.orm.runtime.boot.FastBootEntityManagerFactoryBuilder.build(FastBootEntityManagerFactoryBuilder.java:103)
-	 * 	at io.quarkus.hibernate.orm.runtime.FastBootHibernatePersistenceProvider.createEntityManagerFactory(FastBootHibernatePersistenceProvider.java:90)
-	 * 	at jakarta.persistence.Persistence.createEntityManagerFactory(Persistence.java:90)
-	 * 	at io.quarkus.hibernate.orm.runtime.JPAConfig$LazyPersistenceUnit.get(JPAConfig.java:178)
-	 * 	at io.quarkus.hibernate.orm.runtime.JPAConfig$1.run(JPAConfig.java:65)
-	 * 	at java.base/java.lang.Thread.run(Thread.java:1583)
-	 * Caused by: java.lang.UnsupportedOperationException
-	 * 	at io.quarkus.hibernate.accessor.runtime.QuarkusHibernateAccessorFactory.valueWriter(Unknown Source)
-	 * 	at org.hibernate.property.access.spi.SetterFieldImpl.<init>(SetterFieldImpl.java:44)
-	 * 	at org.hibernate.property.access.spi.EnhancedSetterImpl.<init>(EnhancedSetterImpl.java:35)
-	 * 	at org.hibernate.property.access.internal.PropertyAccessEnhancedImpl.<init>(PropertyAccessEnhancedImpl.java:64)
-	 * 	at org.hibernate.property.access.internal.PropertyAccessStrategyEnhancedImpl.buildPropertyAccess(PropertyAccessStrategyEnhancedImpl.java:34)
-	 * 	at org.hibernate.metamodel.internal.EmbeddableRepresentationStrategyPojo.buildPropertyAccess(EmbeddableRepresentationStrategyPojo.java:194)
-	 * 	at org.hibernate.metamodel.internal.EmbeddableRepresentationStrategyPojo.<init>(EmbeddableRepresentationStrategyPojo.java:70)
-	 * 	at org.hibernate.metamodel.internal.ManagedTypeRepresentationResolverStandard.resolveStrategy(ManagedTypeRepresentationResolverStandard.java:77)
-	 * 	at org.hibernate.metamodel.mapping.internal.EmbeddableMappingTypeImpl.<init>(EmbeddableMappingTypeImpl.java:176)
-	 * 	at org.hibernate.metamodel.mapping.internal.EmbeddableMappingTypeImpl.from(EmbeddableMappingTypeImpl.java:124)
-	 * 	at org.hibernate.metamodel.mapping.internal.MappingModelCreationHelper.buildEmbeddedAttributeMapping(MappingModelCreationHelper.java:392)
-	 * 	at org.hibernate.persister.entity.AbstractEntityPersister.buildEmbeddedAttributeMapping(AbstractEntityPersister.java:5558)
-	 * 	at org.hibernate.persister.entity.AbstractEntityPersister.generateNonIdAttributeMapping(AbstractEntityPersister.java:5491)
-	 * 	at org.hibernate.persister.entity.AbstractEntityPersister.generateNonIdAttributeMapping(AbstractEntityPersister.java:5290)
-	 * 	at org.hibernate.persister.entity.AbstractEntityPersister.buildDeclaredAttributeMappings(AbstractEntityPersister.java:4714)
-	 * 	at org.hibernate.persister.entity.AbstractEntityPersister.prepareMappings(AbstractEntityPersister.java:4666)
-	 * 	at org.hibernate.persister.entity.AbstractEntityPersister.prepareMappingModel(AbstractEntityPersister.java:4632)
-	 * 	at org.hibernate.metamodel.mapping.internal.MappingModelCreationProcess.execute(MappingModelCreationProcess.java:88)
-	 * 	at org.hibernate.metamodel.mapping.internal.MappingModelCreationProcess.process(MappingModelCreationProcess.java:43)
-	 * 	at org.hibernate.metamodel.model.domain.internal.MappingMetamodelImpl.finishInitialization(MappingMetamodelImpl.java:166)
-	 * 	at org.hibernate.internal.SessionFactoryImpl.<init>(SessionFactoryImpl.java:283)
-	 * 	at io.quarkus.hibernate.orm.runtime.boot.FastBootEntityManagerFactoryBuilder.build(FastBootEntityManagerFactoryBuilder.java:101)
-	 * 	... 5 more
-	 */
-
 	public PropertyAccessBasicImpl(
 			PropertyAccessStrategyBasicImpl strategy,
 			HibernateAccessorFactory accessorFactory,

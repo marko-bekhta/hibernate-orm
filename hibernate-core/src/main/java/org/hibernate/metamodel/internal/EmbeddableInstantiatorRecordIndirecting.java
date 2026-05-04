@@ -8,7 +8,6 @@ import org.hibernate.InstantiationException;
 import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.metamodel.spi.ValueAccess;
 
-
 import static org.hibernate.internal.util.ReflectHelper.getRecordComponentNames;
 
 /**

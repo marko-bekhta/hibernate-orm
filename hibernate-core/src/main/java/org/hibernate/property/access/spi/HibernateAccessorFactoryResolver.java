@@ -9,5 +9,5 @@ import org.hibernate.service.Service;
 
 public interface HibernateAccessorFactoryResolver extends Service {
 
-	HibernateAccessorFactory resolveHibernateAccessorFactoryResolver();
+	HibernateAccessorFactory resolveHibernateAccessorFactory();
 }
