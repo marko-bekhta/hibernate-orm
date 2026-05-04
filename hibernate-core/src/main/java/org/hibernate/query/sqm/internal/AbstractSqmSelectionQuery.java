@@ -4,32 +4,37 @@
  */
 package org.hibernate.query.sqm.internal;
 
+import java.util.List;
+import java.util.ArrayList;
+
+import jakarta.persistence.TupleElement;
+import jakarta.persistence.criteria.CompoundSelection;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.HibernateException;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.metamodel.model.domain.PluralPersistentAttribute;
 import org.hibernate.metamodel.spi.MappingMetamodelImplementor;
-import org.hibernate.query.internal.DelegatingDomainQueryExecutionContext;
-import org.hibernate.query.spi.DomainQueryExecutionContext;
-import org.hibernate.query.spi.QueryParameterImplementor;
-import org.hibernate.query.sqm.tree.expression.JpaCriteriaParameter;
-import org.hibernate.query.sqm.tree.expression.SqmParameter;
-import org.hibernate.query.sqm.tree.expression.ValueBindJpaCriteriaParameter;
 import org.hibernate.query.KeyedPage;
 import org.hibernate.query.KeyedResultList;
 import org.hibernate.query.Page;
 import org.hibernate.query.SelectionQuery;
 import org.hibernate.query.hql.internal.QuerySplitter;
+import org.hibernate.query.internal.DelegatingDomainQueryExecutionContext;
 import org.hibernate.query.spi.AbstractSelectionQuery;
 import org.hibernate.query.spi.DelegatingQueryOptions;
+import org.hibernate.query.spi.DomainQueryExecutionContext;
 import org.hibernate.query.spi.HqlInterpretation;
 import org.hibernate.query.spi.MutableQueryOptions;
 import org.hibernate.query.spi.QueryOptions;
 import org.hibernate.query.spi.QueryParameterBindings;
+import org.hibernate.query.spi.QueryParameterImplementor;
 import org.hibernate.query.spi.SelectQueryPlan;
 import org.hibernate.query.sqm.spi.NamedSqmQueryMemento;
 import org.hibernate.query.sqm.tree.SqmStatement;
+import org.hibernate.query.sqm.tree.expression.JpaCriteriaParameter;
 import org.hibernate.query.sqm.tree.expression.SqmJpaCriteriaParameterWrapper;
+import org.hibernate.query.sqm.tree.expression.SqmParameter;
+import org.hibernate.query.sqm.tree.expression.ValueBindJpaCriteriaParameter;
 import org.hibernate.query.sqm.tree.from.SqmAttributeJoin;
 import org.hibernate.query.sqm.tree.from.SqmFrom;
 import org.hibernate.query.sqm.tree.from.SqmRoot;
@@ -37,11 +42,6 @@ import org.hibernate.query.sqm.tree.select.SqmQuerySpec;
 import org.hibernate.query.sqm.tree.select.SqmSelectStatement;
 import org.hibernate.query.sqm.tree.select.SqmSelection;
 import org.hibernate.sql.results.internal.TupleMetadata;
-
-import java.util.List;
-
-import jakarta.persistence.TupleElement;
-import jakarta.persistence.criteria.CompoundSelection;
 
 import static org.hibernate.cfg.QuerySettings.FAIL_ON_PAGINATION_OVER_COLLECTION_FETCH;
 import static org.hibernate.query.KeyedPage.KeyInterpretation.KEY_OF_FIRST_ON_NEXT_PAGE;
@@ -80,8 +80,13 @@ abstract class AbstractSqmSelectionQuery<R> extends AbstractSelectionQuery<R> {
 				: getQueryOptions().getLimit().getFirstRow();
 	}
 
-	protected static boolean hasLimit(SqmSelectStatement<?> sqm, MutableQueryOptions queryOptions) {
+	protected static boolean hasLimit(SqmSelectStatement<?> sqm, QueryOptions queryOptions) {
 		return queryOptions.hasLimit() || sqm.getFetch() != null || sqm.getOffset() != null;
+	}
+
+	protected static boolean shouldApplyLimitInMemory(SqmSelectStatement<?> sqm, QueryOptions queryOptions) {
+		return queryOptions.isLimitInMemoryEnabled() == Boolean.TRUE
+			&& hasLimit( sqm, queryOptions );
 	}
 
 	protected boolean needsDistinct(boolean containsCollectionFetches, boolean hasLimit, SqmSelectStatement<?> sqmStatement) {
@@ -109,6 +114,24 @@ abstract class AbstractSqmSelectionQuery<R> extends AbstractSelectionQuery<R> {
 		}
 	}
 
+	List<R> handleDistinct(boolean hasLimit, SqmSelectStatement<?> statement, List<R> list) {
+		final int first = first( hasLimit, statement );
+		final int max = max( hasLimit, statement, list );
+		if ( first > 0 || max != -1 ) {
+			final int resultSize = list.size();
+			if ( first > resultSize ) {
+				return new ArrayList<>( 0 );
+			}
+			else {
+				final int toIndex = max != -1 ? first + max : resultSize;
+				return list.subList( first, Math.min( toIndex, resultSize ) );
+			}
+		}
+		else {
+			return list;
+		}
+	}
+
 	/**
 	 * The pagination is pushed down into a derived table over the root entity by
 	 * {@code BaseSqmToSqlAstConverter}'s
@@ -117,6 +140,9 @@ abstract class AbstractSqmSelectionQuery<R> extends AbstractSelectionQuery<R> {
 	 * conditions must stay in sync with the transformer's preconditions.
 	 */
 	protected boolean isPaginationPushedToDerivedTable() {
+		if ( getQueryOptions().isLimitInMemoryEnabled() == Boolean.TRUE ) {
+			return false;
+		}
 		final var sessionFactory = getSessionFactory();
 		if ( !sessionFactory.getJdbcServices().getDialect().supportsOffsetInSubquery() ) {
 			return false;
@@ -293,16 +319,19 @@ abstract class AbstractSqmSelectionQuery<R> extends AbstractSelectionQuery<R> {
 		if ( jpaCriteriaParamResolutions.isEmpty() ) {
 			return null;
 		}
-		int maxId = 0;
-		for ( var criteriaWrapper : jpaCriteriaParamResolutions.values() ) {
-			maxId = Math.max( maxId, criteriaWrapper.getCriteriaParameterId() );
+		else {
+			int maxId = 0;
+			for ( var criteriaWrapper : jpaCriteriaParamResolutions.values() ) {
+				maxId = Math.max( maxId, criteriaWrapper.getCriteriaParameterId() );
+			}
+			final var unnamedParameterIndices = new int[maxId + 1];
+			for ( var entry : jpaCriteriaParamResolutions.entrySet() ) {
+				final var value = entry.getValue();
+				unnamedParameterIndices[value.getCriteriaParameterId()] =
+						value.getUnnamedParameterId();
+			}
+			return unnamedParameterIndices;
 		}
-		final var unnamedParameterIndices = new int[maxId + 1];
-		for ( var entry : jpaCriteriaParamResolutions.entrySet() ) {
-			unnamedParameterIndices[entry.getValue().getCriteriaParameterId()] =
-					entry.getValue().getUnnamedParameterId();
-		}
-		return unnamedParameterIndices;
 	}
 
 	@Override
@@ -534,21 +563,32 @@ abstract class AbstractSqmSelectionQuery<R> extends AbstractSelectionQuery<R> {
 	 */
 	DomainQueryExecutionContext scrollExecutionContext(SqmSelectStatement<?> statement) {
 		final var queryOptions = getQueryOptions();
-		final var normalizedQueryOptions =
+		final boolean pushedDown =
 				hasLimit( statement, queryOptions )
-					&& statement.containsCollectionFetches()
-					&& isPaginationPushedToDerivedTable()
+						&& statement.containsCollectionFetches()
+						&& isPaginationPushedToDerivedTable();
+		final boolean applyLimitInScrollableResults =
+				shouldApplyLimitInMemory( statement, queryOptions )
+						|| hasLimit( statement, queryOptions )
+								&& statement.containsCollectionFetches()
+								&& !pushedDown;
+		final var normalizedQueryOptions =
+				applyLimitInScrollableResults || pushedDown
 						? omitSqlQueryOptions( queryOptions, true, false )
 						: queryOptions;
-		final var scrollQueryOptions =
-				normalizedQueryOptions.isScrollExecution()
-						? normalizedQueryOptions
-						: new DelegatingQueryOptions( normalizedQueryOptions ) {
-							@Override
-							public boolean isScrollExecution() {
-								return true;
-							}
-						};
+		final var scrollQueryOptions = new DelegatingQueryOptions( normalizedQueryOptions ) {
+			@Override
+			public boolean isScrollExecution() {
+				return true;
+			}
+
+			@Override
+			public Boolean isLimitInMemoryEnabled() {
+				return applyLimitInScrollableResults
+						? Boolean.TRUE
+						: super.isLimitInMemoryEnabled();
+			}
+		};
 		return new DelegatingDomainQueryExecutionContext( this ) {
 			@Override
 			public QueryOptions getQueryOptions() {

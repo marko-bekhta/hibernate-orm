@@ -59,7 +59,6 @@ tasks.register('integrationTest', Test) {
     shouldRunAfter test
 
     useJUnitPlatform()
-
 }
 
 tasks.forbiddenApisIntTest {
@@ -94,6 +93,9 @@ publishingExtension.publications.named("publishedArtifacts") {
 integrationTest {
     environment "hibernateVersion", project.version
     environment "h2Version", jdbcLibs.versions.h2.get()
+    testLogging {
+        exceptionFormat = 'full'
+    }
 }
 
 integrationTest.dependsOn project(':hibernate-core').tasks.publishToMavenLocal

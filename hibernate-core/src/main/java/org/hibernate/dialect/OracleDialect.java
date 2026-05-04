@@ -376,10 +376,7 @@ public class OracleDialect extends Dialect {
 				"mode",
 				new ModeStatsModeEmulation( typeConfiguration )
 		);
-		functionRegistry.register(
-				"trunc",
-				new OracleTruncFunction( functionContributions.getTypeConfiguration() )
-		);
+		functionRegistry.register( "trunc", new OracleTruncFunction() );
 		functionRegistry.registerAlternateKey( "truncate", "trunc" );
 
 		registerArrayFunctions( functionFactory );
@@ -488,7 +485,7 @@ public class OracleDialect extends Dialect {
 
 	@Override
 	public String currentDate() {
-		return "current_date";
+		return "trunc(current_date)";
 	}
 
 	@Override

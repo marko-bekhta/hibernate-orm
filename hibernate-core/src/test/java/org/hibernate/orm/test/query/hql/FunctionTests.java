@@ -623,7 +623,6 @@ public class FunctionTests {
 
 	@Test
 	@RequiresDialectFeature( feature = DialectFeatureChecks.SupportsDateTimeTruncation.class )
-	@SkipForDialect(dialectClass = OracleDialect.class, reason = "See HHH-16442, Oracle trunc() throws away the timezone")
 	@SkipForDialect(dialectClass = SpannerPostgreSQLDialect.class, reason = "Emulator bug")
 	public void testDateTruncWithOffsetFunction(SessionFactoryScope scope) {
 		scope.inTransaction(
@@ -634,7 +633,21 @@ public class FunctionTests {
 					assertThat( session.createQuery( "select truncate(offset datetime 1974-10-03 12:30-12:00, minute)", OffsetDateTime.class ).getSingleResult(),
 							isOneOf( OffsetDateTime.of( 1974,10,3,12,30,0, 0, ZoneOffset.ofHours(-12) ),
 									OffsetDateTime.of( 1974,10,4,0,30,0, 0, ZoneOffset.UTC ) ) );
+					assertThat( session.createQuery( "select truncate(offset datetime 1974-10-03 12:30-12:00, year)", OffsetDateTime.class ).getSingleResult(),
+							isOneOf( OffsetDateTime.of( 1974,1,1,0,0,0, 0, ZoneOffset.ofHours(-12) ),
+									OffsetDateTime.of( 1974,1,1,0,0,0, 0, ZoneOffset.UTC ) ) );
+					assertThat( session.createQuery( "select truncate(offset datetime 1974-10-03 12:30-12:00, month)", OffsetDateTime.class ).getSingleResult(),
+							isOneOf( OffsetDateTime.of( 1974,10,1,0,0,0, 0, ZoneOffset.ofHours(-12) ),
+									OffsetDateTime.of( 1974,10,1,0,0,0, 0, ZoneOffset.UTC ) ) );
 				}
+		);
+	}
+
+	@Test
+	public void testDateTruncWithLocalDatetimeMinusLocalDate(SessionFactoryScope scope) {
+		scope.inTransaction( session ->
+				assertThat( session.createQuery( "select trunc(local datetime, day) - local date", Duration.class )
+						.getSingleResult().getSeconds(), is( 0L ) )
 		);
 	}
 

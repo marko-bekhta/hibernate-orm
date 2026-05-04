@@ -70,7 +70,6 @@ import org.hibernate.sql.results.spi.ListResultsConsumer.UniqueSemantic;
 import org.hibernate.sql.results.spi.SingleResultConsumer;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
@@ -91,7 +90,6 @@ import static org.hibernate.jpa.LegacySpecHints.HINT_JAVAEE_CACHE_STORE_MODE;
 import static org.hibernate.jpa.SpecHints.HINT_SPEC_CACHE_RETRIEVE_MODE;
 import static org.hibernate.jpa.SpecHints.HINT_SPEC_CACHE_STORE_MODE;
 import static org.hibernate.query.spi.SqlOmittingQueryOptions.omitSqlQueryOptions;
-import static org.hibernate.query.spi.SqlOmittingQueryOptions.omitSqlQueryOptionsWithUniqueSemanticFilter;
 import static org.hibernate.query.sqm.internal.AppliedGraphs.containsCollectionFetches;
 import static org.hibernate.query.sqm.internal.SqmInterpretationsKey.createInterpretationsKey;
 import static org.hibernate.query.sqm.internal.SqmInterpretationsKey.generateNonSelectKey;
@@ -369,43 +367,45 @@ public class SqmQueryImpl<R>
 				statement.containsCollectionFetches()
 						|| containsCollectionFetches( queryOptions );
 		final boolean hasLimit = hasLimit( statement, queryOptions );
+		final boolean limitInMemory = shouldApplyLimitInMemory( statement, queryOptions );
 		final boolean needsDistinct = needsDistinct( containsCollectionFetches, hasLimit, statement );
-		final boolean paginationInSql = hasLimit && containsCollectionFetches && isPaginationPushedToDerivedTable();
+		final boolean paginationInSql =
+				hasLimit && containsCollectionFetches && !limitInMemory && isPaginationPushedToDerivedTable();
+		final boolean applyLimitInMemory =
+				limitInMemory
+					|| hasLimit && containsCollectionFetches && !paginationInSql;
 		final var list =
 				resolveSelectQueryPlan()
-						.performList( executionContextForDoList( containsCollectionFetches, hasLimit, needsDistinct ) );
-		return needsDistinct ? handleDistinct( hasLimit && !paginationInSql, statement, list ) : list;
-	}
-
-	private List<R> handleDistinct(boolean hasLimit, SqmSelectStatement<?> statement, List<R> list) {
-		final int first = first( hasLimit, statement );
-		final int max = max( hasLimit, statement, list );
-		if ( first > 0 || max != -1 ) {
-			final int resultSize = list.size();
-			if ( first > resultSize ) {
-				return new ArrayList<>(0);
-			}
-			else {
-				final int toIndex = max != -1 ? first + max : resultSize;
-				return list.subList( first, Math.min( toIndex, resultSize ) );
-			}
-		}
-		else {
-			return list;
-		}
+						.performList( executionContextForDoList(
+								containsCollectionFetches,
+								hasLimit,
+								needsDistinct,
+								limitInMemory
+						) );
+		return needsDistinct
+				? handleDistinct( applyLimitInMemory, statement, list )
+				: applyLimitInMemory ? this.handleDistinct( true, statement, list ) : list;
 	}
 
 	// TODO: very similar to SqmSelectionQueryImpl.executionContext()
 	protected DomainQueryExecutionContext executionContextForDoList(
-			boolean containsCollectionFetches, boolean hasLimit, boolean needsDistinct) {
+			boolean containsCollectionFetches,
+			boolean hasLimit,
+			boolean needsDistinct,
+			boolean limitInMemory) {
 		final var originalQueryOptions = getQueryOptions();
 		final QueryOptions normalizedQueryOptions;
-		if ( hasLimit && containsCollectionFetches ) {
+		if ( limitInMemory ) {
+			normalizedQueryOptions = needsDistinct
+					? uniqueSemanticQueryOptions( omitSqlQueryOptions( originalQueryOptions, true, false ) )
+					: omitSqlQueryOptions( originalQueryOptions, true, false );
+		}
+		else if ( hasLimit && containsCollectionFetches ) {
 			if ( !isPaginationPushedToDerivedTable() ) {
 				errorOrLogForPaginationWithCollectionFetch();
 			}
 			normalizedQueryOptions = needsDistinct
-					? omitSqlQueryOptionsWithUniqueSemanticFilter( originalQueryOptions, true, false )
+					? uniqueSemanticQueryOptions( omitSqlQueryOptions( originalQueryOptions, true, false ) )
 					: omitSqlQueryOptions( originalQueryOptions, true, false );
 		}
 		else if ( needsDistinct ) {
@@ -565,8 +565,7 @@ public class SqmQueryImpl<R>
 	}
 
 	private NonSelectQueryPlan buildConcreteDeleteQueryPlan(SqmDeleteStatement<?> deleteStatement) {
-		final var entityDomainType = deleteStatement.getTarget().getModel();
-		final String entityName = entityDomainType.getHibernateEntityName();
+		final String entityName = deleteStatement.getTarget().getModel().getHibernateEntityName();
 		final var persister = getMappingMetamodel().getEntityDescriptor( entityName );
 		final var multiTableStrategy = persister.getSqmMultiTableMutationStrategy();
 		return multiTableStrategy != null
@@ -627,15 +626,15 @@ public class SqmQueryImpl<R>
 	}
 
 	private boolean useMultiTableInsert(EntityPersister persister, SqmInsertStatement<R> sqmInsert) {
-		boolean useMultiTableInsert = persister.hasMultipleTables();
+		final boolean useMultiTableInsert = persister.hasMultipleTables();
 		if ( !useMultiTableInsert && !isSimpleValuesInsert( sqmInsert, persister ) ) {
 			final var identifierGenerator = persister.getGenerator();
 			if ( identifierGenerator instanceof BulkInsertionCapableIdentifierGenerator bulkInsertionCapableGenerator
 					&& identifierGenerator instanceof OptimizableGenerator optimizableGenerator ) {
 				final var optimizer = optimizableGenerator.getOptimizer();
 				if ( optimizer != null && optimizer.getIncrementSize() > 1
-					|| !bulkInsertionCapableGenerator.supportsBulkInsertionIdentifierGeneration() ) {
-					useMultiTableInsert = !hasIdentifierAssigned( sqmInsert, persister );
+						|| !bulkInsertionCapableGenerator.supportsBulkInsertionIdentifierGeneration() ) {
+					return !hasIdentifierAssigned( sqmInsert, persister );
 				}
 			}
 		}
@@ -655,7 +654,6 @@ public class SqmQueryImpl<R>
 				}
 			}
 		}
-
 		return false;
 	}
 
