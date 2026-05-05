@@ -19,7 +19,6 @@ import org.hibernate.property.access.spi.PropertyAccessStrategy;
 import org.hibernate.property.access.spi.Setter;
 
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 
 import static org.hibernate.internal.util.ReflectHelper.findField;
 import static org.hibernate.internal.util.ReflectHelper.findSetterMethod;
@@ -62,12 +61,7 @@ public class PropertyAccessEnhancedImpl implements PropertyAccess {
 					);
 				}
 				getter = new GetterFieldImpl( accessorFactory, containerJavaType, propertyName, field );
-				if ( !Modifier.isFinal( field.getModifiers() ) ) {
-					setter = new EnhancedSetterImpl( accessorFactory, containerJavaType, propertyName, field );
-				}
-				else {
-					setter = null;
-				}
+				setter = new EnhancedSetterImpl( accessorFactory, containerJavaType, propertyName, field );
 				break;
 			}
 			case PROPERTY: {
