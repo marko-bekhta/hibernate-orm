@@ -4,6 +4,7 @@
  */
 package org.hibernate.property.access.internal;
 
+import jakarta.persistence.AccessType;
 import org.hibernate.HibernateException;
 import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.boot.registry.selector.spi.StrategySelector;
@@ -29,7 +30,11 @@ import static org.hibernate.property.access.spi.BuiltInPropertyAccessStrategies.
 public class PropertyAccessStrategyResolverStandardImpl implements PropertyAccessStrategyResolver {
 	private final ServiceRegistry serviceRegistry;
 
-	private final PropertyAccessStrategy basicAccessStrategy;
+	private final PropertyAccessStrategy enhancedPropertyAccessStrategy;
+	private final PropertyAccessStrategy enhancedFieldAccessStrategy;
+	private final PropertyAccessStrategy enhancedStandardAccessStrategy;
+
+	private final PropertyAccessStrategy propertyAccessStrategy;
 	private final PropertyAccessStrategy fieldAccessStrategy;
 	private final PropertyAccessStrategy mixedAccessStrategy;
 
@@ -39,9 +44,13 @@ public class PropertyAccessStrategyResolverStandardImpl implements PropertyAcces
 						HibernateAccessorFactoryResolver.class )
 				.resolveHibernateAccessorFactory();
 
-		this.basicAccessStrategy = new PropertyAccessStrategyBasicImpl( hibernateAccessorFactory );
-		this.fieldAccessStrategy = new PropertyAccessStrategyFieldImpl( hibernateAccessorFactory );
-		this.mixedAccessStrategy = new PropertyAccessStrategyMixedImpl( hibernateAccessorFactory );
+		propertyAccessStrategy = new PropertyAccessStrategyBasicImpl( hibernateAccessorFactory );
+		fieldAccessStrategy = new PropertyAccessStrategyFieldImpl( hibernateAccessorFactory );
+		mixedAccessStrategy = new PropertyAccessStrategyMixedImpl( hibernateAccessorFactory );
+
+		this.enhancedPropertyAccessStrategy = new PropertyAccessStrategyEnhancedImpl( hibernateAccessorFactory, AccessType.PROPERTY );
+		this.enhancedFieldAccessStrategy =  new PropertyAccessStrategyEnhancedImpl( hibernateAccessorFactory, AccessType.FIELD );
+		this.enhancedStandardAccessStrategy =  new PropertyAccessStrategyEnhancedImpl( hibernateAccessorFactory, null );
 	}
 
 	@Override
@@ -52,13 +61,13 @@ public class PropertyAccessStrategyResolverStandardImpl implements PropertyAcces
 
 		if ( isManagedType( containerClass ) ) {
 			if ( BASIC.getExternalName().equals( explicitAccessStrategyName ) ) {
-				return basicAccessStrategy;
+				return enhancedPropertyAccessStrategy;
 			}
 			else if ( FIELD.getExternalName().equals( explicitAccessStrategyName ) ) {
-				return fieldAccessStrategy;
+				return enhancedFieldAccessStrategy;
 			}
 			else if ( MIXED.getExternalName().equals( explicitAccessStrategyName ) ) {
-				return mixedAccessStrategy;
+				return enhancedStandardAccessStrategy;
 			}
 		}
 
@@ -77,7 +86,7 @@ public class PropertyAccessStrategyResolverStandardImpl implements PropertyAcces
 		final var builtInStrategyEnum = BuiltInPropertyAccessStrategies.interpret( explicitAccessStrategyName );
 		if ( builtInStrategyEnum != null ) {
 			return switch ( builtInStrategyEnum ) {
-				case BASIC -> basicAccessStrategy;
+				case BASIC -> propertyAccessStrategy;
 				case FIELD -> fieldAccessStrategy;
 				case MIXED -> mixedAccessStrategy;
 				case MAP -> PropertyAccessStrategyMapImpl.INSTANCE;
