@@ -4,15 +4,14 @@
  */
 package org.hibernate.property.access.spi;
 
-import java.io.Serial;
-import java.io.Serializable;
-import java.lang.reflect.Field;
-
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.Internal;
 import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.property.access.internal.AbstractFieldSerialForm;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import java.io.Serial;
+import java.io.Serializable;
+import java.lang.reflect.Field;
 
 import static org.hibernate.property.access.internal.AccessStrategyHelper.determineEnhancementState;
 import static org.hibernate.property.access.internal.AccessStrategyHelper.handleEnhancedInjection;
