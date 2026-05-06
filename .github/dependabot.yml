@@ -158,8 +158,8 @@ updates:
       - dependency-name: "org.slf4j:*"
         update-types: ["version-update:semver-major"]
   # Monitor docker images in compose files for database version updates
-  - package-ecosystem: docker
-    directory: "/docker-compose/latest"
+  - package-ecosystem: docker-compose
+    directory: "/docker-compose/latest/cockroachdb"
     schedule:
       interval: monthly
     open-pull-requests-limit: 10
