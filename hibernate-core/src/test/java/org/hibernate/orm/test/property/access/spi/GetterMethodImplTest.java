@@ -114,7 +114,8 @@ public class GetterMethodImplTest {
 	}
 
 	private Getter getter(Class<?> clazz, String property) {
+		final var factory = HibernateAccessorFactory.reflection();
 		final Method getterMethod = ReflectHelper.findGetterMethod( clazz, property );
-		return new GetterMethodImpl( HibernateAccessorFactory.reflection(), clazz, property, getterMethod );
+		return new GetterMethodImpl( clazz, property, getterMethod, factory.valueReader( getterMethod ) );
 	}
 }

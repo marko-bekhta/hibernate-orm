@@ -41,13 +41,13 @@ public class PropertyAccessBasicImpl implements PropertyAccess {
 		this.strategy = strategy;
 
 		final var getterMethod = findGetterMethod( containerJavaType, propertyName );
-		getter = new GetterMethodImpl( accessorFactory, containerJavaType, propertyName, getterMethod );
+		getter = new GetterMethodImpl( containerJavaType, propertyName, getterMethod, accessorFactory.valueReader( getterMethod ) );
 
 		final var setterMethod = setterRequired
 				? findSetterMethod( containerJavaType, propertyName, getterMethod.getReturnType() )
 				: setterMethodOrNull( containerJavaType, propertyName, getterMethod.getReturnType() );
 		setter = setterMethod != null
-				? new SetterMethodImpl( accessorFactory, containerJavaType, propertyName, setterMethod )
+				? new SetterMethodImpl( containerJavaType, propertyName, setterMethod, accessorFactory.valueWriter( setterMethod ) )
 				: null;
 	}
 

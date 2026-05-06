@@ -50,9 +50,10 @@ public class GetterFieldImplTest {
 
 	private Getter getter(String property) {
 		try {
+			final var factory = HibernateAccessorFactory.reflection();
 			Field field = Target.class.getDeclaredField( property );
 			field.setAccessible( true );
-			return new GetterFieldImpl( HibernateAccessorFactory.reflection(), Target.class, property, field );
+			return new GetterFieldImpl( Target.class, property, field, factory.valueReader( field ) );
 		}
 		catch (NoSuchFieldException e) {
 			throw new IllegalArgumentException( e );

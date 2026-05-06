@@ -6,7 +6,7 @@ package org.hibernate.property.access.spi;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.hibernate.Internal;
-import org.hibernate.accessor.HibernateAccessorFactory;
+import org.hibernate.accessor.HibernateAccessorValueReader;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
@@ -25,8 +25,8 @@ import static org.hibernate.internal.util.NullnessUtil.castNonNull;
  */
 @Internal
 public class EnhancedGetterFieldImpl extends GetterFieldImpl {
-	public EnhancedGetterFieldImpl(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Field field, Method getterMethod) {
-		super( accessorFactory, containerClass, propertyName, field, getterMethod );
+	public EnhancedGetterFieldImpl(Class<?> containerClass, String propertyName, Field field, Method getterMethod, HibernateAccessorValueReader<?> reader) {
+		super( containerClass, propertyName, field, reader, getterMethod );
 		assert getterMethod != null;
 	}
 

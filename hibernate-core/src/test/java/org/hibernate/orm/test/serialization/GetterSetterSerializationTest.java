@@ -11,10 +11,12 @@ import org.hibernate.orm.test.serialization.entity.PK;
 import org.hibernate.property.access.spi.Getter;
 import org.hibernate.property.access.spi.GetterFieldImpl;
 import org.hibernate.property.access.spi.GetterMethodImpl;
+import org.hibernate.property.access.spi.HibernateAccessorFactoryResolverRegistry;
 import org.hibernate.property.access.spi.Setter;
 import org.hibernate.property.access.spi.SetterFieldImpl;
 import org.hibernate.property.access.spi.SetterMethodImpl;
 import org.hibernate.testing.orm.junit.JiraKey;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -32,17 +34,25 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class GetterSetterSerializationTest {
 
+	private static final HibernateAccessorFactory FACTORY = HibernateAccessorFactory.reflection();
+
+	@BeforeAll
+	static void registerFactory() {
+		HibernateAccessorFactoryResolverRegistry.register( FACTORY );
+	}
+
 	@Test
 	@JiraKey(value = "HHH-11202")
 	public void testPrivateFieldGetter() throws Exception {
 		final AnEntity entity = new AnEntity( new PK( 1L ) );
 
 		final String propertyName = "pk";
+		final var field = ReflectHelper.findField( AnEntity.class, propertyName );
 		final Getter getter = new GetterFieldImpl(
-				HibernateAccessorFactory.reflection(),
 				AnEntity.class,
 				propertyName,
-				ReflectHelper.findField( AnEntity.class, propertyName )
+				field,
+				FACTORY.valueReader( field )
 		);
 
 		try (final ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
@@ -66,17 +76,18 @@ public class GetterSetterSerializationTest {
 		AnEntity entity = new AnEntity( new PK( 1L ) );
 
 		final String propertyName = "pk";
+		final var field = ReflectHelper.findField( AnEntity.class, propertyName );
 		final Getter getter = new GetterFieldImpl(
-				HibernateAccessorFactory.reflection(),
 				AnEntity.class,
 				propertyName,
-				ReflectHelper.findField( AnEntity.class, propertyName )
+				field,
+				FACTORY.valueReader( field )
 		);
 		final Setter setter = new SetterFieldImpl(
-				HibernateAccessorFactory.reflection(),
 				AnEntity.class,
 				propertyName,
-				ReflectHelper.findField( AnEntity.class, propertyName )
+				field,
+				FACTORY.valueWriter( field )
 		);
 
 		try (final ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
@@ -101,11 +112,12 @@ public class GetterSetterSerializationTest {
 	public void testProtectedMethodGetter() throws Exception {
 		final AnEntity entity = new AnEntity( new PK( 1L ) );
 
+		final var getterMethod = ReflectHelper.findGetterMethod( AnEntity.class, "pk" );
 		final Getter getter = new GetterMethodImpl(
-				HibernateAccessorFactory.reflection(),
 				AnEntity.class,
 				"pk",
-				ReflectHelper.findGetterMethod( AnEntity.class, "pk" )
+				getterMethod,
+				FACTORY.valueReader( getterMethod )
 		);
 
 		try (final ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
@@ -128,17 +140,19 @@ public class GetterSetterSerializationTest {
 	public void testProtectedMethodSetter() throws Exception {
 		final AnEntity entity = new AnEntity( new PK( 1L ) );
 
+		final var getterMethod = ReflectHelper.findGetterMethod( AnEntity.class, "pk" );
 		final Getter getter = new GetterMethodImpl(
-				HibernateAccessorFactory.reflection(),
 				AnEntity.class,
 				"pk",
-				ReflectHelper.findGetterMethod( AnEntity.class, "pk" )
+				getterMethod,
+				FACTORY.valueReader( getterMethod )
 		);
+		final var setterMethod = ReflectHelper.findSetterMethod( AnEntity.class, "pk", PK.class );
 		final Setter setter = new SetterMethodImpl(
-				HibernateAccessorFactory.reflection(),
 				AnEntity.class,
 				"pk",
-				ReflectHelper.findSetterMethod( AnEntity.class, "pk", PK.class )
+				setterMethod,
+				FACTORY.valueWriter( setterMethod )
 		);
 
 		try (final ByteArrayOutputStream baos = new ByteArrayOutputStream()) {

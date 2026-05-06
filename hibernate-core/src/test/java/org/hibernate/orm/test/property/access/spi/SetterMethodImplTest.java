@@ -124,7 +124,8 @@ public class SetterMethodImplTest {
 	}
 
 	private Setter setter(Class<?> clazz, String property, Class<?> type) {
+		final var factory = HibernateAccessorFactory.reflection();
 		final Method setterMethod = ReflectHelper.findSetterMethod( clazz, property, type );
-		return new SetterMethodImpl( HibernateAccessorFactory.reflection(), clazz, property, setterMethod );
+		return new SetterMethodImpl( clazz, property, setterMethod, factory.valueWriter( setterMethod ) );
 	}
 }

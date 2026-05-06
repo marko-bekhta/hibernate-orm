@@ -12,7 +12,6 @@ import org.hibernate.Internal;
 import org.hibernate.PropertyAccessException;
 import org.hibernate.PropertySetterAccessException;
 import org.hibernate.accessor.HibernateAccessorException;
-import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.accessor.HibernateAccessorValueWriter;
 import org.hibernate.property.access.internal.AbstractSetterMethodSerialForm;
 
@@ -26,7 +25,6 @@ import static org.hibernate.internal.CoreMessageLogger.CORE_LOGGER;
 @Internal
 public class SetterMethodImpl implements Setter {
 
-	private final HibernateAccessorFactory accessorFactory;
 	private final Class<?> containerClass;
 	private final String propertyName;
 	private final Method setterMethod;
@@ -34,12 +32,11 @@ public class SetterMethodImpl implements Setter {
 
 	private final boolean isPrimitive;
 
-	public SetterMethodImpl(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Method setterMethod) {
-		this.accessorFactory = accessorFactory;
+	public SetterMethodImpl(Class<?> containerClass, String propertyName, Method setterMethod, HibernateAccessorValueWriter writer) {
 		this.containerClass = containerClass;
 		this.propertyName = propertyName;
 		this.setterMethod = setterMethod;
-		this.writer = this.accessorFactory.valueWriter( setterMethod );
+		this.writer = writer;
 		this.isPrimitive = setterMethod.getParameterTypes()[0].isPrimitive();
 	}
 
@@ -124,21 +121,19 @@ public class SetterMethodImpl implements Setter {
 
 	@Serial
 	private Object writeReplace() {
-		return new SerialForm( accessorFactory, containerClass, propertyName, setterMethod );
-	}
-
-	public HibernateAccessorFactory getAccessorFactory() {
-		return accessorFactory;
+		return new SerialForm( containerClass, propertyName, setterMethod );
 	}
 
 	private static class SerialForm extends AbstractSetterMethodSerialForm implements Serializable {
-		private SerialForm(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Method method) {
-			super( accessorFactory, containerClass, propertyName, method );
+		private SerialForm(Class<?> containerClass, String propertyName, Method method) {
+			super( containerClass, propertyName, method );
 		}
 
 		@Serial
 		private Object readResolve() {
-			return new SetterMethodImpl( getAccessorFactory(), getContainerClass(), getPropertyName(), resolveMethod() );
+			final var m = resolveMethod();
+			return new SetterMethodImpl( getContainerClass(), getPropertyName(), m,
+					HibernateAccessorFactoryResolverRegistry.resolveHibernateAccessorFactory().valueWriter( m ) );
 		}
 	}
 }

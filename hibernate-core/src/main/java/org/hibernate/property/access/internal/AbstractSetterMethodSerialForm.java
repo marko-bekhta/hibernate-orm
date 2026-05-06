@@ -7,7 +7,6 @@ package org.hibernate.property.access.internal;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 
-import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.internal.util.ReflectHelper;
 import org.hibernate.property.access.spi.PropertyAccessSerializationException;
 
@@ -17,7 +16,6 @@ import org.hibernate.property.access.spi.PropertyAccessSerializationException;
  * @author Steve Ebersole
  */
 public abstract class AbstractSetterMethodSerialForm implements Serializable {
-	private final HibernateAccessorFactory accessorFactory;
 	private final Class<?> containerClass;
 	private final String propertyName;
 
@@ -25,17 +23,12 @@ public abstract class AbstractSetterMethodSerialForm implements Serializable {
 	private final String methodName;
 	private final Class<?> argumentType;
 
-	public AbstractSetterMethodSerialForm(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Method method) {
-		this.accessorFactory = accessorFactory;
+	public AbstractSetterMethodSerialForm(Class<?> containerClass, String propertyName, Method method) {
 		this.containerClass = containerClass;
 		this.propertyName = propertyName;
 		this.declaringClass = method.getDeclaringClass();
 		this.methodName = method.getName();
 		this.argumentType = method.getParameterTypes()[0];
-	}
-
-	public HibernateAccessorFactory getAccessorFactory() {
-		return accessorFactory;
 	}
 
 	public Class<?> getContainerClass() {

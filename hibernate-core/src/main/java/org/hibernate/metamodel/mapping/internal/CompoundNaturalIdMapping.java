@@ -831,23 +831,25 @@ public class CompoundNaturalIdMapping extends AbstractNaturalIdMapping implement
 		// first, if the `naturalIdClass` is a record, look for a component
 		final String keyName = keyAttribute.getAttributeName();
 
+		final var factory = HibernateAccessorFactory.reflection();
 		if ( naturalIdClass.isRecord() ) {
 			final var component = naturalIdClassComponents.get( keyName );
 			if ( component != null ) {
-				return new GetterMethodImpl( HibernateAccessorFactory.reflection(), naturalIdClass, keyName, component.getAccessor() );
+				final var accessor = component.getAccessor();
+				return new GetterMethodImpl( naturalIdClass, keyName, accessor, factory.valueReader( accessor ) );
 			}
 		}
 
 		// next look for a getter method
 		final var getterMethod = getterMethodAccess.apply( keyName );
 		if ( getterMethod != null ) {
-			return new GetterMethodImpl( HibernateAccessorFactory.reflection(), naturalIdClass, keyName, getterMethod );
+			return new GetterMethodImpl( naturalIdClass, keyName, getterMethod, factory.valueReader( getterMethod ) );
 		}
 
 		// lastly, look for a field
 		try {
-			return new GetterFieldImpl( HibernateAccessorFactory.reflection(), naturalIdClass, keyName,
-					naturalIdClass.getDeclaredField( keyName ) );
+			final var field = naturalIdClass.getDeclaredField( keyName );
+			return new GetterFieldImpl( naturalIdClass, keyName, field, factory.valueReader( field ) );
 		}
 		catch (NoSuchFieldException ignore) {
 		}

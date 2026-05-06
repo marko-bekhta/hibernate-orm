@@ -9,6 +9,7 @@ import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
 import org.hibernate.boot.registry.classloading.spi.ClassLoadingException;
 import org.hibernate.engine.jdbc.connections.spi.ConnectionProviderConfigurationException;
 import org.hibernate.property.access.spi.HibernateAccessorFactoryResolver;
+import org.hibernate.property.access.spi.HibernateAccessorFactoryResolverRegistry;
 import org.hibernate.service.spi.ServiceException;
 import org.hibernate.service.spi.ServiceRegistryImplementor;
 
@@ -31,17 +32,18 @@ public class HibernateAccessorFactoryResolverInitiator
 
 	@Override
 	public HibernateAccessorFactoryResolver initiateService(Map<String, Object> configurationValues, ServiceRegistryImplementor registry) {
+		final HibernateAccessorFactoryResolver resolver;
 		final Object configValue = configurationValues.get( HIBERNATE_ACCESSOR_FACTORY_RESOLVER );
 		if ( configValue == null ) {
-			return HibernateAccessorFactoryResolverImpl.INSTANCE;
+			resolver = HibernateAccessorFactoryResolverImpl.INSTANCE;
 		}
-		else if ( configValue instanceof HibernateAccessorFactoryResolver resolver ) {
-			return resolver;
+		else if ( configValue instanceof HibernateAccessorFactoryResolver r ) {
+			resolver = r;
 		}
 		else {
 			final var providerClass = providerClass( registry, configValue );
 			try {
-				return providerClass.getDeclaredConstructor().newInstance();
+				resolver = providerClass.getDeclaredConstructor().newInstance();
 			}
 			catch (Exception e) {
 				throw new ServiceException(
@@ -49,6 +51,8 @@ public class HibernateAccessorFactoryResolverInitiator
 						e );
 			}
 		}
+		HibernateAccessorFactoryResolverRegistry.register( resolver.resolveHibernateAccessorFactory() );
+		return resolver;
 	}
 
 	private static Class<? extends HibernateAccessorFactoryResolver> providerClass(

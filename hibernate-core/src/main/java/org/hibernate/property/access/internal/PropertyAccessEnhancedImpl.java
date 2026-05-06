@@ -60,8 +60,8 @@ public class PropertyAccessEnhancedImpl implements PropertyAccess {
 							"Could not locate field for property named [" + containerJavaType.getName() + "#" + propertyName + "]"
 					);
 				}
-				getter = new GetterFieldImpl( accessorFactory, containerJavaType, propertyName, field );
-				setter = new EnhancedSetterImpl( accessorFactory, containerJavaType, propertyName, field );
+				getter = new GetterFieldImpl( containerJavaType, propertyName, field, accessorFactory.valueReader( field ) );
+				setter = new EnhancedSetterImpl( containerJavaType, propertyName, field, accessorFactory.valueWriter( field ) );
 				break;
 			}
 			case PROPERTY: {
@@ -89,12 +89,13 @@ public class PropertyAccessEnhancedImpl implements PropertyAccess {
 			if ( explicitAccessType == AccessType.FIELD ) {
 				// We need to default to FIELD unless we have an explicit AccessType
 				// to avoid unnecessary initializations
-				return new EnhancedGetterFieldImpl( accessorFactory, containerJavaType, propertyName,
-						findField( containerJavaType, propertyName ), getterMethod );
+				final var field = findField( containerJavaType, propertyName );
+				return new EnhancedGetterFieldImpl( containerJavaType, propertyName,
+						field, getterMethod, accessorFactory.valueReader( field ) );
 			}
 		}
 		// when classAccessType is null, know PROPERTY is the explicit access type
-		return new GetterMethodImpl( accessorFactory, containerJavaType, propertyName, getterMethod );
+		return new GetterMethodImpl( containerJavaType, propertyName, getterMethod, accessorFactory.valueReader( getterMethod ) );
 	}
 
 	private static Setter propertySetter(HibernateAccessorFactory accessorFactory, @Nullable AccessType classAccessType, Class<?> containerJavaType, String propertyName, Class<?> fieldType) {
@@ -103,13 +104,15 @@ public class PropertyAccessEnhancedImpl implements PropertyAccess {
 			if ( explicitAccessType == AccessType.FIELD ) {
 				// We need to default to FIELD unless we have an explicit AccessType
 				// to avoid unnecessary initializations
-				return new EnhancedSetterImpl( accessorFactory, containerJavaType, propertyName,
-						findField( containerJavaType, propertyName ) );
+				final var field = findField( containerJavaType, propertyName );
+				return new EnhancedSetterImpl( containerJavaType, propertyName,
+						field, accessorFactory.valueWriter( field ) );
 			}
 		}
 		// when classAccessType is null, know PROPERTY is the explicit access type
-		return new EnhancedSetterMethodImpl( accessorFactory, containerJavaType, propertyName,
-				findSetterMethod( containerJavaType, propertyName, fieldType ) );
+		final var setterMethod = findSetterMethod( containerJavaType, propertyName, fieldType );
+		return new EnhancedSetterMethodImpl( containerJavaType, propertyName,
+				setterMethod, accessorFactory.valueWriter( setterMethod ) );
 	}
 
 	@Override

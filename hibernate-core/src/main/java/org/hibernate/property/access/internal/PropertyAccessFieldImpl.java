@@ -32,8 +32,8 @@ public class PropertyAccessFieldImpl implements PropertyAccess {
 		this.strategy = strategy;
 
 		final var field = findField( containerJavaType, propertyName );
-		getter = new GetterFieldImpl( accessorFactory, containerJavaType, propertyName, field );
-		setter = new SetterFieldImpl( accessorFactory, containerJavaType, propertyName, field );
+		getter = new GetterFieldImpl( containerJavaType, propertyName, field, accessorFactory.valueReader( field ) );
+		setter = new SetterFieldImpl( containerJavaType, propertyName, field, accessorFactory.valueWriter( field ) );
 	}
 
 	@Override

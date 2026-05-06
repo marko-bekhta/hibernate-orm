@@ -7,7 +7,6 @@ package org.hibernate.property.access.internal;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 
-import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.internal.util.ReflectHelper;
 import org.hibernate.property.access.spi.PropertyAccessSerializationException;
 
@@ -17,16 +16,14 @@ import org.hibernate.property.access.spi.PropertyAccessSerializationException;
  * @author Steve Ebersole
  */
 public abstract class AbstractFieldSerialForm implements Serializable {
-	private final HibernateAccessorFactory accessorFactory;
 	private final Class<?> declaringClass;
 	private final String fieldName;
 
-	protected AbstractFieldSerialForm(HibernateAccessorFactory accessorFactory, Field field) {
-		this( accessorFactory, field.getDeclaringClass(), field.getName() );
+	protected AbstractFieldSerialForm(Field field) {
+		this( field.getDeclaringClass(), field.getName() );
 	}
 
-	protected AbstractFieldSerialForm(HibernateAccessorFactory accessorFactory, Class<?> declaringClass, String fieldName) {
-		this.accessorFactory = accessorFactory;
+	protected AbstractFieldSerialForm(Class<?> declaringClass, String fieldName) {
 		this.declaringClass = declaringClass;
 		this.fieldName = fieldName;
 	}
@@ -42,9 +39,5 @@ public abstract class AbstractFieldSerialForm implements Serializable {
 					"Unable to resolve field on deserialization : " + declaringClass.getName() + "#" + fieldName
 			);
 		}
-	}
-
-	protected HibernateAccessorFactory getAccessorFactory() {
-		return accessorFactory;
 	}
 }

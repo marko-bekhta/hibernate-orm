@@ -12,7 +12,6 @@ import java.util.Locale;
 
 import org.hibernate.Internal;
 import org.hibernate.PropertyAccessException;
-import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.accessor.HibernateAccessorValueWriter;
 import org.hibernate.property.access.internal.AbstractFieldSerialForm;
 
@@ -28,19 +27,17 @@ import static org.hibernate.proxy.HibernateProxy.extractLazyInitializer;
  */
 @Internal
 public class SetterFieldImpl implements Setter {
-	private final HibernateAccessorFactory accessorFactory;
 	private final Class<?> containerClass;
 	private final String propertyName;
 	private final Field field;
 	private final HibernateAccessorValueWriter writer;
 	private final @Nullable Method setterMethod;
 
-	public SetterFieldImpl(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Field field) {
-		this.accessorFactory = accessorFactory;
+	public SetterFieldImpl(Class<?> containerClass, String propertyName, Field field, HibernateAccessorValueWriter writer) {
 		this.containerClass = containerClass;
 		this.propertyName = propertyName;
 		this.field = field;
-		this.writer = this.accessorFactory.valueWriter( field );
+		this.writer = writer;
 		this.setterMethod = setterMethodOrNull( containerClass, propertyName, field.getType() );
 	}
 
@@ -117,27 +114,24 @@ public class SetterFieldImpl implements Setter {
 
 	@Serial
 	private Object writeReplace() {
-		return new SerialForm( accessorFactory, containerClass, propertyName, field );
-	}
-
-	public HibernateAccessorFactory getAccessorFactory() {
-		return accessorFactory;
+		return new SerialForm( containerClass, propertyName, field );
 	}
 
 	private static class SerialForm extends AbstractFieldSerialForm implements Serializable {
 		private final Class<?> containerClass;
 		private final String propertyName;
 
-
-		private SerialForm(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Field field) {
-			super( accessorFactory, field );
+		private SerialForm(Class<?> containerClass, String propertyName, Field field) {
+			super( field );
 			this.containerClass = containerClass;
 			this.propertyName = propertyName;
 		}
 
 		@Serial
 		private Object readResolve() {
-			return new SetterFieldImpl( getAccessorFactory(), containerClass, propertyName, resolveField() );
+			final var f = resolveField();
+			return new SetterFieldImpl( containerClass, propertyName, f,
+					HibernateAccessorFactoryResolverRegistry.resolveHibernateAccessorFactory().valueWriter( f ) );
 		}
 
 	}

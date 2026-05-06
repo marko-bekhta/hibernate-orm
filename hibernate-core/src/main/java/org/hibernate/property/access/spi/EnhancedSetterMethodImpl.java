@@ -9,7 +9,7 @@ import java.io.Serializable;
 import java.lang.reflect.Method;
 
 import org.hibernate.Internal;
-import org.hibernate.accessor.HibernateAccessorFactory;
+import org.hibernate.accessor.HibernateAccessorValueWriter;
 import org.hibernate.property.access.internal.AbstractSetterMethodSerialForm;
 
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -30,8 +30,8 @@ public class EnhancedSetterMethodImpl extends SetterMethodImpl {
 	private final String propertyName;
 	private final int enhancementState;
 
-	public EnhancedSetterMethodImpl(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Method setterMethod) {
-		super( accessorFactory, containerClass, propertyName, setterMethod );
+	public EnhancedSetterMethodImpl(Class<?> containerClass, String propertyName, Method setterMethod, HibernateAccessorValueWriter writer) {
+		super( containerClass, propertyName, setterMethod, writer );
 		this.propertyName = propertyName;
 		this.enhancementState = determineEnhancementState( containerClass, setterMethod.getReturnType() );
 	}
@@ -48,17 +48,19 @@ public class EnhancedSetterMethodImpl extends SetterMethodImpl {
 
 	@Serial
 	private Object writeReplace() {
-		return new SerialForm( getAccessorFactory(), getContainerClass(), propertyName, getMethod() );
+		return new SerialForm( getContainerClass(), propertyName, getMethod() );
 	}
 
 	private static class SerialForm extends AbstractSetterMethodSerialForm implements Serializable {
-		private SerialForm(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Method method) {
-			super( accessorFactory, containerClass, propertyName, method );
+		private SerialForm(Class<?> containerClass, String propertyName, Method method) {
+			super( containerClass, propertyName, method );
 		}
 
 		@Serial
 		private Object readResolve() {
-			return new EnhancedSetterMethodImpl( getAccessorFactory(), getContainerClass(), getPropertyName(), resolveMethod() );
+			final var m = resolveMethod();
+			return new EnhancedSetterMethodImpl( getContainerClass(), getPropertyName(), m,
+					HibernateAccessorFactoryResolverRegistry.resolveHibernateAccessorFactory().valueWriter( m ) );
 		}
 	}
 }

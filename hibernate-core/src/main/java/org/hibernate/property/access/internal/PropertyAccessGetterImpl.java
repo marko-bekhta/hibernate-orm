@@ -67,11 +67,11 @@ public class PropertyAccessGetterImpl implements PropertyAccess {
 	// --- //
 
 	private static Getter fieldGetter(HibernateAccessorFactory accessorFactory, Class<?> containerJavaType, String propertyName, Field field) {
-		return new GetterFieldImpl( accessorFactory, containerJavaType, propertyName, field );
+		return new GetterFieldImpl( containerJavaType, propertyName, field, accessorFactory.valueReader( field ) );
 	}
 
 	private static Getter propertyGetter(HibernateAccessorFactory accessorFactory, Class<?> containerJavaType, String propertyName, Method method) {
-		return new GetterMethodImpl( accessorFactory, containerJavaType, propertyName, method );
+		return new GetterMethodImpl( containerJavaType, propertyName, method, accessorFactory.valueReader( method ) );
 	}
 
 	@Override

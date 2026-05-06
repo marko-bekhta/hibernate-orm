@@ -14,7 +14,6 @@ import java.util.Map;
 
 import org.hibernate.Internal;
 import org.hibernate.PropertyAccessException;
-import org.hibernate.accessor.HibernateAccessorFactory;
 import org.hibernate.accessor.HibernateAccessorValueReader;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.ReflectHelper;
@@ -33,15 +32,13 @@ public class GetterMethodImpl implements Getter {
 	private final String propertyName;
 	private final Method getterMethod;
 
-	private final HibernateAccessorFactory accessorFactory;
 	private final HibernateAccessorValueReader<?> reader;
 
-	public GetterMethodImpl(HibernateAccessorFactory accessorFactory, Class<?> containerClass, String propertyName, Method getterMethod) {
+	public GetterMethodImpl(Class<?> containerClass, String propertyName, Method getterMethod, HibernateAccessorValueReader<?> reader) {
 		this.containerClass = containerClass;
 		this.propertyName = propertyName;
 		this.getterMethod = getterMethod;
-		this.accessorFactory = accessorFactory;
-		this.reader = this.accessorFactory.valueReader( getterMethod );
+		this.reader = reader;
 	}
 
 	@Override
@@ -107,7 +104,7 @@ public class GetterMethodImpl implements Getter {
 
 	@Serial
 	private Object writeReplace() throws ObjectStreamException {
-		return new SerialForm( containerClass, propertyName, getterMethod, accessorFactory );
+		return new SerialForm( containerClass, propertyName, getterMethod );
 	}
 
 	private static class SerialForm implements Serializable {
@@ -117,19 +114,18 @@ public class GetterMethodImpl implements Getter {
 		private final Class<?> declaringClass;
 		private final String methodName;
 
-		private final HibernateAccessorFactory factory;
-
-		private SerialForm(Class<?> containerClass, String propertyName, Method method, HibernateAccessorFactory factory) {
+		private SerialForm(Class<?> containerClass, String propertyName, Method method) {
 			this.containerClass = containerClass;
 			this.propertyName = propertyName;
 			this.declaringClass = method.getDeclaringClass();
 			this.methodName = method.getName();
-			this.factory = factory;
 		}
 
 		@Serial
 		private Object readResolve() {
-			return new GetterMethodImpl( factory, containerClass, propertyName, resolveMethod() );
+			final var m = resolveMethod();
+			return new GetterMethodImpl( containerClass, propertyName, m,
+					HibernateAccessorFactoryResolverRegistry.resolveHibernateAccessorFactory().valueReader( m ) );
 		}
 
 		private Method resolveMethod() {
