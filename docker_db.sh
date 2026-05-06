@@ -73,44 +73,44 @@ mysql() {
 }
 
 mysql_8_0() {
-    compose_down "versioned/mysql-8.0.yml" "mysql"
-    compose_up "versioned/mysql-8.0.yml"
+    compose_down "versioned/mysql-8.0.yaml" "mysql"
+    compose_up "versioned/mysql-8.0.yaml"
     mysql_post_setup
 }
 
 mysql_8_1() {
-    compose_down "versioned/mysql-8.1.yml" "mysql"
-    compose_up "versioned/mysql-8.1.yml"
+    compose_down "versioned/mysql-8.1.yaml" "mysql"
+    compose_up "versioned/mysql-8.1.yaml"
     mysql_post_setup
 }
 
 mysql_8_2() {
-    compose_down "versioned/mysql-8.2.yml" "mysql"
-    compose_up "versioned/mysql-8.2.yml"
+    compose_down "versioned/mysql-8.2.yaml" "mysql"
+    compose_up "versioned/mysql-8.2.yaml"
     mysql_post_setup
 }
 
 mysql_9_2() {
-    compose_down "versioned/mysql-9.2.yml" "mysql"
-    compose_up "versioned/mysql-9.2.yml"
+    compose_down "versioned/mysql-9.2.yaml" "mysql"
+    compose_up "versioned/mysql-9.2.yaml"
     mysql_post_setup
 }
 
 mysql_9_4() {
-    compose_down "versioned/mysql-9.4.yml" "mysql"
-    compose_up "versioned/mysql-9.4.yml"
+    compose_down "versioned/mysql-9.4.yaml" "mysql"
+    compose_up "versioned/mysql-9.4.yaml"
     mysql_post_setup
 }
 
 mysql_9_5() {
-    compose_down "versioned/mysql-9.5.yml" "mysql"
-    compose_up "versioned/mysql-9.5.yml"
+    compose_down "versioned/mysql-9.5.yaml" "mysql"
+    compose_up "versioned/mysql-9.5.yaml"
     mysql_post_setup
 }
 
 mysql_9_6() {
-    compose_down "latest/mysql.yml" "mysql"
-    compose_up "latest/mysql.yml"
+    compose_down "latest/mysql.yaml" "mysql"
+    compose_up "latest/mysql.yaml"
     mysql_post_setup
 }
 
@@ -140,50 +140,50 @@ mariadb() {
 }
 
 mariadb_10_6() {
-    compose_down "versioned/mariadb-10-6.yml" "mariadb"
-    compose_up "versioned/mariadb-10-6.yml"
+    compose_down "versioned/mariadb-10-6.yaml" "mariadb"
+    compose_up "versioned/mariadb-10-6.yaml"
     mariadb_post_setup
 }
 
 mariadb_10_11() {
-    compose_down "versioned/mariadb-10-11.yml" "mariadb"
-    compose_up "versioned/mariadb-10-11.yml"
+    compose_down "versioned/mariadb-10-11.yaml" "mariadb"
+    compose_up "versioned/mariadb-10-11.yaml"
     mariadb_post_setup
 }
 
 mariadb_11_4() {
-    compose_down "versioned/mariadb-11-4.yml" "mariadb"
-    compose_up "versioned/mariadb-11-4.yml"
+    compose_down "versioned/mariadb-11-4.yaml" "mariadb"
+    compose_up "versioned/mariadb-11-4.yaml"
     mariadb_post_setup
 }
 
 mariadb_11_8() {
-    compose_down "versioned/mariadb-11-8.yml" "mariadb"
-    compose_up "versioned/mariadb-11-8.yml"
+    compose_down "versioned/mariadb-11-8.yaml" "mariadb"
+    compose_up "versioned/mariadb-11-8.yaml"
     mariadb_post_setup
 }
 
 mariadb_12_0() {
-    compose_down "versioned/mariadb-12-0.yml" "mariadb"
-    compose_up "versioned/mariadb-12-0.yml"
+    compose_down "versioned/mariadb-12-0.yaml" "mariadb"
+    compose_up "versioned/mariadb-12-0.yaml"
     mariadb_post_setup
 }
 
 mariadb_12_1() {
-    compose_down "versioned/mariadb-12-1.yml" "mariadb"
-    compose_up "versioned/mariadb-12-1.yml"
+    compose_down "versioned/mariadb-12-1.yaml" "mariadb"
+    compose_up "versioned/mariadb-12-1.yaml"
     mariadb_post_setup
 }
 
 mariadb_12_2() {
-    compose_down "latest/mariadb.yml" "mariadb"
-    compose_up "latest/mariadb.yml"
+    compose_down "latest/mariadb.yaml" "mariadb"
+    compose_up "latest/mariadb.yaml"
     mariadb_post_setup
 }
 
 mariadb_verylatest() {
-    compose_down "versioned/mariadb-verylatest.yml" "mariadb"
-    compose_up "versioned/mariadb-verylatest.yml"
+    compose_down "versioned/mariadb-verylatest.yaml" "mariadb"
+    compose_up "versioned/mariadb-verylatest.yaml"
     mariadb_post_setup
 }
 
@@ -208,32 +208,32 @@ postgresql() {
 }
 
 postgresql_14() {
-    compose_down "versioned/postgresql-14.yml" "postgres"
-    compose_up "versioned/postgresql-14.yml"
+    compose_down "versioned/postgresql-14.yaml" "postgres"
+    compose_up "versioned/postgresql-14.yaml"
     postgresql_setup 14
 }
 
 postgresql_15() {
-    compose_down "versioned/postgresql-15.yml" "postgres"
-    compose_up "versioned/postgresql-15.yml"
+    compose_down "versioned/postgresql-15.yaml" "postgres"
+    compose_up "versioned/postgresql-15.yaml"
     postgresql_setup 15
 }
 
 postgresql_16() {
-    compose_down "versioned/postgresql-16.yml" "postgres"
-    compose_up "versioned/postgresql-16.yml"
+    compose_down "versioned/postgresql-16.yaml" "postgres"
+    compose_up "versioned/postgresql-16.yaml"
     postgresql_setup 16
 }
 
 postgresql_17() {
-    compose_down "versioned/postgresql-17.yml" "postgres"
-    compose_up "versioned/postgresql-17.yml"
+    compose_down "versioned/postgresql-17.yaml" "postgres"
+    compose_up "versioned/postgresql-17.yaml"
     postgresql_setup 17
 }
 
 postgresql_18() {
-    compose_down "latest/postgresql.yml" "postgres"
-    compose_up "latest/postgresql.yml"
+    compose_down "latest/postgresql.yaml" "postgres"
+    compose_up "latest/postgresql.yaml"
     postgresql_setup 18
 }
 
@@ -261,8 +261,8 @@ postgresql_setup() {
 ###############################################################################
 
 gaussdb() {
-    compose_down "latest/gaussdb.yml" "opengauss"
-    compose_up "latest/gaussdb.yml"
+    compose_down "latest/gaussdb.yaml" "opengauss"
+    compose_up "latest/gaussdb.yaml"
 }
 
 ###############################################################################
@@ -272,26 +272,26 @@ edb() {
 }
 
 edb_14() {
-    compose_down "versioned/edb-14.yml" "edb"
-    compose_up "versioned/edb-14.yml"
+    compose_down "versioned/edb-14.yaml" "edb"
+    compose_up "versioned/edb-14.yaml"
     edb_setup 14
 }
 
 edb_15() {
-    compose_down "versioned/edb-15.yml" "edb"
-    compose_up "versioned/edb-15.yml"
+    compose_down "versioned/edb-15.yaml" "edb"
+    compose_up "versioned/edb-15.yaml"
     edb_setup 15
 }
 
 edb_16() {
-    compose_down "versioned/edb-16.yml" "edb"
-    compose_up "versioned/edb-16.yml"
+    compose_down "versioned/edb-16.yaml" "edb"
+    compose_up "versioned/edb-16.yaml"
     edb_setup 16
 }
 
 edb_17() {
-    compose_down "latest/edb.yml" "edb"
-    compose_up "latest/edb.yml"
+    compose_down "latest/edb.yaml" "edb"
+    compose_up "latest/edb.yaml"
     edb_setup 17
 }
 
@@ -323,14 +323,14 @@ db2() {
 }
 
 db2_11_5() {
-    compose_down "versioned/db2-11.5.yml" "db2"
-    db2_compose_up "versioned/db2-11.5.yml"
+    compose_down "versioned/db2-11.5.yaml" "db2"
+    db2_compose_up "versioned/db2-11.5.yaml"
     db2_post_setup
 }
 
 db2_12_1() {
-    compose_down "latest/db2.yml" "db2"
-    db2_compose_up "latest/db2.yml"
+    compose_down "latest/db2.yaml" "db2"
+    db2_compose_up "latest/db2.yaml"
     db2_post_setup
     db2_setup
 }
@@ -365,7 +365,7 @@ EOF
 
 db2_compose_up() {
     local compose_file="docker-compose/$1"
-    local osx_override="${2:-docker-compose/build-config/db2/osx-override.yml}"
+    local osx_override="${2:-docker-compose/build-config/db2/osx-override.yaml}"
     db2_osx_setup
     if [[ "$IS_OSX" == "true" ]]; then
         echo "Starting database using $compose_file (with OSX override)"
@@ -392,8 +392,8 @@ db2_setup() {
 }
 
 db2_spatial() {
-    compose_down "latest/db2_spatial.yml" "db2spatial"
-    db2_compose_up "latest/db2_spatial.yml" "docker-compose/build-config/db2_spatial/osx-override.yml"
+    compose_down "latest/db2_spatial.yaml" "db2spatial"
+    db2_compose_up "latest/db2_spatial.yaml" "docker-compose/build-config/db2_spatial/osx-override.yaml"
     db2_spatial_post_setup
 }
 
@@ -411,20 +411,20 @@ mssql() {
 }
 
 mssql_2017() {
-    compose_down "versioned/mssql-2017.yml" "mssql"
-    compose_up "versioned/mssql-2017.yml"
+    compose_down "versioned/mssql-2017.yaml" "mssql"
+    compose_up "versioned/mssql-2017.yaml"
     mssql_post_setup
 }
 
 mssql_2022() {
-    compose_down "versioned/mssql-2022.yml" "mssql"
-    compose_up "versioned/mssql-2022.yml"
+    compose_down "versioned/mssql-2022.yaml" "mssql"
+    compose_up "versioned/mssql-2022.yaml"
     mssql_post_setup
 }
 
 mssql_2025() {
-    compose_down "latest/mssql.yml" "mssql"
-    compose_up "latest/mssql.yml"
+    compose_down "latest/mssql.yaml" "mssql"
+    compose_up "latest/mssql.yaml"
     mssql_post_setup
 }
 
@@ -446,8 +446,8 @@ mssql_post_setup() {
 ###############################################################################
 
 sybase() {
-    compose_down "latest/sybase.yml" "sybase"
-    compose_up "latest/sybase.yml"
+    compose_down "latest/sybase.yaml" "sybase"
+    compose_up "latest/sybase.yaml"
 
     export SYBASE_DB=hibernate_orm_test
     export SYBASE_USER=hibernate_orm_test
@@ -793,30 +793,30 @@ oracle() {
 
 oracle_18() {
     disable_userland_proxy
-    compose_down "versioned/oracle-18.yml" "oracle"
-    compose_up "versioned/oracle-18.yml"
+    compose_down "versioned/oracle-18.yaml" "oracle"
+    compose_up "versioned/oracle-18.yaml"
     oracle_setup
 }
 
 oracle_21() {
     disable_userland_proxy
-    compose_down "versioned/oracle-21.yml" "oracle"
-    compose_up "versioned/oracle-21.yml"
+    compose_down "versioned/oracle-21.yaml" "oracle"
+    compose_up "versioned/oracle-21.yaml"
     oracle_setup
 }
 
 oracle_23() {
     disable_userland_proxy
-    compose_down "latest/oracle.yml" "oracle"
-    compose_up "latest/oracle.yml"
+    compose_down "latest/oracle.yaml" "oracle"
+    compose_up "latest/oracle.yaml"
     oracle_free_setup
 }
 
 ###############################################################################
 
 hana() {
-    compose_down "latest/hana.yml" "hana"
-    compose_up "latest/hana.yml"
+    compose_down "latest/hana.yaml" "hana"
+    compose_up "latest/hana.yaml"
     hana_setup
     echo "HANA successfully started"
 }
@@ -849,26 +849,26 @@ cockroachdb() {
 }
 
 cockroachdb_25_4() {
-  compose_down "latest/cockroachdb.yml" "cockroach"
-  compose_up "latest/cockroachdb.yml"
+  compose_down "latest/cockroachdb.yaml" "cockroach"
+  compose_up "latest/cockroachdb.yaml"
   cockroachdb_post_setup
 }
 
 cockroachdb_24_3() {
-  compose_down "versioned/cockroachdb-24.3.yml" "cockroach"
-  compose_up "versioned/cockroachdb-24.3.yml"
+  compose_down "versioned/cockroachdb-24.3.yaml" "cockroach"
+  compose_up "versioned/cockroachdb-24.3.yaml"
   cockroachdb_post_setup
 }
 
 cockroachdb_24_1() {
-  compose_down "versioned/cockroachdb-24.1.yml" "cockroach"
-  compose_up "versioned/cockroachdb-24.1.yml"
+  compose_down "versioned/cockroachdb-24.1.yaml" "cockroach"
+  compose_up "versioned/cockroachdb-24.1.yaml"
   cockroachdb_post_setup
 }
 
 cockroachdb_23_2() {
-  compose_down "versioned/cockroachdb-23.2.yml" "cockroach"
-  compose_up "versioned/cockroachdb-23.2.yml"
+  compose_down "versioned/cockroachdb-23.2.yaml" "cockroach"
+  compose_up "versioned/cockroachdb-23.2.yaml"
   cockroachdb_post_setup_23_2
 }
 
@@ -937,14 +937,14 @@ tidb() {
 
 tidb_8_5() {
     tidb_prepare_setup
-    compose_down "latest/tidb.yml" "tidb"
-    compose_up "latest/tidb.yml"
+    compose_down "latest/tidb.yaml" "tidb"
+    compose_up "latest/tidb.yaml"
 }
 
 tidb_5_4() {
     tidb_prepare_setup_5_4
-    compose_down "versioned/tidb-5.4.yml" "tidb"
-    compose_up "versioned/tidb-5.4.yml"
+    compose_down "versioned/tidb-5.4.yaml" "tidb"
+    compose_up "versioned/tidb-5.4.yaml"
 }
 
 tidb_prepare_setup() {
@@ -976,20 +976,20 @@ informix() {
 }
 
 informix_15() {
-    compose_down "latest/informix.yml" "informix"
-    compose_up "latest/informix.yml"
+    compose_down "latest/informix.yaml" "informix"
+    compose_up "latest/informix.yaml"
     informix_post_setup
 }
 
 informix_14_10() {
-    compose_down "versioned/informix-14.10.yml" "informix"
-    compose_up "versioned/informix-14.10.yml"
+    compose_down "versioned/informix-14.10.yaml" "informix"
+    compose_up "versioned/informix-14.10.yaml"
     informix_post_setup
 }
 
 informix_12_10() {
-    compose_down "versioned/informix-12.10.yml" "informix"
-    compose_up "versioned/informix-12.10.yml"
+    compose_down "versioned/informix-12.10.yaml" "informix"
+    compose_up "versioned/informix-12.10.yaml"
     informix_post_setup
 }
 
@@ -1023,9 +1023,9 @@ spanner_emulator() {
 
     echo "Starting Spanner emulator instance ${n} on port ${port}..."
     SPANNER_CONTAINER_NAME=${container_name} SPANNER_GRPC_PORT=${port} SPANNER_REST_PORT=${rest_port} \
-      compose_down "latest/spanner.yml" "${container_name}"
+      compose_down "latest/spanner.yaml" "${container_name}"
     SPANNER_CONTAINER_NAME=${container_name} SPANNER_GRPC_PORT=${port} SPANNER_REST_PORT=${rest_port} \
-      $CONTAINER_CLI compose -p "spanner-${n}" -f "docker-compose/latest/spanner.yml" up -d --wait
+      $CONTAINER_CLI compose -p "spanner-${n}" -f "docker-compose/latest/spanner.yaml" up -d --wait
   done
 
   # Configure instances
