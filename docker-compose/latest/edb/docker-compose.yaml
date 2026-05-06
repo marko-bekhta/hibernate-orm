@@ -4,8 +4,8 @@ services:
     container_name: edb
     platform: ${POSTGRESQL_PLATFORM:-linux/amd64}
     build:
-      context: ../build-config/edb
-      dockerfile: edb17.Dockerfile
+      context: ../../build-config/edb
+      dockerfile: ../../build-config/edb/edb17.Dockerfile
       platforms:
         - ${POSTGRESQL_PLATFORM:-linux/amd64}
     environment:
