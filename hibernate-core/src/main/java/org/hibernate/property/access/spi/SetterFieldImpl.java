@@ -40,8 +40,15 @@ public class SetterFieldImpl implements Setter {
 		this.containerClass = containerClass;
 		this.propertyName = propertyName;
 		this.field = field;
-		this.writer = this.accessorFactory.valueWriter( field );
+		this.writer = writerOrStub( accessorFactory, field );
 		this.setterMethod = setterMethodOrNull( containerClass, propertyName, field.getType() );
+	}
+
+	private static HibernateAccessorValueWriter writerOrStub(HibernateAccessorFactory accessorFactory, Field field) {
+		if ( field.getDeclaringClass().isRecord() ) {
+			return ThrowningHibernateAccessorValueWriter.INSTANCE;
+		}
+		return accessorFactory.valueWriter( field );
 	}
 
 	public Class<?> getContainerClass() {
@@ -60,6 +67,12 @@ public class SetterFieldImpl implements Setter {
 	public void set(Object target, @Nullable Object value) {
 		try {
 			writer.set( target, value );
+		}
+		catch (NullPointerException e) {
+			throw new PropertyAccessException( e, "Setting a field value of a record class is not allwed!",
+					true,
+					containerClass,
+					propertyName );
 		}
 		catch (Exception e) {
 			if ( value == null && field.getType().isPrimitive() ) {
@@ -140,5 +153,17 @@ public class SetterFieldImpl implements Setter {
 			return new SetterFieldImpl( getAccessorFactory(), containerClass, propertyName, resolveField() );
 		}
 
+	}
+
+	private static final class ThrowningHibernateAccessorValueWriter implements HibernateAccessorValueWriter {
+
+		private static final HibernateAccessorValueWriter INSTANCE = new ThrowningHibernateAccessorValueWriter();
+
+		@Override
+		public void set(Object o, Object o1) {
+			var container = (o != null ? o.getClass() : null);
+			throw new PropertyAccessException( null, "Setter cannot be called on a Record type: " + container, true,
+					container, null );
+		}
 	}
 }
