@@ -6,7 +6,6 @@ package org.hibernate;
 
 import jakarta.persistence.EntityGraph;
 
-import jakarta.persistence.FindOption;
 import jakarta.persistence.PessimisticLockScope;
 import jakarta.persistence.Timeout;
 import org.hibernate.graph.GraphSemantic;
@@ -38,7 +37,7 @@ import java.util.List;
  * @see Session#byMultipleNaturalId(Class)
  * @see org.hibernate.annotations.NaturalId
  *
- * @deprecated (since 7.3) Use {@linkplain Session#findMultiple(Class, List, FindOption...)} with {@link KeyType#NATURAL} instead.
+ * @deprecated (since 7.3) Use {@linkplain Session#find} with {@linkplain KeyType#NATURAL} instead.
  */
 @Deprecated
 public interface NaturalIdMultiLoadAccess<T> {

@@ -16,9 +16,9 @@ import jakarta.persistence.Timeout;
 import org.hibernate.HibernateException;
 import org.hibernate.LockMode;
 import org.hibernate.LockOptions;
-import org.hibernate.Locking;
 import org.hibernate.SimpleNaturalIdLoadAccess;
 import org.hibernate.graph.GraphSemantic;
+import org.hibernate.internal.find.StatefulLoadAccessContext;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.internal.SimpleNaturalIdMapping;
 import org.hibernate.persister.entity.EntityPersister;
@@ -38,7 +38,7 @@ public class SimpleNaturalIdLoadAccessImpl<T>
 
 	private final boolean hasSimpleNaturalId;
 
-	public SimpleNaturalIdLoadAccessImpl(LoadAccessContext context, EntityMappingType entityDescriptor) {
+	public SimpleNaturalIdLoadAccessImpl(StatefulLoadAccessContext context, EntityMappingType entityDescriptor) {
 		super( context, entityDescriptor );
 		hasSimpleNaturalId = entityDescriptor.getNaturalIdMapping() instanceof SimpleNaturalIdMapping;
 	}
@@ -59,7 +59,7 @@ public class SimpleNaturalIdLoadAccessImpl<T>
 		return (SimpleNaturalIdLoadAccess<T>) super.with( lockMode, lockScope );
 	}
 
-	public SimpleNaturalIdLoadAccess<T> with(Locking.Scope lockScope) {
+	public SimpleNaturalIdLoadAccess<T> with(PessimisticLockScope lockScope) {
 		super.with( lockScope );
 		return this;
 	}

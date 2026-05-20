@@ -12,6 +12,7 @@ import jakarta.persistence.PersistenceException;
 
 import org.hibernate.CacheMode;
 import org.hibernate.FlushMode;
+import jakarta.persistence.QueryFlushMode;
 
 /**
  * @author Emmanuel Bernard
@@ -25,6 +26,24 @@ public abstract class ConfigurationHelper {
 			if ( key != null && value != null ) {
 				properties.put( key, value );
 			}
+		}
+	}
+
+	public static QueryFlushMode resolveQueryFlushModeHint(Object value) {
+		if ( value == null ) {
+			return QueryFlushMode.DEFAULT;
+		}
+		if ( value instanceof QueryFlushMode ref ) {
+			return ref;
+		}
+		else if ( value instanceof FlushModeType jpaMode ) {
+			return FlushModeTypeHelper.queryFlushModeFromFlushModeType( jpaMode );
+		}
+		else if ( value instanceof FlushMode hibernateMode ) {
+			return FlushModeTypeHelper.queryFlushModeFromFlushMode( hibernateMode );
+		}
+		else {
+			return FlushModeTypeHelper.interpretQueryFlushMode( value.toString() );
 		}
 	}
 
@@ -58,6 +77,7 @@ public abstract class ConfigurationHelper {
 		return switch ( flushMode ) {
 			case AUTO -> FlushMode.AUTO;
 			case COMMIT -> FlushMode.COMMIT;
+			case EXPLICIT ->  FlushMode.MANUAL;
 		};
 	}
 
@@ -86,14 +106,14 @@ public abstract class ConfigurationHelper {
 	}
 
 	public static CacheMode getCacheMode(Object value) {
-		if ( value instanceof CacheMode cacheMode ) {
+		if ( value == null ) {
+			return null;
+		}
+		else if ( value instanceof CacheMode cacheMode ) {
 			return cacheMode;
 		}
-		else if ( value instanceof String string ) {
-			return CacheMode.valueOf( string );
-		}
 		else {
-			throw new IllegalArgumentException( "value must be a string or CacheMode: " + value );
+			return CacheMode.valueOf( value.toString().toUpperCase( Locale.ROOT ) );
 		}
 	}
 }

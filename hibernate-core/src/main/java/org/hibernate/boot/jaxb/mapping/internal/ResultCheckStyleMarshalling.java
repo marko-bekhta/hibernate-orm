@@ -4,19 +4,19 @@
  */
 package org.hibernate.boot.jaxb.mapping.internal;
 
-import org.hibernate.engine.spi.ExecuteUpdateResultCheckStyle;
+import org.hibernate.boot.jaxb.ResultCheckStyle;
 
 /**
- * JAXB marshalling for {@link ExecuteUpdateResultCheckStyle}
+ * JAXB marshaling for {@link ResultCheckStyle}
  *
  * @author Steve Ebersole
  */
 public class ResultCheckStyleMarshalling {
-	public static ExecuteUpdateResultCheckStyle fromXml(String name) {
-		return name == null ? null : ExecuteUpdateResultCheckStyle.valueOf( name );
+	public static ResultCheckStyle fromXml(String name) {
+		return name == null ? null : ResultCheckStyle.valueOf( name );
 	}
 
-	public static String toXml(ExecuteUpdateResultCheckStyle style) {
+	public static String toXml(ResultCheckStyle style) {
 		return style == null ? null : style.name();
 	}
 }

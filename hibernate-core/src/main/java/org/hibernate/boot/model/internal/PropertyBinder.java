@@ -8,6 +8,7 @@ import jakarta.persistence.Basic;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.ExcludedFromVersioning;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
@@ -472,11 +473,66 @@ public class PropertyBinder {
 	}
 
 	private void handleMutability(Property property) {
-		if ( memberDetails != null && memberDetails.hasDirectAnnotationUsage( Immutable.class ) ) {
+		final var collector = buildingContext.getMetadataCollector();
+		if ( collector.isInSecondPass() || canShortcutImmutability() ) {
+			initMutability( property );
+		}
+		else {
+			// we need the information in the MutabilityPlan
+			collector.addSecondPass( persistentClasses -> initMutability( property ) );
+		}
+	}
+
+	/**
+	 * Determine if we need to initialize mutability
+	 * in a second pass, making use of information
+	 * available in the {@code MutabilityPlan}.
+	 *
+	 */
+	private boolean canShortcutImmutability() {
+		return isAnnotatedImmutable()
+			|| !isFinalField()
+			|| holder.isModifiable()
+			|| !(value instanceof SimpleValue);
+	}
+
+	private void initMutability(Property property) {
+		if ( memberDetails != null && isEffectivelyImmutable() ) {
 			updatable = false;
 		}
 		property.resetInsertable( insertable );
 		property.resetUpdateable( updatable );
+		// FOR NOW: only mark it as immutable if it's
+		//          final and not if it's @Immutable
+//		property.setMutable( !isEffectivelyImmutable() );
+		property.setMutable( !isFinalField() );
+	}
+
+	/**
+	 * Is this property explicitly annotated {@link Immutable},
+	 * or can it be inferred immutable because it is final and
+	 * has an immutable type (based on {@code MutabilityPlan}).
+	 */
+	private boolean isEffectivelyImmutable() {
+		if ( isAnnotatedImmutable() ) {
+			return true;
+		}
+		else if ( isFinalField() && !holder.isModifiable()
+				&& value instanceof SimpleValue simpleValue ) {
+			final var type = simpleValue.getType();
+			return type != null && !type.isMutable();
+		}
+		else {
+			return false;
+		}
+	}
+
+	private boolean isFinalField() {
+		return memberDetails.isField() && memberDetails.isFinal();
+	}
+
+	private boolean isAnnotatedImmutable() {
+		return memberDetails.hasDirectAnnotationUsage( Immutable.class );
 	}
 
 	private void handleOptional(Property property) {
@@ -489,7 +545,7 @@ public class PropertyBinder {
 					if ( property.getPersistentClass() != null ) {
 						for ( var join : property.getPersistentClass().getJoins() ) {
 							if ( join.getProperties().contains( property ) ) {
-								// If this property is part of a join it is inherently optional
+								// If this property is part of a join, it is inherently optional
 								return;
 							}
 						}
@@ -499,9 +555,9 @@ public class PropertyBinder {
 						property.setOptional( false );
 					}
 				};
-				// Always register this as second pass and never execute it directly,
-				// even if we are in a second pass already.
-				// If we are in a second pass, then we are currently processing the generalSecondPassList
+				// Always register this as a second pass and never execute it directly,
+				// even if we are in a second pass already. If we are in a second pass,
+				// then we are currently processing the generalSecondPassList
 				// to which the following call will add the second pass to,
 				// so it will be executed within that second pass, just a bit later
 				buildingContext.getMetadataCollector().addSecondPass( secondPass );
@@ -536,6 +592,10 @@ public class PropertyBinder {
 			final boolean excluded = optimisticLock.excluded();
 			validateOptimisticLock( excluded );
 			property.setOptimisticLocked( !excluded );
+		}
+		else if ( memberDetails != null && memberDetails.hasDirectAnnotationUsage( ExcludedFromVersioning.class ) ) {
+			validateOptimisticLock( true );
+			property.setOptimisticLocked( false );
 		}
 		else {
 			property.setOptimisticLocked( !isToOneValue(value) || insertable ); // && updatable as well???

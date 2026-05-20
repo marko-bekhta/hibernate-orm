@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.SharedCacheMode;
 import jakarta.persistence.ValidationMode;
 import jakarta.persistence.PersistenceUnitTransactionType;
@@ -128,12 +129,12 @@ public abstract class BaseEntityManagerFunctionalTestCase extends BaseUnitTestCa
 		}
 
 		@Override
-		public PersistenceUnitTransactionType getPersistenceUnitTransactionType() {
-			return null;
+		public FetchType getDefaultToOneFetchType() {
+			return FetchType.EAGER;
 		}
 
-		@Override @SuppressWarnings("removal")
-		public jakarta.persistence.spi.PersistenceUnitTransactionType getTransactionType() {
+		@Override
+		public PersistenceUnitTransactionType getPersistenceUnitTransactionType() {
 			return null;
 		}
 
@@ -149,17 +150,22 @@ public abstract class BaseEntityManagerFunctionalTestCase extends BaseUnitTestCa
 
 		@Override
 		public List<String> getManagedClassNames() {
-			return null;
+			return List.of();
+		}
+
+		@Override
+		public List<String> getAllClassNames() {
+			return List.of();
 		}
 
 		@Override
 		public List<String> getMappingFileNames() {
-			return null;
+			return List.of();
 		}
 
 		@Override
 		public List<URL> getJarFileUrls() {
-			return null;
+			return List.of();
 		}
 
 		@Override
@@ -188,11 +194,12 @@ public abstract class BaseEntityManagerFunctionalTestCase extends BaseUnitTestCa
 		}
 
 		@Override
-		public void pushClassTransformer(EnhancementContext enhancementContext) {
+		public boolean isClassTransformerRegistrationDisabled() {
+			return true;
 		}
 
 		@Override
-		public ClassTransformer getClassTransformer() {
+		public ClassTransformer pushClassTransformer(EnhancementContext enhancementContext) {
 			return null;
 		}
 	}

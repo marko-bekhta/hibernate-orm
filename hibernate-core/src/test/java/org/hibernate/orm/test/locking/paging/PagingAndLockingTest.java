@@ -46,13 +46,11 @@ public class PagingAndLockingTest {
 	@Test
 	public void testHql(SessionFactoryScope factoryScope) {
 		factoryScope.inTransaction(session -> {
-			//noinspection deprecation
-			var qry = session.createQuery( "from Door" );
-			//noinspection removal
-			qry.getLockOptions().setLockMode( LockMode.PESSIMISTIC_WRITE );
+			var qry = session.createQuery( Door.class,"from Door" );
+			qry.setHibernateLockMode( LockMode.PESSIMISTIC_WRITE );
 			qry.setFirstResult( 2 );
 			qry.setMaxResults( 2 );
-			@SuppressWarnings("unchecked") List<Door> results = qry.list();
+			List<Door> results = qry.list();
 			Assertions.assertEquals( 2, results.size() );
 			for ( Door door : results ) {
 				Assertions.assertEquals( LockMode.PESSIMISTIC_WRITE, session.getCurrentLockMode( door ) );
@@ -82,11 +80,9 @@ public class PagingAndLockingTest {
 	@Test
 	public void testNativeSql(SessionFactoryScope factoryScope) {
 		factoryScope.inTransaction(session -> {
-			//noinspection deprecation
-			var qry = session.createNativeQuery( "select * from door" );
+			var qry = session.createNativeQuery( Door.class, "select * from door" );
 			qry.addRoot( "door", Door.class );
-			//noinspection removal
-			qry.getLockOptions().setLockMode( LockMode.PESSIMISTIC_WRITE );
+			qry.setHibernateLockMode( LockMode.PESSIMISTIC_WRITE );
 			qry.setFirstResult( 2 );
 			qry.setMaxResults( 2 );
 			List<?> results = qry.list();
@@ -96,8 +92,7 @@ public class PagingAndLockingTest {
 			}
 		} );
 		factoryScope.inTransaction(session -> {
-			//noinspection deprecation
-			var qry = session.createNativeQuery( "select * from door" );
+			var qry = session.createNativeQuery( Door.class, "select * from door" );
 			qry.addRoot( "door", Door.class );
 			qry.setHibernateLockMode( LockMode.PESSIMISTIC_WRITE );
 			qry.setFirstResult( 2 );

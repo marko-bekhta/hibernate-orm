@@ -7,6 +7,7 @@ package org.hibernate.orm.test.readonly;
 import java.math.BigDecimal;
 
 import org.hibernate.CacheMode;
+import org.hibernate.DetachedObjectException;
 import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -398,16 +400,15 @@ public class ReadOnlyProxyTest extends AbstractReadOnlyTest {
 					session.beginTransaction();
 					try {
 						DataPoint dp = session.getReference( DataPoint.class, dpOrig.getId() );
-						assertTrue( dp instanceof HibernateProxy );
+						assertInstanceOf( HibernateProxy.class, dp );
 						assertFalse( Hibernate.isInitialized( dp ) );
 						checkReadOnly( session, dp, false );
 						session.setReadOnly( dp, true );
 						assertFalse( Hibernate.isInitialized( dp ) );
 						checkReadOnly( session, dp, true );
 						assertFalse( Hibernate.isInitialized( dp ) );
-						DataPoint dpFromQuery = (DataPoint) session.createQuery( "from DataPoint where id=" + dpOrig.getId() )
-								.setReadOnly(
-										false )
+						var dpFromQuery = session.createQuery(DataPoint.class, "from DataPoint where id=" + dpOrig.getId() )
+								.setReadOnly( false )
 								.uniqueResult();
 						assertTrue( Hibernate.isInitialized( dpFromQuery ) );
 						assertSame( dp, dpFromQuery );
@@ -447,14 +448,13 @@ public class ReadOnlyProxyTest extends AbstractReadOnlyTest {
 					session.beginTransaction();
 					try {
 						DataPoint dp = session.getReference( DataPoint.class, dpOrig.getId() );
-						assertTrue( dp instanceof HibernateProxy );
+						assertInstanceOf( HibernateProxy.class, dp );
 						assertFalse( Hibernate.isInitialized( dp ) );
 						checkReadOnly( session, dp, false );
 						session.setReadOnly( dp, true );
 						checkReadOnly( session, dp, true );
-						DataPoint dpFromQuery = (DataPoint) session.createQuery( "from DataPoint where id=" + dpOrig.getId() )
-								.setReadOnly(
-										true )
+						var dpFromQuery = session.createQuery(DataPoint.class, "from DataPoint where id=" + dpOrig.getId() )
+								.setReadOnly( true )
 								.uniqueResult();
 						assertTrue( Hibernate.isInitialized( dpFromQuery ) );
 						assertSame( dp, dpFromQuery );
@@ -494,12 +494,11 @@ public class ReadOnlyProxyTest extends AbstractReadOnlyTest {
 					session.beginTransaction();
 					try {
 						DataPoint dp = session.getReference( DataPoint.class, dpOrig.getId() );
-						assertTrue( dp instanceof HibernateProxy );
+						assertInstanceOf( HibernateProxy.class, dp );
 						assertFalse( Hibernate.isInitialized( dp ) );
 						checkReadOnly( session, dp, false );
-						DataPoint dpFromQuery = (DataPoint) session.createQuery( "from DataPoint where id=" + dpOrig.getId() )
-								.setReadOnly(
-										false )
+						var dpFromQuery = session.createQuery(DataPoint.class, "from DataPoint where id=" + dpOrig.getId() )
+								.setReadOnly( false )
 								.uniqueResult();
 						assertTrue( Hibernate.isInitialized( dpFromQuery ) );
 						assertSame( dp, dpFromQuery );
@@ -539,12 +538,11 @@ public class ReadOnlyProxyTest extends AbstractReadOnlyTest {
 					session.beginTransaction();
 					try {
 						DataPoint dp = session.getReference( DataPoint.class, dpOrig.getId() );
-						assertTrue( dp instanceof HibernateProxy );
+						assertInstanceOf( HibernateProxy.class, dp );
 						checkReadOnly( session, dp, false );
 						assertFalse( Hibernate.isInitialized( dp ) );
-						DataPoint dpFromQuery = (DataPoint) session.createQuery( "from DataPoint where id=" + dpOrig.getId() )
-								.setReadOnly(
-										true )
+						var dpFromQuery = session.createQuery(DataPoint.class, "from DataPoint where id=" + dpOrig.getId() )
+								.setReadOnly( true )
 								.uniqueResult();
 						assertTrue( Hibernate.isInitialized( dpFromQuery ) );
 						assertSame( dp, dpFromQuery );
@@ -1072,7 +1070,7 @@ public class ReadOnlyProxyTest extends AbstractReadOnlyTest {
 
 		scope.inTransaction(
 				session -> {
-					DataPoint dp = session.get( DataPoint.class, dpOrig.getId() );
+					DataPoint dp = session.find( DataPoint.class, dpOrig.getId() );
 					assertNull( dp );
 				}
 		);
@@ -1151,9 +1149,9 @@ public class ReadOnlyProxyTest extends AbstractReadOnlyTest {
 		s.flush();
 		try {
 			s.refresh( dp );
-			fail( "should have thrown IllegalArgumentException" );
+			fail( "should have thrown DetachedObjectException" );
 		}
-		catch (IllegalArgumentException ex) {
+		catch (DetachedObjectException ex) {
 			// expected
 		}
 		finally {
@@ -1177,9 +1175,9 @@ public class ReadOnlyProxyTest extends AbstractReadOnlyTest {
 		assertTrue( Hibernate.isInitialized( dpProxyInit ) );
 		try {
 			s.refresh( dpProxyInit );
-			fail( "should have thrown IllegalArgumentException" );
+			fail( "should have thrown DetachedObjectException" );
 		}
-		catch (IllegalArgumentException ex) {
+		catch (DetachedObjectException ex) {
 			// expected
 		}
 		finally {
@@ -1194,9 +1192,9 @@ public class ReadOnlyProxyTest extends AbstractReadOnlyTest {
 			s.refresh( dpProxy );
 			assertFalse( Hibernate.isInitialized( dpProxy ) );
 			Hibernate.initialize( dpProxy );
-			fail( "should have thrown IllegalArgumentException" );
+			fail( "should have thrown DetachedObjectException" );
 		}
-		catch (IllegalArgumentException ex) {
+		catch (DetachedObjectException ex) {
 			// expected
 		}
 		finally {

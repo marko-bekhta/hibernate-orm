@@ -41,14 +41,14 @@ public class KeyManyToOneTest {
 	@Test
 	public void testCriteriaRestrictionOnKeyManyToOne(SessionFactoryScope scope) {
 		scope.inTransaction( s -> {
-			s.createQuery( "from Order o where o.customer.name = 'Acme'" ).list();
+			s.createQuery( "from Order o where o.customer.name = 'Acme'", Order.class ).list();
 //		Criteria criteria = s.createCriteria( Order.class );
 //		criteria.createCriteria( "customer" ).add( Restrictions.eq( "name", "Acme" ) );
 //		criteria.list();
 			CriteriaBuilder criteriaBuilder = s.getCriteriaBuilder();
 			CriteriaQuery<Order> criteria = criteriaBuilder.createQuery( Order.class );
 			Root<Order> root = criteria.from( Order.class );
-			Join<Object, Object> customer = root.join( "customer", JoinType.INNER );
+			Join<Order, Object> customer = root.join( "customer", JoinType.INNER );
 			criteria.where( criteriaBuilder.equal( customer.get( "name" ), "Acme" ) );
 			s.createQuery( criteria ).list();
 		} );
@@ -80,7 +80,7 @@ public class KeyManyToOneTest {
 		} );
 
 		scope.inTransaction( s -> {
-			List results = s.createQuery( "from Order o where o.customer.name = :name" )
+			List<Order> results = s.createQuery( "from Order o where o.customer.name = :name", Order.class )
 					.setParameter( "name", cust.getName() )
 					.list();
 			assertThat( results.size(), is( 1 ) );
@@ -109,11 +109,11 @@ public class KeyManyToOneTest {
 					assertThat( cust.getOrders().size(), is( 1 ) );
 					session.clear();
 
-					cust = (Customer) session.createQuery( "from Customer" ).uniqueResult();
+					cust = session.createQuery( "from Customer", Customer.class ).uniqueResult();
 					assertThat( cust.getOrders().size(), is( 1 ) );
 					session.clear();
 
-					cust = (Customer) session.createQuery( "from Customer c join fetch c.orders" ).uniqueResult();
+					cust = session.createQuery( "from Customer c join fetch c.orders", Customer.class ).uniqueResult();
 					assertThat( cust.getOrders().size(), is( 1 ) );
 					session.clear();
 

@@ -69,7 +69,7 @@ public class ImplicitSoftDeleteTests {
 	void testSelectionQuery(SessionFactoryScope scope) {
 		scope.inTransaction( (session) -> {
 			// should not return #1
-			assertThat( session.createQuery( "from ImplicitEntity" ).list() ).hasSize( 2 );
+			assertThat( session.createQuery( "from ImplicitEntity", ImplicitEntity.class ).list() ).hasSize( 2 );
 		} );
 	}
 
@@ -77,7 +77,7 @@ public class ImplicitSoftDeleteTests {
 	void testLoading(SessionFactoryScope scope) {
 		// Load
 		scope.inTransaction( (session) -> {
-			assertThat( session.get( ImplicitEntity.class, 1 ) ).isNull();
+			assertThat( session.find( ImplicitEntity.class, 1 ) ).isNull();
 			assertThat( session.get( ImplicitEntity.class, 2 ) ).isNotNull();
 			assertThat( session.get( ImplicitEntity.class, 3 ) ).isNotNull();
 		} );

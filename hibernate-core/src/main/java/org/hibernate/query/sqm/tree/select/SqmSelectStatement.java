@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import jakarta.persistence.criteria.BooleanExpression;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.Internal;
@@ -34,7 +35,6 @@ import jakarta.persistence.criteria.AbstractQuery;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Order;
 import jakarta.persistence.criteria.ParameterExpression;
-import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Selection;
 import jakarta.persistence.metamodel.EntityType;
 
@@ -404,13 +404,13 @@ public class SqmSelectStatement<T> extends AbstractSqmSelectQuery<T>
 	}
 
 	@Override
-	public SqmSelectStatement<T> where(Predicate @Nullable... restrictions) {
+	public SqmSelectStatement<T> where(BooleanExpression... restrictions) {
 		super.where( restrictions );
 		return this;
 	}
 
 	@Override
-	public SqmSelectStatement<T> where(List<Predicate> restrictions) {
+	public SqmSelectStatement<T> where(List<? extends Expression<Boolean>> restrictions) {
 		super.where( restrictions );
 		return this;
 	}
@@ -434,13 +434,13 @@ public class SqmSelectStatement<T> extends AbstractSqmSelectQuery<T>
 	}
 
 	@Override
-	public SqmSelectStatement<T> having(Predicate @Nullable... predicates) {
-		super.having( predicates );
+	public SqmSelectStatement<T> having(BooleanExpression... restrictions) {
+		super.having( restrictions );
 		return this;
 	}
 
 	@Override
-	public SqmSelectStatement<T> having(List<Predicate> restrictions) {
+	public SqmSelectStatement<T> having(List<? extends Expression<Boolean>> restrictions) {
 		super.having( restrictions );
 		return this;
 	}

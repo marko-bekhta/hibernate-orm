@@ -4,13 +4,12 @@
  */
 package org.hibernate.boot.spi;
 
+import jakarta.persistence.FetchType;
 import org.hibernate.boot.CacheRegionDefinition;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataBuilder;
-import org.hibernate.boot.archive.scan.spi.ScanEnvironment;
-import org.hibernate.boot.archive.scan.spi.ScanOptions;
-import org.hibernate.boot.archive.scan.spi.Scanner;
 import org.hibernate.boot.archive.spi.ArchiveDescriptorFactory;
+import org.hibernate.boot.scan.spi.ScanningProvider;
 import org.hibernate.boot.model.FunctionContributor;
 import org.hibernate.boot.model.TypeContributor;
 import org.hibernate.boot.model.convert.spi.ConverterDescriptor;
@@ -102,20 +101,8 @@ public abstract class AbstractDelegatingMetadataBuilderImplementor<T extends Met
 	}
 
 	@Override
-	public MetadataBuilder applyScanOptions(ScanOptions scanOptions) {
-		delegate.applyScanOptions( scanOptions );
-		return getThis();
-	}
-
-	@Override
-	public MetadataBuilder applyScanEnvironment(ScanEnvironment scanEnvironment) {
-		delegate.applyScanEnvironment( scanEnvironment );
-		return getThis();
-	}
-
-	@Override
-	public MetadataBuilder applyScanner(Scanner scanner) {
-		delegate.applyScanner( scanner );
+	public MetadataBuilder applyScanning(ScanningProvider scanningProvider) {
+		delegate.applyScanning( scanningProvider );
 		return getThis();
 	}
 
@@ -146,6 +133,12 @@ public abstract class AbstractDelegatingMetadataBuilderImplementor<T extends Met
 	@Override
 	public MetadataBuilder enableGlobalNationalizedCharacterDataSupport(boolean enabled) {
 		delegate.enableGlobalNationalizedCharacterDataSupport( enabled );
+		return getThis();
+	}
+
+	@Override
+	public MetadataBuilder applyDefaultToOneFetchType(FetchType defaultToOneFetchType) {
+		delegate.applyDefaultToOneFetchType( defaultToOneFetchType );
 		return getThis();
 	}
 

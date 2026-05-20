@@ -4,6 +4,7 @@
  */
 package org.hibernate.persister.entity;
 
+import jakarta.persistence.PessimisticLockScope;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.AssertionFailure;
 import org.hibernate.FetchMode;
@@ -14,7 +15,6 @@ import org.hibernate.JDBCException;
 import org.hibernate.LazyInitializationException;
 import org.hibernate.LockMode;
 import org.hibernate.LockOptions;
-import org.hibernate.Locking;
 import org.hibernate.MappingException;
 import org.hibernate.PropertyValueException;
 import org.hibernate.QueryException;
@@ -56,6 +56,8 @@ import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
+import org.hibernate.event.jpa.internal.EntityCallbacksFactory;
+import org.hibernate.event.jpa.spi.EntityCallbacks;
 import org.hibernate.event.spi.EventSource;
 import org.hibernate.event.spi.MergeContext;
 import org.hibernate.generator.BeforeExecutionGenerator;
@@ -322,6 +324,8 @@ public abstract class AbstractEntityPersister
 	private final String sqlAliasStem;
 	private final String jpaEntityName;
 
+	private final EntityCallbacks jpaCallbacks;
+
 	private SingleIdEntityLoader<?> singleIdLoader;
 	private MultiIdEntityLoader<?> multiIdLoader;
 	private NaturalIdLoader<?> naturalIdLoader;
@@ -356,6 +360,7 @@ public abstract class AbstractEntityPersister
 	private final boolean[] propertyTemporalExcluded;
 	private final boolean[] propertyAuditedExcluded;
 	private final boolean hasTemporalExcludedProperties;
+	private final int[] immutablePropertyIndexes;
 
 	//information about lazy properties of this class
 	private final String[] lazyPropertyNames;
@@ -460,9 +465,7 @@ public abstract class AbstractEntityPersister
 			final PersistentClass persistentClass,
 			final EntityDataAccess cacheAccessStrategy,
 			final NaturalIdDataAccess naturalIdRegionAccessStrategy,
-			final RuntimeModelCreationContext creationContext)
-			throws HibernateException {
-		this(
+			final RuntimeModelCreationContext creationContext) throws HibernateException {this(
 				persistentClass,
 				cacheAccessStrategy,
 				naturalIdRegionAccessStrategy,
@@ -479,7 +482,15 @@ public abstract class AbstractEntityPersister
 			final Function<StateManagement, StateManagement> statementManagerConverter)
 				throws HibernateException {
 		super( persistentClass, creationContext );
-		jpaEntityName = persistentClass.getJpaEntityName();
+
+		final var factoryOptions = creationContext.getSessionFactoryOptions();
+
+		this.jpaEntityName = persistentClass.getJpaEntityName();
+		this.jpaCallbacks = EntityCallbacksFactory.buildCallbacks(
+				persistentClass,
+				factoryOptions,
+				creationContext.getServiceRegistry()
+		);
 
 		//set it here, but don't call it, since it's still uninitialized!
 		factory = creationContext.getSessionFactory();
@@ -487,8 +498,6 @@ public abstract class AbstractEntityPersister
 		sqlAliasStem = SqlAliasStemHelper.INSTANCE.generateStemFromEntityName( persistentClass.getEntityName() );
 
 		navigableRole = new NavigableRole( persistentClass.getEntityName() );
-
-		final var factoryOptions = creationContext.getSessionFactoryOptions();
 
 		if ( factoryOptions.isSecondLevelCacheEnabled() ) {
 			this.cacheAccessStrategy = cacheAccessStrategy;
@@ -589,7 +598,7 @@ public abstract class AbstractEntityPersister
 		}
 		else {
 			sqlWhereStringTableExpression =
-					determineTableName( getCountainingClass( persistentClass ).getTable() );
+					determineTableName( getContainingClass( persistentClass ).getTable() );
 			sqlWhereStringTemplate =
 					renderSqlWhereStringTemplate( persistentClass, dialect, typeConfiguration );
 		}
@@ -605,6 +614,7 @@ public abstract class AbstractEntityPersister
 		propertyAuditedExcluded = new boolean[hydrateSpan];
 		sharedColumnNames = new HashSet<>();
 		nonLazyPropertyNames = new HashSet<>();
+		final List<Integer> immutableProperties = new ArrayList<>();
 
 		final HashSet<Property> thisClassProperties = new HashSet<>();
 		final ArrayList<String> lazyNames = new ArrayList<>();
@@ -673,12 +683,17 @@ public abstract class AbstractEntityPersister
 
 			propertyColumnUpdateable[i] = propertyValue.getColumnUpdateability();
 			propertyColumnInsertable[i] = propertyValue.getColumnInsertability();
+
+			if ( !property.isMutable() ) {
+				immutableProperties.add( i );
+			}
 		}
 		hasTemporalExcludedProperties = foundTemporalExcluded;
 		hasFormulaProperties = foundFormula;
 		lazyPropertyNames = toStringArray( lazyNames );
 		lazyPropertyNumbers = toIntArray( lazyNumbers );
 		lazyPropertyTypes = toTypeArray( lazyTypes );
+		immutablePropertyIndexes = toIntArray( immutableProperties );
 
 		// SUBCLASS PROPERTY CLOSURE
 		final ArrayList<String> aliases = new ArrayList<>();
@@ -802,6 +817,11 @@ public abstract class AbstractEntityPersister
 		stateManagement = statementManagerConverter.apply( persistentClass.getRootClass().getStateManagement() );
 	}
 
+	@Override
+	public EntityCallbacks getEntityCallbacks() {
+		return jpaCallbacks;
+	}
+
 	private static String renderSqlWhereStringTemplate(
 			PersistentClass persistentClass, Dialect dialect, TypeConfiguration typeConfiguration) {
 		return Template.renderWhereStringTemplate(
@@ -811,7 +831,7 @@ public abstract class AbstractEntityPersister
 		);
 	}
 
-	private static PersistentClass getCountainingClass(PersistentClass persistentClass) {
+	private static PersistentClass getContainingClass(PersistentClass persistentClass) {
 		var containingClass = persistentClass;
 		while ( containingClass.getSuperclass() != null ) {
 			final var superclass = containingClass.getSuperclass();
@@ -2285,13 +2305,13 @@ public abstract class AbstractEntityPersister
 		return getIdentifierMapping().getJdbcMapping( index );
 	}
 
-	protected LockingStrategy generateLocker(LockMode lockMode, Locking.Scope lockScope) {
+	protected LockingStrategy generateLocker(LockMode lockMode, PessimisticLockScope lockScope) {
 		return getDialect().getLockingStrategy( this, lockMode, lockScope );
 	}
 
 	// Used by Hibernate Reactive
-	protected LockingStrategy getLocker(LockMode lockMode, Locking.Scope lockScope) {
-		return lockScope != Locking.Scope.ROOT_ONLY
+	protected LockingStrategy getLocker(LockMode lockMode, PessimisticLockScope lockScope) {
+		return lockScope != PessimisticLockScope.NORMAL
 				// be sure to not use the cached form if any form of extended locking is requested
 				? generateLocker( lockMode, lockScope )
 				: lockers.computeIfAbsent( lockMode, (l) -> generateLocker( lockMode, lockScope ) );
@@ -2305,7 +2325,7 @@ public abstract class AbstractEntityPersister
 			LockMode lockMode,
 			SharedSessionContractImplementor session)
 					throws HibernateException {
-		getLocker( lockMode, Locking.Scope.ROOT_ONLY )
+		getLocker( lockMode, PessimisticLockScope.NORMAL )
 				.lock( id, version, object, Timeouts.WAIT_FOREVER, session );
 	}
 
@@ -5252,6 +5272,11 @@ public abstract class AbstractEntityPersister
 	}
 
 	@Override
+	public int[] getImmutablePropertyIndexes() {
+		return immutablePropertyIndexes;
+	}
+
+	@Override
 	public int getNumberOfDeclaredAttributeMappings() {
 		return declaredAttributeMappings.size();
 	}
@@ -5414,7 +5439,7 @@ public abstract class AbstractEntityPersister
 			int stateArrayPosition,
 			int fetchableIndex,
 			MappingModelCreationProcess creationProcess) {
-		final Type type = tupleAttrDefinition.getType();
+		final var type = tupleAttrDefinition.getType();
 		final int propertyIndex = getPropertyIndex( bootProperty.getName() );
 		final String[] attrColumnExpression =
 				type instanceof BasicType<?>
@@ -5427,7 +5452,9 @@ public abstract class AbstractEntityPersister
 				tupleAttrDefinition.getCascadeStyle(),
 				propertyIndex,
 				getTableName( getPropertyTableNumbers()[propertyIndex] ),
-				attrColumnExpression,
+				type instanceof BasicType<?> && bootProperty.getSelectables().get( 0 ).isFormula()
+						? propertyColumnFormulaTemplates[ propertyIndex ]
+						: getPropertyColumnNames( propertyIndex ),
 				bootProperty,
 				stateArrayPosition,
 				fetchableIndex,

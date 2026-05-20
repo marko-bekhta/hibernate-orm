@@ -8,6 +8,13 @@ import java.lang.annotation.Annotation;
 import java.util.EnumSet;
 import java.util.function.Consumer;
 
+import jakarta.persistence.EntityListener;
+import jakarta.persistence.ExcludedFromVersioning;
+import jakarta.persistence.NamedNativeStatement;
+import jakarta.persistence.NamedNativeStatements;
+import jakarta.persistence.NamedStatement;
+import jakarta.persistence.NamedStatements;
+import jakarta.persistence.spi.Discoverable;
 import org.hibernate.boot.models.annotations.internal.AccessJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.AssociationOverrideJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.AssociationOverridesJpaAnnotation;
@@ -23,6 +30,7 @@ import org.hibernate.boot.models.annotations.internal.ConstructorResultJpaAnnota
 import org.hibernate.boot.models.annotations.internal.ConvertJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.ConverterJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.ConvertsJpaAnnotation;
+import org.hibernate.boot.models.annotations.internal.DiscoverableJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.DiscriminatorColumnJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.DiscriminatorValueJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.ElementCollectionJpaAnnotation;
@@ -30,12 +38,14 @@ import org.hibernate.boot.models.annotations.internal.EmbeddableJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.EmbeddedIdJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.EmbeddedJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.EntityJpaAnnotation;
+import org.hibernate.boot.models.annotations.internal.EntityListenerJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.EntityListenersJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.EntityResultJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.EnumeratedJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.EnumeratedValueJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.ExcludeDefaultListenersJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.ExcludeSuperclassListenersJpaAnnotation;
+import org.hibernate.boot.models.annotations.internal.ExcludedFromVersioningJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.FieldResultJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.ForeignKeyJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.GeneratedValueJpaAnnotation;
@@ -63,8 +73,12 @@ import org.hibernate.boot.models.annotations.internal.NamedEntityGraphJpaAnnotat
 import org.hibernate.boot.models.annotations.internal.NamedEntityGraphsJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.NamedNativeQueriesJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.NamedNativeQueryJpaAnnotation;
+import org.hibernate.boot.models.annotations.internal.NamedNativeStatementJpaAnnotation;
+import org.hibernate.boot.models.annotations.internal.NamedNativeStatementsJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.NamedQueriesJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.NamedQueryJpaAnnotation;
+import org.hibernate.boot.models.annotations.internal.NamedStatementJpaAnnotation;
+import org.hibernate.boot.models.annotations.internal.NamedStatementsJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.NamedStoredProcedureQueriesJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.NamedStoredProcedureQueryJpaAnnotation;
 import org.hibernate.boot.models.annotations.internal.NamedSubgraphJpaAnnotation;
@@ -272,14 +286,14 @@ public interface JpaAnnotations {
 	OrmAnnotationDescriptor<ColumnResult,ColumnResultJpaAnnotation> COLUMN_RESULT = new OrmAnnotationDescriptor<>(
 			ColumnResult.class,
 			ColumnResultJpaAnnotation.class,
-			EnumSet.noneOf( Kind.class ),
+			EnumSet.of( Kind.METHOD ),
 			false
 	);
 
 	OrmAnnotationDescriptor<ConstructorResult,ConstructorResultJpaAnnotation> CONSTRUCTOR_RESULT = new OrmAnnotationDescriptor<>(
 			ConstructorResult.class,
 			ConstructorResultJpaAnnotation.class,
-			EnumSet.noneOf( Kind.class ),
+			EnumSet.of( Kind.METHOD ),
 			false
 	);
 
@@ -309,6 +323,13 @@ public interface JpaAnnotations {
 			DiscriminatorColumn.class,
 			DiscriminatorColumnJpaAnnotation.class,
 			EnumSet.of( Kind.CLASS ),
+			false
+	);
+
+	OrmAnnotationDescriptor<Discoverable, DiscoverableJpaAnnotation> DISCOVERABLE = new OrmAnnotationDescriptor<>(
+			Discoverable.class,
+			DiscoverableJpaAnnotation.class,
+			EnumSet.of( Kind.ANNOTATION ),
 			false
 	);
 
@@ -354,6 +375,13 @@ public interface JpaAnnotations {
 			false
 	);
 
+	OrmAnnotationDescriptor<EntityListener,EntityListenerJpaAnnotation> ENTITY_LISTENER = new OrmAnnotationDescriptor<>(
+			EntityListener.class,
+			EntityListenerJpaAnnotation.class,
+			EnumSet.of( Kind.CLASS ),
+			false
+	);
+
 	OrmAnnotationDescriptor<EntityListeners,EntityListenersJpaAnnotation> ENTITY_LISTENERS = new OrmAnnotationDescriptor<>(
 			EntityListeners.class,
 			EntityListenersJpaAnnotation.class,
@@ -364,7 +392,7 @@ public interface JpaAnnotations {
 	OrmAnnotationDescriptor<EntityResult,EntityResultJpaAnnotation> ENTITY_RESULT = new OrmAnnotationDescriptor<>(
 			EntityResult.class,
 			EntityResultJpaAnnotation.class,
-			EnumSet.noneOf( Kind.class ),
+			EnumSet.of( Kind.METHOD ),
 			false
 	);
 
@@ -388,7 +416,10 @@ public interface JpaAnnotations {
 			EnumSet.of( Kind.CLASS ),
 			false
 	);
-
+	OrmAnnotationDescriptor<ExcludedFromVersioning, ExcludedFromVersioningJpaAnnotation> EXCLUDE_FROM_VERSIONING = new OrmAnnotationDescriptor<>(
+			ExcludedFromVersioning.class,
+			ExcludedFromVersioningJpaAnnotation.class
+	);
 	OrmAnnotationDescriptor<ExcludeSuperclassListeners,ExcludeSuperclassListenersJpaAnnotation> EXCLUDE_SUPERCLASS_LISTENERS = new OrmAnnotationDescriptor<>(
 			ExcludeSuperclassListeners.class,
 			ExcludeSuperclassListenersJpaAnnotation.class,
@@ -577,14 +608,14 @@ public interface JpaAnnotations {
 	OrmAnnotationDescriptor<NamedNativeQueries,NamedNativeQueriesJpaAnnotation> NAMED_NATIVE_QUERIES = new OrmAnnotationDescriptor<>(
 			NamedNativeQueries.class,
 			NamedNativeQueriesJpaAnnotation.class,
-			EnumSet.of( Kind.CLASS ),
+			EnumSet.of( Kind.CLASS, Kind.PACKAGE ),
 			false
 	);
 
 	OrmAnnotationDescriptor<NamedNativeQuery,NamedNativeQueryJpaAnnotation> NAMED_NATIVE_QUERY = new OrmAnnotationDescriptor<>(
 			NamedNativeQuery.class,
 			NamedNativeQueryJpaAnnotation.class,
-			EnumSet.of( Kind.CLASS ),
+			EnumSet.of( Kind.CLASS, Kind.PACKAGE ),
 			false,
 			NAMED_NATIVE_QUERIES
 	);
@@ -592,29 +623,46 @@ public interface JpaAnnotations {
 	OrmAnnotationDescriptor<NamedQueries,NamedQueriesJpaAnnotation> NAMED_QUERIES = new OrmAnnotationDescriptor<>(
 			NamedQueries.class,
 			NamedQueriesJpaAnnotation.class,
-			EnumSet.of( Kind.CLASS ),
+			EnumSet.of( Kind.CLASS, Kind.PACKAGE ),
 			false
 	);
 
 	OrmAnnotationDescriptor<NamedQuery,NamedQueryJpaAnnotation> NAMED_QUERY = new OrmAnnotationDescriptor<>(
 			NamedQuery.class,
 			NamedQueryJpaAnnotation.class,
-			EnumSet.of( Kind.CLASS ),
+			EnumSet.of( Kind.CLASS, Kind.PACKAGE ),
 			false,
 			NAMED_QUERIES
 	);
-
+	OrmAnnotationDescriptor<NamedStatements, NamedStatementsJpaAnnotation> NAMED_STATEMENTS = new OrmAnnotationDescriptor<>(
+			NamedStatements.class,
+			NamedStatementsJpaAnnotation.class
+	);
+	OrmAnnotationDescriptor<NamedStatement, NamedStatementJpaAnnotation> NAMED_STATEMENT = new OrmAnnotationDescriptor<>(
+			NamedStatement.class,
+			NamedStatementJpaAnnotation.class,
+			NAMED_STATEMENTS
+	);
+	OrmAnnotationDescriptor<NamedNativeStatements, NamedNativeStatementsJpaAnnotation> NAMED_NATIVE_STATEMENTS = new OrmAnnotationDescriptor<>(
+			NamedNativeStatements.class,
+			NamedNativeStatementsJpaAnnotation.class
+	);
+	OrmAnnotationDescriptor<NamedNativeStatement, NamedNativeStatementJpaAnnotation> NAMED_NATIVE_STATEMENT = new OrmAnnotationDescriptor<>(
+			NamedNativeStatement.class,
+			NamedNativeStatementJpaAnnotation.class,
+			NAMED_NATIVE_STATEMENTS
+	);
 	OrmAnnotationDescriptor<NamedStoredProcedureQueries,NamedStoredProcedureQueriesJpaAnnotation> NAMED_STORED_PROCEDURE_QUERIES = new OrmAnnotationDescriptor<>(
 			NamedStoredProcedureQueries.class,
 			NamedStoredProcedureQueriesJpaAnnotation.class,
-			EnumSet.of( Kind.CLASS ),
+			EnumSet.of( Kind.CLASS, Kind.PACKAGE ),
 			false
 	);
 
 	OrmAnnotationDescriptor<NamedStoredProcedureQuery,NamedStoredProcedureQueryJpaAnnotation> NAMED_STORED_PROCEDURE_QUERY = new OrmAnnotationDescriptor<>(
 			NamedStoredProcedureQuery.class,
 			NamedStoredProcedureQueryJpaAnnotation.class,
-			EnumSet.of( Kind.CLASS ),
+			EnumSet.of( Kind.CLASS, Kind.PACKAGE ),
 			false,
 			NAMED_STORED_PROCEDURE_QUERIES
 	);
@@ -765,7 +813,7 @@ public interface JpaAnnotations {
 	OrmAnnotationDescriptor<SqlResultSetMapping,SqlResultSetMappingJpaAnnotation> SQL_RESULT_SET_MAPPING = new OrmAnnotationDescriptor<>(
 			SqlResultSetMapping.class,
 			SqlResultSetMappingJpaAnnotation.class,
-			EnumSet.of( Kind.CLASS ),
+			EnumSet.of( Kind.CLASS, Kind.METHOD ),
 			false,
 			SQL_RESULT_SET_MAPPINGS
 	);

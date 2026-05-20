@@ -6,6 +6,8 @@ package org.hibernate.query.criteria;
 
 import java.util.List;
 import java.util.Set;
+
+import jakarta.persistence.criteria.BooleanExpression;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 
@@ -59,6 +61,8 @@ public interface JpaQueryStructure<T> extends JpaQueryPart<T> {
 
 	JpaQueryStructure<T> setRestriction(@Nullable Expression<Boolean> restriction);
 
+	JpaQueryStructure<T> setRestriction(BooleanExpression... restrictions);
+
 	JpaQueryStructure<T> setRestriction(Predicate... restrictions);
 
 	JpaQueryStructure<T> setRestriction(List<Predicate> restrictions);
@@ -80,6 +84,7 @@ public interface JpaQueryStructure<T> extends JpaQueryPart<T> {
 	JpaQueryStructure<T> setGroupRestriction(@Nullable Expression<Boolean> restriction);
 
 	JpaQueryStructure<T> setGroupRestriction(Predicate... restrictions);
+	JpaQueryStructure<T> setGroupRestriction(BooleanExpression... restrictions);
 
 	JpaQueryStructure<T> setGroupRestriction(List<Predicate> restrictions);
 

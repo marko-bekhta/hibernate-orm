@@ -13,7 +13,6 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.Incubating;
 import org.hibernate.SessionFactory;
 import org.hibernate.SharedSessionContract;
-import org.hibernate.query.QueryProducer;
 import org.hibernate.query.SelectionQuery;
 import org.hibernate.query.criteria.spi.HibernateCriteriaBuilderDelegate;
 import org.hibernate.query.common.FetchClauseType;
@@ -214,7 +213,7 @@ public abstract class CriteriaDefinition<R>
 		this( entityManager.getEntityManagerFactory(), baseQuery );
 	}
 
-	public SelectionQuery<R> createSelectionQuery(QueryProducer session) {
+	public SelectionQuery<R> createSelectionQuery(SharedSessionContract session) {
 		return session.createQuery( query );
 	}
 
@@ -254,11 +253,6 @@ public abstract class CriteriaDefinition<R>
 	}
 
 	@Override
-	public JpaCriteriaQuery<R> where(Predicate... restrictions) {
-		return query.where(restrictions);
-	}
-
-	@Override
 	public JpaCriteriaQuery<R> groupBy(Expression... grouping) {
 		return query.groupBy(grouping);
 	}
@@ -271,11 +265,6 @@ public abstract class CriteriaDefinition<R>
 	@Override
 	public JpaCriteriaQuery<R> having(Expression<Boolean> restriction) {
 		return query.having(restriction);
-	}
-
-	@Override
-	public JpaCriteriaQuery<R> having(Predicate... restrictions) {
-		return query.having(restrictions);
 	}
 
 	@Override
@@ -354,13 +343,23 @@ public abstract class CriteriaDefinition<R>
 	}
 
 	@Override
-	public JpaCriteriaQuery<R> where(List<Predicate> restrictions) {
-		return query.where( restrictions );
+	public JpaCriteriaQuery<R> where(List<? extends Expression<Boolean>> restrictions) {
+		return query.where(restrictions);
 	}
 
 	@Override
-	public JpaCriteriaQuery<R> having(List<Predicate> restrictions) {
-		return query.having( restrictions );
+	public JpaCriteriaQuery<R> where(BooleanExpression... restrictions) {
+		return query.where(restrictions);
+	}
+
+	@Override
+	public JpaCriteriaQuery<R> having(BooleanExpression... restrictions) {
+		return query.having(restrictions);
+	}
+
+	@Override
+	public JpaCriteriaQuery<R> having(List<? extends Expression<Boolean>> restrictions) {
+		return query.having(restrictions);
 	}
 
 	@Override

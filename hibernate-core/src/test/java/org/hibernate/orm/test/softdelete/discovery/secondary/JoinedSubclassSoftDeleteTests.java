@@ -49,13 +49,13 @@ public class JoinedSubclassSoftDeleteTests {
 	void testSelectionQuery(SessionFactoryScope scope) {
 		scope.inTransaction( (session) -> {
 			// should not return #1
-			assertThat( session.createQuery( "from JoinedRoot" ).list() ).hasSize( 2 );
-			assertThat( session.createQuery( "from JoinedRoot where id = 1" ).list() ).isEmpty();
+			assertThat( session.createQuery( "from JoinedRoot", JoinedRoot.class ).list() ).hasSize( 2 );
+			assertThat( session.createQuery( "from JoinedRoot where id = 1", JoinedRoot.class ).list() ).isEmpty();
 		} );
 
 		scope.inTransaction( (session) -> {
 			// should not return #1
-			assertThat( session.createQuery( "from JoinedSub where id = 1" ).list() ).isEmpty();
+			assertThat( session.createQuery( "from JoinedSub where id = 1", JoinedSub.class ).list() ).isEmpty();
 		} );
 	}
 
@@ -64,27 +64,27 @@ public class JoinedSubclassSoftDeleteTests {
 	void testCountQuery(SessionFactoryScope scope) {
 		scope.inTransaction( (session) -> {
 			// should not return #1
-			assertThat( session.createQuery( "select count(*) from JoinedRoot" ).uniqueResult() ).isEqualTo( 2L );
-			assertThat( session.createQuery( "select count(*) from JoinedRoot where id = 1" ).uniqueResult() ).isEqualTo( 0L );
+			assertThat( session.createQuery( "select count(*) from JoinedRoot", Long.class ).uniqueResult() ).isEqualTo( 2L );
+			assertThat( session.createQuery( "select count(*) from JoinedRoot where id = 1", Long.class ).uniqueResult() ).isEqualTo( 0L );
 		} );
 
 		scope.inTransaction( (session) -> {
 			// should not return #1
-			assertThat( session.createQuery( "select count(*) from JoinedSub" ).uniqueResult() ).isEqualTo( 2L );
-			assertThat( session.createQuery( "select count(*) from JoinedSub where id = 1" ).uniqueResult() ).isEqualTo( 0L );
+			assertThat( session.createQuery( "select count(*) from JoinedSub", Long.class ).uniqueResult() ).isEqualTo( 2L );
+			assertThat( session.createQuery( "select count(*) from JoinedSub where id = 1", Long.class ).uniqueResult() ).isEqualTo( 0L );
 		} );
 	}
 
 	@Test
 	void testLoading(SessionFactoryScope scope) {
 		scope.inTransaction( (session) -> {
-			assertThat( session.get( JoinedRoot.class, 1 ) ).isNull();
+			assertThat( session.find( JoinedRoot.class, 1 ) ).isNull();
 			assertThat( session.get( JoinedRoot.class, 2 ) ).isNotNull();
 			assertThat( session.get( JoinedRoot.class, 3 ) ).isNotNull();
 		} );
 
 		scope.inTransaction( (session) -> {
-			assertThat( session.get( JoinedSub.class, 1 ) ).isNull();
+			assertThat( session.find( JoinedSub.class, 1 ) ).isNull();
 			assertThat( session.get( JoinedSub.class, 2 ) ).isNotNull();
 			assertThat( session.get( JoinedSub.class, 3 ) ).isNotNull();
 		} );

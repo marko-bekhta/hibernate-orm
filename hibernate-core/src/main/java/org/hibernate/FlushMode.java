@@ -7,6 +7,9 @@ package org.hibernate;
 import org.hibernate.jpa.internal.util.FlushModeTypeHelper;
 
 import jakarta.persistence.FlushModeType;
+import jakarta.persistence.QueryFlushMode;
+
+import java.util.Locale;
 
 /**
  * Represents a flushing strategy. The flush process synchronizes
@@ -21,11 +24,10 @@ import jakarta.persistence.FlushModeType;
  * {@linkplain Session#setHibernateFlushMode set at the session
  * level}, and competes with the JPA-defined enumeration
  * {@link jakarta.persistence.FlushModeType}. Alternatively, a
- * {@link org.hibernate.query.QueryFlushMode QueryFlushMode} may
- * be specified for a given query.
+ * {@link QueryFlushMode} may be specified for a given query.
  *
  * @see Session#setHibernateFlushMode
- * @see org.hibernate.query.QueryFlushMode
+ * @see QueryFlushMode
  *
  * @author Gavin King
  */
@@ -106,5 +108,36 @@ public enum FlushMode {
 
 	public FlushModeType toJpaFlushMode() {
 		return FlushModeTypeHelper.getFlushModeType( this );
+	}
+
+	public static FlushMode fromQueryFlushMode(QueryFlushMode queryFlushMode) {
+		if ( queryFlushMode == QueryFlushMode.FLUSH ) {
+			return FlushMode.AUTO;
+		}
+		else if ( queryFlushMode == QueryFlushMode.NO_FLUSH ) {
+			return MANUAL;
+		}
+		else {
+			return null;
+		}
+	}
+
+	public static FlushMode fromHint(Object value) {
+		if ( value == null ) {
+			return null;
+		}
+		else if ( value instanceof FlushMode flushMode ) {
+			return flushMode;
+		}
+		else if ( value instanceof FlushModeType flushModeType ) {
+			return fromJpaFlushMode( flushModeType );
+		}
+		else if ( value instanceof QueryFlushMode queryFlushMode ) {
+			return fromQueryFlushMode( queryFlushMode );
+		}
+		else {
+			var string = value.toString();
+			return valueOf( string.toUpperCase( Locale.ROOT ) );
+		}
 	}
 }

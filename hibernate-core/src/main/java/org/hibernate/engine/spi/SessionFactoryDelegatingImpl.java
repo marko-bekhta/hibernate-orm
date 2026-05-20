@@ -4,14 +4,21 @@
  */
 package org.hibernate.engine.spi;
 
+import jakarta.persistence.EntityAgent;
 import jakarta.persistence.EntityGraph;
+import jakarta.persistence.EntityHandler;
+import jakarta.persistence.EntityListenerRegistration;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceUnitTransactionType;
 import jakarta.persistence.PersistenceUnitUtil;
 import jakarta.persistence.Query;
+import jakarta.persistence.Statement;
+import jakarta.persistence.StatementReference;
 import jakarta.persistence.SynchronizationType;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.TypedQueryReference;
+import jakarta.persistence.sql.ResultSetMapping;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.hibernate.CustomEntityDirtinessStrategy;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -19,6 +26,7 @@ import org.hibernate.SessionFactory;
 import org.hibernate.SessionFactoryObserver;
 import org.hibernate.StatelessSession;
 import org.hibernate.StatelessSessionBuilder;
+import org.hibernate.StatementObserver;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
 import org.hibernate.boot.spi.SessionFactoryOptions;
@@ -53,6 +61,7 @@ import org.hibernate.type.spi.TypeConfiguration;
 
 import javax.naming.NamingException;
 import javax.naming.Reference;
+import java.lang.annotation.Annotation;
 import java.sql.Connection;
 import java.util.Collection;
 import java.util.List;
@@ -82,6 +91,11 @@ public class SessionFactoryDelegatingImpl implements SessionFactoryImplementor, 
 	@Override
 	public SessionFactoryOptions getSessionFactoryOptions() {
 		return delegate.getSessionFactoryOptions();
+	}
+
+	@Override
+	public @NonNull StatementObserver getStatementObserver() {
+		return delegate.getStatementObserver();
 	}
 
 	@Override
@@ -185,6 +199,16 @@ public class SessionFactoryDelegatingImpl implements SessionFactoryImplementor, 
 	}
 
 	@Override
+	public <H extends EntityHandler> void runInTransaction(Class<H> handlerType, Consumer<H> consumer) {
+		delegate.runInTransaction( handlerType, consumer );
+	}
+
+	@Override
+	public <R, H extends EntityHandler> R callInTransaction(Class<H> handlerType, Function<H, R> function) {
+		return delegate.callInTransaction( handlerType, function );
+	}
+
+	@Override
 	public Set<String> getDefinedFilterNames() {
 		return delegate.getDefinedFilterNames();
 	}
@@ -245,8 +269,26 @@ public class SessionFactoryDelegatingImpl implements SessionFactoryImplementor, 
 	}
 
 	@Override
+	public Map<String, StatementReference> getNamedStatements() {
+		return delegate.getNamedStatements();
+	}
+
+	@Override
 	public <E> Map<String, EntityGraph<? extends E>> getNamedEntityGraphs(Class<E> entityType) {
 		return delegate.getNamedEntityGraphs( entityType );
+	}
+
+	@Override
+	public <R> Map<String, ResultSetMapping<R>> getResultSetMappings(Class<R> type) {
+		return delegate.getResultSetMappings( type );
+	}
+
+	@Override
+	public <E> EntityListenerRegistration addListener(
+			Class<E> entityType,
+			Class<? extends Annotation> eventType,
+			Consumer<? super E> listener) {
+		return delegate.addListener( entityType, eventType, listener );
 	}
 
 	@Override
@@ -355,6 +397,16 @@ public class SessionFactoryDelegatingImpl implements SessionFactoryImplementor, 
 	}
 
 	@Override
+	public EntityAgent createEntityAgent() {
+		return delegate.createEntityAgent();
+	}
+
+	@Override
+	public EntityAgent createEntityAgent(Map<?, ?> map) {
+		return delegate.createEntityAgent( map );
+	}
+
+	@Override
 	public Session createEntityManager(SynchronizationType synchronizationType, Map map) {
 		return delegate.createEntityManager( synchronizationType, map );
 	}
@@ -422,6 +474,11 @@ public class SessionFactoryDelegatingImpl implements SessionFactoryImplementor, 
 	@Override
 	public <R> TypedQueryReference<R> addNamedQuery(String name, TypedQuery<R> query) {
 		return delegate.addNamedQuery( name, query );
+	}
+
+	@Override
+	public StatementReference addNamedStatement(String s, Statement statement) {
+		return delegate.addNamedStatement( s, statement );
 	}
 
 	@Override

@@ -7,7 +7,7 @@ package org.hibernate.orm.test.flush;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import jakarta.persistence.NamedQuery;
+import jakarta.persistence.NamedStatement;
 import jakarta.persistence.Table;
 import jakarta.persistence.TransactionRequiredException;
 
@@ -52,7 +52,7 @@ public class NonTransactionalDataAccessTest {
 	@SessionFactory
 	public void testFlushAllowingOutOfTransactionUpdateOperations(SessionFactoryScope factoryScope) {
 		factoryScope.inSession( (session) -> {
-			final MyEntity entity = (MyEntity) session.createQuery( "from MyEntity e where e.name = :n" )
+			final MyEntity entity = (MyEntity) session.createQuery( MyEntity.class, "from MyEntity e where e.name = :n" )
 					.setParameter( "n", "entity" )
 					.uniqueResult();
 			MatcherAssert.assertThat( entity, not( nullValue() ) );
@@ -89,7 +89,7 @@ public class NonTransactionalDataAccessTest {
 	@SessionFactory
 	public void testFlushDisallowingOutOfTransactionUpdateOperations(SessionFactoryScope factoryScope) {
 		factoryScope.inSession( (session) -> {
-			final MyEntity entity = (MyEntity) session.createQuery( "from MyEntity e where e.name = :n" )
+			final MyEntity entity = (MyEntity) session.createQuery( MyEntity.class, "from MyEntity e where e.name = :n" )
 					.setParameter( "n", "entity" )
 					.uniqueResult();
 			MatcherAssert.assertThat( entity, not( nullValue() ) );
@@ -105,7 +105,7 @@ public class NonTransactionalDataAccessTest {
 	@SessionFactory
 	public void testFlushOutOfTransaction(SessionFactoryScope factoryScope) {
 		factoryScope.inSession( (session) -> {
-			final MyEntity entity = (MyEntity) session.createQuery( "from MyEntity e where e.name = :n" )
+			final MyEntity entity = (MyEntity) session.createQuery( MyEntity.class, "from MyEntity e where e.name = :n" )
 					.setParameter( "n", "entity" )
 					.uniqueResult();
 			MatcherAssert.assertThat( entity, not( nullValue() ) );
@@ -132,7 +132,7 @@ public class NonTransactionalDataAccessTest {
 
 	@Entity(name = "MyEntity")
 	@Table(name = "MY_ENTITY")
-	@NamedQuery(name = "deleteByName", query = "delete from MyEntity where name = :name")
+	@NamedStatement(name = "deleteByName", statement = "delete from MyEntity where name = :name")
 	public static class MyEntity {
 		@Id
 		@GeneratedValue
