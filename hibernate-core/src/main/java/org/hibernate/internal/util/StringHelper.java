@@ -964,4 +964,23 @@ public final class StringHelper {
 		return new String( chars );
 	}
 
+	/**
+	 * Inverse of {@link #decapitalize}: uppercases the first character of the string.
+	 *
+	 * @param name The string to be capitalized.
+	 * @return The capitalized version of the string.
+	 */
+	public static String capitalize(final String name) {
+		if ( name == null || name.isEmpty() ) {
+			return name;
+		}
+		final char firstChar = name.charAt( 0 );
+		if ( Character.isUpperCase( firstChar ) ) {
+			return name;
+		}
+		final char[] chars = name.toCharArray();
+		chars[0] = Character.toUpperCase( firstChar );
+		return new String( chars );
+	}
+
 }

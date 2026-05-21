@@ -84,7 +84,6 @@ import static java.lang.Boolean.parseBoolean;
 import static org.hibernate.internal.util.GenericAssignability.isAssignableFrom;
 import static org.hibernate.boot.model.convert.spi.ConverterDescriptor.TYPE_NAME_PREFIX;
 import static org.hibernate.internal.CoreMessageLogger.CORE_LOGGER;
-import static org.hibernate.internal.util.ReflectHelper.reflectedPropertyType;
 import static org.hibernate.internal.util.StringHelper.isEmpty;
 import static org.hibernate.internal.util.collections.CollectionHelper.isEmpty;
 import static org.hibernate.internal.util.collections.CollectionHelper.isNotEmpty;
@@ -769,8 +768,15 @@ public class BasicValue extends SimpleValue
 		else if ( implicitJavaTypeAccess != null ) {
 			return implicitJavaTypeAccess.apply( typeConfiguration );
 		}
-		else if ( ownerName != null && propertyName != null ) {
-			return reflectedPropertyType( ownerName, propertyName, classLoaderService() );
+		else if ( getMemberDetails() != null ) {
+			final var member = getMemberDetails().toJavaMember();
+			if ( member instanceof java.lang.reflect.Field field ) {
+				return field.getGenericType();
+			}
+			else if ( member instanceof java.lang.reflect.Method method ) {
+				return method.getGenericReturnType();
+			}
+			return null;
 		}
 		else {
 			return null;

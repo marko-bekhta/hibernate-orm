@@ -113,6 +113,9 @@ import org.hibernate.mapping.Property;
 import org.hibernate.mapping.RootClass;
 import org.hibernate.mapping.Set;
 import org.hibernate.mapping.SimpleValue;
+import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.MemberDetails;
+import org.hibernate.models.spi.MethodDetails;
 import org.hibernate.mapping.SingleTableSubclass;
 import org.hibernate.mapping.SortableValue;
 import org.hibernate.mapping.Table;
@@ -151,7 +154,6 @@ import static org.hibernate.boot.BootLogging.BOOT_LOGGER;
 import static org.hibernate.boot.model.internal.BinderHelper.renderCascadeTypeList;
 import static org.hibernate.boot.model.internal.GeneratorBinder.makeIdGenerator;
 import static org.hibernate.boot.model.naming.Identifier.toIdentifier;
-import static org.hibernate.boot.model.source.internal.hbm.Helper.reflectedPropertyClass;
 import static org.hibernate.boot.model.source.internal.hbm.NamedQueryBinder.processNamedNativeQuery;
 import static org.hibernate.boot.model.source.internal.hbm.NamedQueryBinder.processNamedQuery;
 import static org.hibernate.internal.log.DeprecationLogger.DEPRECATION_LOGGER;
@@ -622,6 +624,10 @@ public class ModelBinder {
 			}
 		}
 		else {
+			final var member = findMemberDetails( sourceDocument, rootEntityDescriptor.getClassName(), propertyName );
+			if ( member != null ) {
+				idValue.setMemberDetails( member );
+			}
 			idValue.setTypeUsingReflection( rootEntityDescriptor.getClassName(), propertyName );
 		}
 
@@ -1851,10 +1857,9 @@ public class ModelBinder {
 		}
 		else {
 			final String attributeName = manyToOneSource.getName();
-			final var reflectedPropertyClass =
-					reflectedPropertyClass( sourceDocument, containingClassName, attributeName );
-			if ( reflectedPropertyClass != null ) {
-				return reflectedPropertyClass.getName();
+			final var member = findMemberDetails( sourceDocument, containingClassName, attributeName );
+			if ( member != null ) {
+				return member.getType().determineRawClass().getClassName();
 			}
 			else {
 				prepareValueTypeViaReflection(
@@ -2162,9 +2167,59 @@ public class ModelBinder {
 		}
 	}
 
+	private static MemberDetails findMemberDetails(
+			MappingDocument sourceDocument,
+			String containingClassName,
+			String propertyName) {
+		if ( containingClassName == null || propertyName == null ) {
+			return null;
+		}
+		final var classDetailsRegistry = sourceDocument.getBootstrapContext()
+				.getModelsContext().getClassDetailsRegistry();
+		final ClassDetails classDetails;
+		try {
+			classDetails = classDetailsRegistry.resolveClassDetails( containingClassName );
+		}
+		catch (Exception e) {
+			// While this feels wrong, it's for the reveng to work ...
+			return null;
+		}
+
+		// This is a bit verbose, but we want to see if there are any "duplicating" getters for what seems the same attribute (is/get)
+		final var getters = classDetails.findAllInHierarchy( current ->
+				current.findMethods( method -> {
+					if ( method.getMethodKind() != MethodDetails.MethodKind.GETTER ) {
+						return false;
+					}
+					final var attrName = method.resolveAttributeName();
+					return propertyName.equals( attrName )
+					       || propertyName.equals( StringHelper.capitalize( attrName ) );
+				} )
+		);
+		if ( getters.size() == 1 ) {
+			return getters.get( 0 );
+		}
+		if ( getters.size() > 1 ) {
+			final var first = getters.get( 0 );
+			for ( int i = 1; i < getters.size(); i++ ) {
+				final var other = getters.get( i );
+				if ( !first.getName().equals( other.getName() )
+				     && !first.getType().equals( other.getType() ) ) {
+					throw new org.hibernate.MappingException(
+							"Class '%s' declares both '%s %s' and '%s %s' variants of getter for property '%s'".formatted(
+									classDetails.getClassName(), first.getType(), first.getName(), other.getType(),
+									other.getName(), propertyName
+							) );
+				}
+			}
+			return first;
+		}
+		return classDetails.findInHierarchy( current -> current.findFieldByName( propertyName ) );
+	}
+
 	private void prepareValueTypeViaReflection(
 			MappingDocument sourceDocument,
-			Value value,
+			SimpleValue value,
 			String containingClassName,
 			String propertyName,
 			AttributeRole attributeRole) {
@@ -2176,6 +2231,11 @@ public class ModelBinder {
 									attributeRole.getFullPath() ),
 					sourceDocument.getOrigin()
 			);
+		}
+
+		final var member = findMemberDetails( sourceDocument, containingClassName, propertyName );
+		if ( member != null ) {
+			value.setMemberDetails( member );
 		}
 
 		try {
@@ -2345,6 +2405,14 @@ public class ModelBinder {
 				embeddableSource.getParentReferenceAttributeName();
 		if ( parentReferenceAttributeName != null ) {
 			componentBinding.setParentProperty( parentReferenceAttributeName );
+			final var parentMember = findMemberDetails(
+					sourceDocument,
+					componentBinding.getComponentClassName(),
+					parentReferenceAttributeName
+			);
+			if ( parentMember != null ) {
+				componentBinding.setParentMemberDetails( parentMember );
+			}
 		}
 
 		if ( embeddableSource.isUnique() ) {
@@ -2416,15 +2484,15 @@ public class ModelBinder {
 		}
 		else if ( componentBinding.getOwner().hasPojoRepresentation() ) {
 			BOOT_LOGGER.attemptingToDetermineComponentClassByReflection( role );
-			final var reflectedComponentClass =
+			final var member =
 					isNotEmpty( containingClassName ) && isNotEmpty( propertyName )
-							? reflectedPropertyClass( sourceDocument, containingClassName, propertyName )
+							? findMemberDetails( sourceDocument, containingClassName, propertyName )
 							: null;
-			if ( reflectedComponentClass == null ) {
+			if ( member == null ) {
 				BOOT_LOGGER.unableToDetermineComponentClassByReflection( role );
 			}
 			else {
-				componentBinding.setComponentClassName( reflectedComponentClass.getName() );
+				componentBinding.setComponentClassName( member.getType().determineRawClass().getClassName() );
 			}
 		}
 		else {

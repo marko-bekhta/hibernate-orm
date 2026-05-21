@@ -164,4 +164,23 @@ public class StringHelperTest {
 		assertSame( singleLower, StringHelper.decapitalize( singleLower ) );
 	}
 
+	@Test
+	public void testCapitalize() {
+		assertNull( StringHelper.capitalize( null ) );
+		assertSame( "", StringHelper.capitalize( "" ) );
+
+		assertEquals( "X", StringHelper.capitalize( "x" ) );
+		assertEquals( "X", StringHelper.capitalize( "X" ) );
+
+		assertEquals( "FooBah", StringHelper.capitalize( "fooBah" ) );
+		assertEquals( "Name", StringHelper.capitalize( "name" ) );
+
+		// Already uppercase should return same instance
+		String upper = "URL";
+		assertSame( upper, StringHelper.capitalize( upper ) );
+
+		String alreadyCap = "AlreadyCapitalized";
+		assertSame( alreadyCap, StringHelper.capitalize( alreadyCap ) );
+	}
+
 }

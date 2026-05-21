@@ -23,8 +23,6 @@ import org.hibernate.boot.model.source.spi.SizeSource;
 import org.hibernate.boot.model.source.spi.TableSpecificationSource;
 import org.hibernate.boot.model.source.spi.ToolingHint;
 import org.hibernate.boot.model.source.spi.ToolingHintContext;
-import org.hibernate.boot.spi.MetadataBuildingContext;
-import org.hibernate.internal.util.ReflectHelper;
 import org.hibernate.internal.util.StringHelper;
 
 import java.util.Collections;
@@ -217,22 +215,4 @@ public class Helper {
 		);
 	}
 
-	public static Class reflectedPropertyClass(
-			MetadataBuildingContext buildingContext,
-			String attributeOwnerClassName,
-			String attributeName) {
-		final Class attributeOwnerClass = buildingContext.getBootstrapContext().getClassLoaderAccess().classForName( attributeOwnerClassName );
-		return reflectedPropertyClass(
-				buildingContext,
-				attributeOwnerClass,
-				attributeName
-		);
-	}
-
-	public static Class reflectedPropertyClass(
-			MetadataBuildingContext buildingContext,
-			Class attributeOwnerClass,
-			final String attributeName) {
-		return ReflectHelper.reflectedPropertyClass( attributeOwnerClass, attributeName );
-	}
 }

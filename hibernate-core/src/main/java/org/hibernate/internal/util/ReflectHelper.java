@@ -21,12 +21,8 @@ import java.util.function.Supplier;
 import org.hibernate.AssertionFailure;
 import org.hibernate.MappingException;
 import org.hibernate.PropertyNotFoundException;
-import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
-import org.hibernate.boot.registry.classloading.spi.ClassLoadingException;
 import org.hibernate.internal.build.AllowReflection;
 import org.hibernate.internal.util.collections.ArrayHelper;
-import org.hibernate.property.access.internal.PropertyAccessStrategyGetterImpl;
-import org.hibernate.property.access.spi.Getter;
 
 import jakarta.persistence.Transient;
 
@@ -210,59 +206,6 @@ public final class ReflectHelper {
 	public static boolean isPublic(Class<?> clazz, Member member) {
 		return Modifier.isPublic( member.getModifiers() )
 			&& Modifier.isPublic( clazz.getModifiers() );
-	}
-
-	/**
-	 * Attempt to resolve the specified property type through reflection.
-	 *
-	 * @param className The name of the class owning the property.
-	 * @param name The name of the property.
-	 * @param classLoaderService ClassLoader services
-	 *
-	 * @return The type of the property.
-	 *
-	 * @throws MappingException Indicates we were unable to locate the property.
-	 */
-	public static Class<?> reflectedPropertyClass(
-			String className,
-			String name,
-			ClassLoaderService classLoaderService) throws MappingException {
-		try {
-			final var clazz = classLoaderService.classForName( className );
-			return getter( clazz, name ).getReturnTypeClass();
-		}
-		catch ( ClassLoadingException e ) {
-			throw new MappingException( "class " + className + " not found while looking for property: " + name, e );
-		}
-	}
-
-	public static java.lang.reflect.Type reflectedPropertyType(
-			String className,
-			String name,
-			ClassLoaderService classLoaderService) throws MappingException {
-		try {
-			final var clazz = classLoaderService.classForName( className );
-			return getter( clazz, name ).getReturnType();
-		}
-		catch ( ClassLoadingException e ) {
-			throw new MappingException( "class " + className + " not found while looking for property: " + name, e );
-		}
-	}
-
-	/**
-	 * Attempt to resolve the specified property type through reflection.
-	 *
-	 * @param clazz The class owning the property.
-	 * @param name The name of the property.
-	 * @return The type of the property.
-	 * @throws MappingException Indicates we were unable to locate the property.
-	 */
-	public static Class<?> reflectedPropertyClass(Class<?> clazz, String name) throws MappingException {
-		return getter( clazz, name ).getReturnTypeClass();
-	}
-
-	private static Getter getter(Class<?> clazz, String name) throws MappingException {
-		return PropertyAccessStrategyGetterImpl.INSTANCE.buildPropertyAccess( clazz, name, true ).getGetter();
 	}
 
 	/**

@@ -58,7 +58,6 @@ import org.hibernate.usertype.DynamicParameterizedType.ParameterType;
 import static java.lang.Boolean.parseBoolean;
 import static org.hibernate.boot.model.convert.spi.ConverterDescriptor.TYPE_NAME_PREFIX;
 import static org.hibernate.boot.model.internal.GeneratorBinder.ASSIGNED_IDENTIFIER_GENERATOR_CREATOR;
-import static org.hibernate.internal.util.ReflectHelper.reflectedPropertyClass;
 import static org.hibernate.internal.util.collections.ArrayHelper.toBooleanArray;
 import static org.hibernate.mapping.MappingHelper.classForName;
 import static org.hibernate.models.spi.TypeDetails.Kind.PARAMETERIZED_TYPE;
@@ -628,18 +627,18 @@ public abstract class SimpleValue implements KeyValue {
 		//       the information it is going to get is already specified at this point
 		if ( typeName == null && type == null ) {
 			if ( attributeConverterDescriptor == null ) {
-				// This is here to work like legacy. This should change when we integrate with metamodel
-				// to look for JdbcType and JavaType individually and create the BasicType (well, really
-				// keep a registry of [JdbcType,JavaType] -> BasicType...)
-				if ( className == null ) {
+				if ( memberDetails != null ) {
+					typeName = memberDetails.getType().determineRawClass().getClassName();
+				}
+				else if ( className == null ) {
 					throw new MappingException(
 							"Attribute types for a dynamic entity must be explicitly specified: " + propertyName );
 				}
-				typeName = getClass( className, propertyName ).getName();
-				// TODO: To fully support isNationalized here we need to do the process hinted at above
-				// 		 essentially, much of the logic from #buildAttributeConverterTypeAdapter wrt
-				// 		 resolving a (1) JdbcType, a (2) JavaType and dynamically building a BasicType
-				// 		 combining them.
+				else {
+					throw new MappingException(
+							"MemberDetails not available for property '"
+									+ propertyName + "' of class '" + className + "'" );
+				}
 			}
 			else {
 				// we had an AttributeConverter
@@ -649,10 +648,6 @@ public abstract class SimpleValue implements KeyValue {
 		// otherwise assume either
 		// (a) explicit type was specified or
 		// (b) determine was already performed
-	}
-
-	private Class<?> getClass(String className, String propertyName) {
-		return reflectedPropertyClass( className, propertyName, classLoaderService() );
 	}
 
 	/**
