@@ -39,7 +39,9 @@ import org.hibernate.metamodel.mapping.EmbeddableDiscriminatorConverter;
 import org.hibernate.metamodel.mapping.internal.DiscriminatorTypeImpl;
 import org.hibernate.metamodel.spi.EmbeddableInstantiator;
 import org.hibernate.persister.entity.DiscriminatorHelper;
+import org.hibernate.Incubating;
 import org.hibernate.models.spi.ClassDetails;
+import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.property.access.spi.Setter;
 import org.hibernate.resource.beans.internal.FallbackBeanInstanceProducer;
 import org.hibernate.type.ComponentType;
@@ -70,6 +72,7 @@ public class Component extends SimpleValue implements AttributeContainer, MetaAt
 	private String componentClassName;
 	private boolean embedded;
 	private String parentProperty;
+	private MemberDetails parentMemberDetails;
 	private PersistentClass owner;
 	private boolean dynamic;
 	private boolean isKey;
@@ -135,6 +138,7 @@ public class Component extends SimpleValue implements AttributeContainer, MetaAt
 		this.componentClass = original.componentClass;
 		this.embedded = original.embedded;
 		this.parentProperty = original.parentProperty;
+		this.parentMemberDetails = original.parentMemberDetails;
 		this.owner = original.owner;
 		this.dynamic = original.dynamic;
 		this.isGeneric = original.isGeneric;
@@ -399,6 +403,16 @@ public class Component extends SimpleValue implements AttributeContainer, MetaAt
 
 	public void setParentProperty(String parentProperty) {
 		this.parentProperty = parentProperty;
+	}
+
+	@Incubating
+	public MemberDetails getParentMemberDetails() {
+		return parentMemberDetails;
+	}
+
+	@Incubating
+	public void setParentMemberDetails(MemberDetails parentMemberDetails) {
+		this.parentMemberDetails = parentMemberDetails;
 	}
 
 	public boolean isDynamic() {
