@@ -5,6 +5,7 @@
 package org.hibernate.mapping;
 
 import org.hibernate.HibernateException;
+import org.hibernate.Incubating;
 import org.hibernate.Internal;
 import org.hibernate.MappingException;
 import org.hibernate.annotations.OnDeleteAction;
@@ -77,6 +78,7 @@ public class Property implements Serializable, MetaAttributable {
 	private boolean lob;
 	private java.util.List<CallbackDefinition> callbackDefinitions;
 	private String returnedClassName;
+	private MemberDetails memberDetails;
 
 	public boolean isBackRef() {
 		return false;
@@ -251,6 +253,18 @@ public class Property implements Serializable, MetaAttributable {
 
 	public void setValue(Value value) {
 		this.value = value;
+	}
+
+	@Internal
+	@Incubating
+	public MemberDetails getMemberDetails() {
+		return memberDetails;
+	}
+
+	@Internal
+	@Incubating
+	public void setMemberDetails(MemberDetails memberDetails) {
+		this.memberDetails = memberDetails;
 	}
 
 	public boolean isUpdatable() {
@@ -628,9 +642,7 @@ public class Property implements Serializable, MetaAttributable {
 
 		@Override
 		public MemberDetails getMemberDetails() {
-			return value instanceof SimpleValue simpleValue
-					? simpleValue.getMemberDetails()
-					: null; // TODO: Give Property a reference to the MemberDetails
+			return memberDetails;
 		}
 
 		@Override
