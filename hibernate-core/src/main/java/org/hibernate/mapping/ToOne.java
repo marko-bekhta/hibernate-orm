@@ -14,7 +14,6 @@ import org.hibernate.type.MappingContext;
 import java.util.Objects;
 
 import static org.hibernate.boot.model.internal.BinderHelper.findReferencedColumnOwner;
-import static org.hibernate.internal.util.ReflectHelper.reflectedPropertyClass;
 
 /**
  * A mapping model object representing an association where the target side has cardinality one.
@@ -91,8 +90,15 @@ public abstract sealed class ToOne
 	@Override
 	public void setTypeUsingReflection(String className, String propertyName) throws MappingException {
 		if ( referencedEntityName == null ) {
-			final var classLoaderService = getBootstrapContext().getClassLoaderService();
-			referencedEntityName = reflectedPropertyClass( className, propertyName, classLoaderService ).getName();
+			final var memberDetails = getMemberDetails();
+			if ( memberDetails != null ) {
+				referencedEntityName = memberDetails.getType().determineRawClass().getClassName();
+			}
+			else {
+				throw new MappingException(
+						"MemberDetails not available for property '"
+								+ propertyName + "' of class '" + className + "'" );
+			}
 		}
 	}
 
