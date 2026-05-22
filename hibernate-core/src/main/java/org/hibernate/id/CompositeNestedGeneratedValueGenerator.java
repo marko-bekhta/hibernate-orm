@@ -19,7 +19,7 @@ import org.hibernate.generator.EventType;
 import org.hibernate.generator.Generator;
 import org.hibernate.generator.OnExecutionGenerator;
 import org.hibernate.id.insert.InsertGeneratedIdentifierDelegate;
-import org.hibernate.property.access.spi.Setter;
+import org.hibernate.models.accessor.HibernateAccessorValueWriter;
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.type.ComponentType;
 import org.hibernate.type.CompositeType;
@@ -96,12 +96,12 @@ public class CompositeNestedGeneratedValueGenerator
 		BeforeExecutionGenerator getGenerator();
 
 		/**
-		 * Returns the {@link Setter injector} for the generated property.
+		 * Returns the injector for the generated property.
 		 * Used when the {@link CompositeType} is {@linkplain CompositeType#isMutable() mutable}.
 		 *
 		 * @see #getPropertyIndex()
 		 */
-		Setter getInjector();
+		HibernateAccessorValueWriter getInjector();
 
 		/**
 		 * Returns the index of the generated property.

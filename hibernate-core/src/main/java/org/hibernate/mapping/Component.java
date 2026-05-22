@@ -22,7 +22,6 @@ import org.hibernate.boot.model.relational.ExportableProducer;
 import org.hibernate.boot.model.relational.QualifiedName;
 import org.hibernate.boot.model.relational.SqlStringGenerationContext;
 import org.hibernate.boot.model.source.internal.hbm.MappingDocument;
-import org.hibernate.boot.registry.classloading.spi.ClassLoadingException;
 import org.hibernate.boot.spi.MetadataBuildingContext;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
@@ -42,7 +41,7 @@ import org.hibernate.persister.entity.DiscriminatorHelper;
 import org.hibernate.Incubating;
 import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
-import org.hibernate.property.access.spi.Setter;
+import org.hibernate.models.accessor.HibernateAccessorValueWriter;
 import org.hibernate.resource.beans.internal.FallbackBeanInstanceProducer;
 import org.hibernate.type.ComponentType;
 import org.hibernate.type.CompositeType;
@@ -69,7 +68,9 @@ import static org.hibernate.metamodel.mapping.EntityDiscriminatorMapping.DISCRIM
  */
 public class Component extends SimpleValue implements AttributeContainer, MetaAttributable, SortableValue {
 
+	// Kept primarily for reveng where types might not exist yet
 	private String componentClassName;
+	private transient ClassDetails componentClassDetails;
 	private boolean embedded;
 	private String parentProperty;
 	private MemberDetails parentMemberDetails;
@@ -100,7 +101,6 @@ public class Component extends SimpleValue implements AttributeContainer, MetaAt
 	private AggregateColumn parentAggregateColumn;
 	private QualifiedName structName;
 	private String[] structColumnNames;
-	private transient Class<?> componentClass;
 	private transient Boolean simpleRecord;
 	private String columnNamingPattern;
 
@@ -135,7 +135,7 @@ public class Component extends SimpleValue implements AttributeContainer, MetaAt
 		this.originalPropertyOrder = original.originalPropertyOrder == null ? null : original.originalPropertyOrder.clone();
 		this.propertyDeclaringClasses = original.propertyDeclaringClasses;
 		this.componentClassName = original.componentClassName;
-		this.componentClass = original.componentClass;
+		this.componentClassDetails = original.componentClassDetails;
 		this.embedded = original.embedded;
 		this.parentProperty = original.parentProperty;
 		this.parentMemberDetails = original.parentMemberDetails;
@@ -358,25 +358,45 @@ public class Component extends SimpleValue implements AttributeContainer, MetaAt
 		}
 	}
 
+	public void setComponentClassName(String componentClassName) {
+		this.componentClassName = componentClassName;
+		this.componentClassDetails = null;
+		this.simpleRecord = null;
+	}
+
 	public String getComponentClassName() {
+		if ( componentClassDetails != null ) {
+			return componentClassDetails.getName();
+		}
 		return componentClassName;
 	}
 
 	public Class<?> getComponentClass() throws MappingException {
-		if ( componentClass == null ) {
-			if ( componentClassName == null ) {
-				return null;
+		final var details = getComponentClassDetails();
+		if ( details == null ) {
+			return null;
+		}
+		try {
+			return details.determineRawClass().toJavaClass();
+		}
+		catch (Exception e) {
+			throw new MappingException( "Embeddable class not found: " + componentClassDetails.getName(), e );
+		}
+	}
+
+	public ClassDetails getComponentClassDetails() {
+		// Lazily resolve from className if not already set
+		if ( componentClassDetails == null && componentClassName != null ) {
+			final var registry = getBuildingContext().getBootstrapContext()
+					.getModelsContext().getClassDetailsRegistry();
+			try {
+				componentClassDetails = registry.resolveClassDetails( componentClassName );
 			}
-			else {
-				try {
-					componentClass = classForName( componentClassName, getBootstrapContext() );
-				}
-				catch (ClassLoadingException e) {
-					throw new MappingException( "Embeddable class not found: " + componentClassName, e );
-				}
+			catch (Exception e) {
+				throw new MappingException( "Embeddable class not found: " + componentClassName, e );
 			}
 		}
-		return componentClass;
+		return componentClassDetails;
 	}
 
 	public PersistentClass getOwner() {
@@ -387,9 +407,9 @@ public class Component extends SimpleValue implements AttributeContainer, MetaAt
 		return parentProperty;
 	}
 
-	public void setComponentClassName(String componentClass) {
-		this.componentClassName = componentClass;
-		this.componentClass = null;
+	public void setComponentClassDetails(ClassDetails componentClassDetails) {
+		this.componentClassDetails = componentClassDetails;
+		this.componentClassName = componentClassDetails != null ? componentClassDetails.getName() : null;
 		this.simpleRecord = null;
 	}
 
@@ -505,7 +525,7 @@ public class Component extends SimpleValue implements AttributeContainer, MetaAt
 	public boolean isSame(Component other) {
 		return super.isSame( other )
 			&& Objects.equals( properties, other.properties )
-			&& Objects.equals( componentClassName, other.componentClassName )
+			&& Objects.equals( getComponentClassName(), other.getComponentClassName() )
 			&& embedded == other.embedded
 			&& Objects.equals( aggregateColumn, other.aggregateColumn )
 			&& Objects.equals( parentAggregateColumn, other.parentAggregateColumn )
@@ -617,7 +637,7 @@ public class Component extends SimpleValue implements AttributeContainer, MetaAt
 				return property;
 			}
 		}
-		throw new MappingException("component: " + componentClassName + " property not found: " + propertyName);
+		throw new MappingException("component: " + getComponentClassName() + " property not found: " + propertyName);
 	}
 
 	public boolean matchesAllProperties(String... propertyNames) {
@@ -706,7 +726,7 @@ public class Component extends SimpleValue implements AttributeContainer, MetaAt
 
 	@Override
 	public String toString() {
-		return getClass().getSimpleName() + '(' + componentClassName + ')';
+		return getClass().getSimpleName() + '(' + getComponentClassName() + ')';
 	}
 
 	@Override
@@ -763,17 +783,17 @@ public class Component extends SimpleValue implements AttributeContainer, MetaAt
 
 	public static class ValueGenerationPlan implements GenerationPlan {
 		private final BeforeExecutionGenerator generator;
-		private final Setter injector;
+		private final HibernateAccessorValueWriter injector;
 		private final int propertyIndex;
 
-		public ValueGenerationPlan(BeforeExecutionGenerator generator, Setter injector, int propertyIndex) {
+		public ValueGenerationPlan(BeforeExecutionGenerator generator, HibernateAccessorValueWriter injector, int propertyIndex) {
 			this.generator = generator;
 			this.injector = injector;
 			this.propertyIndex = propertyIndex;
 		}
 
 		@Override
-		public Setter getInjector() {
+		public HibernateAccessorValueWriter getInjector() {
 			return injector;
 		}
 
@@ -814,12 +834,12 @@ public class Component extends SimpleValue implements AttributeContainer, MetaAt
 		}
 		if ( instantiatorPropertyNames != null ) {
 			if ( instantiatorPropertyNames.length < properties.size() ) {
-				throw new MappingException( "component type [" + componentClassName + "] specifies " + instantiatorPropertyNames.length + " properties for the instantiator but has " + properties.size() + " properties" );
+				throw new MappingException( "component type [" + getComponentClassName() + "] specifies " + instantiatorPropertyNames.length + " properties for the instantiator but has " + properties.size() + " properties" );
 			}
 			final HashSet<String> assignedPropertyNames = CollectionHelper.setOfSize( properties.size() );
 			for ( String instantiatorPropertyName : instantiatorPropertyNames ) {
 				if ( getProperty( instantiatorPropertyName ) == null ) {
-					throw new MappingException( "could not find property [" + instantiatorPropertyName + "] defined in the @Instantiator withing component [" + componentClassName + "]" );
+					throw new MappingException( "could not find property [" + instantiatorPropertyName + "] defined in the @Instantiator withing component [" + getComponentClassName() + "]" );
 				}
 				assignedPropertyNames.add( instantiatorPropertyName );
 			}
@@ -831,7 +851,7 @@ public class Component extends SimpleValue implements AttributeContainer, MetaAt
 						missingProperties.add( propertyName );
 					}
 				}
-				throw new MappingException( "component type [" + componentClassName + "] has " + properties.size() + " properties but the instantiator only assigns " + assignedPropertyNames.size() + " properties. missing properties: " + missingProperties );
+				throw new MappingException( "component type [" + getComponentClassName() + "] has " + properties.size() + " properties but the instantiator only assigns " + assignedPropertyNames.size() + " properties. missing properties: " + missingProperties );
 			}
 		}
 		return true;
