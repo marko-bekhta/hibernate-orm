@@ -2193,7 +2193,7 @@ public class ModelBinder {
 					}
 					final var attrName = method.resolveAttributeName();
 					return propertyName.equals( attrName )
-					       || propertyName.equals( StringHelper.capitalize( attrName ) );
+						|| propertyName.equals( StringHelper.capitalize( attrName ) );
 				} )
 		);
 		if ( getters.size() == 1 ) {
@@ -2204,7 +2204,7 @@ public class ModelBinder {
 			for ( int i = 1; i < getters.size(); i++ ) {
 				final var other = getters.get( i );
 				if ( !first.getName().equals( other.getName() )
-				     && !first.getType().equals( other.getType() ) ) {
+					&& !first.getType().equals( other.getType() ) ) {
 					throw new org.hibernate.MappingException(
 							"Class '%s' declares both '%s %s' and '%s %s' variants of getter for property '%s'".formatted(
 									classDetails.getClassName(), first.getType(), first.getName(), other.getType(),

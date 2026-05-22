@@ -6,10 +6,12 @@ package org.hibernate.metamodel.mapping;
 
 import java.util.function.Consumer;
 
+import org.hibernate.Incubating;
 import org.hibernate.cache.MutableCacheKeyBuilder;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.IndexedConsumer;
-import org.hibernate.property.access.spi.PropertyAccess;
+import org.hibernate.models.accessor.HibernateAccessorValueReader;
+import org.hibernate.models.accessor.HibernateAccessorValueWriter;
 import org.hibernate.query.sqm.sql.spi.SqmToSqlAstConverter;
 import org.hibernate.sql.ast.Clause;
 import org.hibernate.sql.ast.spi.SqlAstCreationState;
@@ -174,7 +176,16 @@ public interface EmbeddableValuedModelPart extends ValuedModelPart, Fetchable, F
 	/**
 	 * @see org.hibernate.annotations.Parent
 	 */
-	default PropertyAccess getParentInjectionAttributePropertyAccess() {
+	@Incubating
+	default HibernateAccessorValueReader<?> getParentInjectionAttributeReader() {
+		return null;
+	}
+
+	/**
+	 * @see org.hibernate.annotations.Parent
+	 */
+	@Incubating
+	default HibernateAccessorValueWriter getParentInjectionAttributeWriter() {
 		return null;
 	}
 

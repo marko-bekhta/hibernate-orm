@@ -4,6 +4,7 @@
  */
 package org.hibernate.metamodel.mapping.internal;
 
+import jakarta.annotation.Nullable;
 import org.hibernate.engine.FetchStyle;
 import org.hibernate.engine.FetchTiming;
 import org.hibernate.metamodel.mapping.AttributeMetadata;
@@ -13,6 +14,7 @@ import org.hibernate.metamodel.mapping.ManagedMappingType;
 import org.hibernate.metamodel.mapping.SelectableMappings;
 import org.hibernate.metamodel.mapping.VirtualModelPart;
 import org.hibernate.metamodel.model.domain.NavigableRole;
+import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.sql.ast.tree.from.TableGroupProducer;
 
@@ -28,7 +30,7 @@ public class VirtualEmbeddedAttributeMapping extends EmbeddedAttributeMapping im
 			int fetchableIndex,
 			String tableExpression,
 			AttributeMetadata attributeMetadata,
-			String parentInjectionAttributeName,
+			@Nullable MemberDetails parentMemberDetails,
 			FetchTiming mappedFetchTiming,
 			FetchStyle mappedFetchStyle,
 			EmbeddableMappingType embeddableMappingType,
@@ -41,36 +43,7 @@ public class VirtualEmbeddedAttributeMapping extends EmbeddedAttributeMapping im
 				fetchableIndex,
 				tableExpression,
 				attributeMetadata,
-				parentInjectionAttributeName,
-				mappedFetchTiming,
-				mappedFetchStyle,
-				embeddableMappingType,
-				declaringType,
-				propertyAccess
-		);
-	}
-
-	public VirtualEmbeddedAttributeMapping(
-			String name,
-			NavigableRole navigableRole,
-			int stateArrayPosition,
-			int fetchableIndex,
-			String tableExpression,
-			AttributeMetadata attributeMetadata,
-			PropertyAccess parentInjectionAttributePropertyAccess,
-			FetchTiming mappedFetchTiming,
-			FetchStyle mappedFetchStyle,
-			EmbeddableMappingType embeddableMappingType,
-			ManagedMappingType declaringType,
-			PropertyAccess propertyAccess) {
-		super(
-				name,
-				navigableRole,
-				stateArrayPosition,
-				fetchableIndex,
-				tableExpression,
-				attributeMetadata,
-				parentInjectionAttributePropertyAccess,
+				parentMemberDetails,
 				mappedFetchTiming,
 				mappedFetchStyle,
 				embeddableMappingType,
