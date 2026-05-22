@@ -20,6 +20,9 @@ import org.hibernate.metamodel.mapping.ManagedMappingType;
 import org.hibernate.metamodel.mapping.PropertyBasedMapping;
 import org.hibernate.metamodel.mapping.SelectableMappings;
 import org.hibernate.metamodel.model.domain.NavigableRole;
+import org.hibernate.models.accessor.HibernateAccessorValueReader;
+import org.hibernate.models.accessor.HibernateAccessorValueWriter;
+import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.query.sqm.sql.SqmToSqlAstConverter;
 import org.hibernate.spi.NavigablePath;
@@ -50,7 +53,6 @@ import jakarta.annotation.Nullable;
 
 import static java.util.Objects.requireNonNullElse;
 import static org.hibernate.internal.util.collections.CollectionHelper.arrayList;
-import static org.hibernate.metamodel.mapping.internal.ParentPropertyAccessHelper.parentPropertyAccess;
 
 /**
  * @author Steve Ebersole
@@ -62,7 +64,8 @@ public class EmbeddedAttributeMapping
 
 	private final String tableExpression;
 	private final EmbeddableMappingType embeddableMappingType;
-	private final PropertyAccess parentInjectionAttributePropertyAccess;
+	private final HibernateAccessorValueReader<?> parentInjectionReader;
+	private final HibernateAccessorValueWriter parentInjectionWriter;
 	private final boolean selectable;
 
 	public EmbeddedAttributeMapping(
@@ -72,36 +75,7 @@ public class EmbeddedAttributeMapping
 			int fetchableIndex,
 			String tableExpression,
 			AttributeMetadata attributeMetadata,
-			String parentInjectionAttributeName,
-			FetchTiming mappedFetchTiming,
-			FetchStyle mappedFetchStyle,
-			EmbeddableMappingType embeddableMappingType,
-			ManagedMappingType declaringType,
-			PropertyAccess propertyAccess) {
-		this(
-			name,
-			navigableRole,
-			stateArrayPosition,
-			fetchableIndex,
-			tableExpression,
-			attributeMetadata,
-			parentPropertyAccess( parentInjectionAttributeName, embeddableMappingType ),
-			mappedFetchTiming,
-			mappedFetchStyle,
-			embeddableMappingType,
-			declaringType,
-			propertyAccess
-		);
-	}
-
-	public EmbeddedAttributeMapping(
-			String name,
-			NavigableRole navigableRole,
-			int stateArrayPosition,
-			int fetchableIndex,
-			String tableExpression,
-			AttributeMetadata attributeMetadata,
-			PropertyAccess parentInjectionAttributePropertyAccess,
+			@Nullable MemberDetails parentMemberDetails,
 			FetchTiming mappedFetchTiming,
 			FetchStyle mappedFetchStyle,
 			EmbeddableMappingType embeddableMappingType,
@@ -119,7 +93,8 @@ public class EmbeddedAttributeMapping
 		);
 		this.navigableRole = navigableRole;
 
-		this.parentInjectionAttributePropertyAccess = parentInjectionAttributePropertyAccess;
+		this.parentInjectionReader = parentMemberDetails != null ? parentMemberDetails.resolveValueReader() : null;
+		this.parentInjectionWriter = parentMemberDetails != null ? parentMemberDetails.resolveValueWriter() : null;
 		this.tableExpression = tableExpression;
 
 		this.embeddableMappingType = embeddableMappingType;
@@ -164,7 +139,8 @@ public class EmbeddedAttributeMapping
 				selectableMappings,
 				creationProcess
 		);
-		parentInjectionAttributePropertyAccess = null;
+		parentInjectionReader = null;
+		parentInjectionWriter = null;
 
 		if ( getAttributeName().equals( NavigablePath.IDENTIFIER_MAPPER_PROPERTY ) ) {
 			selectable = false;
@@ -191,8 +167,13 @@ public class EmbeddedAttributeMapping
 	}
 
 	@Override
-	public PropertyAccess getParentInjectionAttributePropertyAccess() {
-		return parentInjectionAttributePropertyAccess;
+	public HibernateAccessorValueReader<?> getParentInjectionAttributeReader() {
+		return parentInjectionReader;
+	}
+
+	@Override
+	public HibernateAccessorValueWriter getParentInjectionAttributeWriter() {
+		return parentInjectionWriter;
 	}
 
 	@Override

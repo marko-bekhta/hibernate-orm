@@ -344,7 +344,7 @@ public class MappingModelCreationHelper {
 								fetchableIndex,
 								tableExpression,
 								attributeMetadataAccess,
-								component.getParentProperty(),
+								component.getParentMemberDetails(),
 								FetchTiming.IMMEDIATE,
 								FetchStyle.JOIN,
 								attributeMappingType,
@@ -360,7 +360,7 @@ public class MappingModelCreationHelper {
 								fetchableIndex,
 								tableExpression,
 								attributeMetadataAccess,
-								component.getParentProperty(),
+								component.getParentMemberDetails(),
 								FetchTiming.IMMEDIATE,
 								FetchStyle.JOIN,
 								attributeMappingType,
@@ -1370,7 +1370,7 @@ public class MappingModelCreationHelper {
 							CollectionPart.Nature.INDEX,
 							inflightDescriptor,
 							// parent-injection
-							component.getParentProperty(),
+							component.getParentMemberDetails(),
 							tableExpression,
 							sqlAliasStem
 					),
@@ -1464,7 +1464,7 @@ public class MappingModelCreationHelper {
 							CollectionPart.Nature.ELEMENT,
 							embeddableMappingType,
 							// parent-injection
-							component.getParentProperty(),
+							component.getParentMemberDetails(),
 							tableExpression,
 							sqlAliasStem
 					),
