@@ -22,7 +22,6 @@ import org.hibernate.metamodel.mapping.SelectableMappings;
 import org.hibernate.metamodel.model.domain.NavigableRole;
 import org.hibernate.metamodel.spi.EmbeddableRepresentationStrategy;
 import org.hibernate.property.access.internal.PropertyAccessStrategyMapImpl;
-import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.tree.from.TableGroup;
 import org.hibernate.sql.ast.tree.from.TableGroupProducer;
@@ -92,7 +91,7 @@ public class IdClassEmbeddable extends AbstractEmbeddableMapping implements Iden
 				-1,
 				idTable,
 				attributeMetadata,
-				(PropertyAccess) null,
+				null,
 				FetchTiming.IMMEDIATE,
 				FetchStyle.JOIN,
 				this,

@@ -13,8 +13,6 @@ import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EmbeddableValuedModelPart;
 import org.hibernate.metamodel.mapping.VirtualModelPart;
 import org.hibernate.metamodel.spi.ValueAccess;
-import org.hibernate.property.access.spi.PropertyAccess;
-import org.hibernate.property.access.spi.Setter;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.results.graph.AssemblerCreationState;
 import org.hibernate.sql.results.graph.DomainResult;
@@ -382,7 +380,7 @@ public class EmbeddableInitializerImpl
 		if ( data.getState() == State.RESOLVED ) {
 			data.setState( State.INITIALIZED );
 
-			if ( embedded.getParentInjectionAttributePropertyAccess() != null
+			if ( embedded.getParentInjectionAttributeWriter() != null
 					|| embedded instanceof VirtualModelPart ) {
 				handleParentInjection( data );
 
@@ -535,14 +533,12 @@ public class EmbeddableInitializerImpl
 	}
 
 	private void handleParentInjection(EmbeddableInitializerData data) {
-		final PropertyAccess parentInjectionAccess = embedded.getParentInjectionAttributePropertyAccess();
-		if ( parentInjectionAccess != null ) {
+		final var parentWriter = embedded.getParentInjectionAttributeWriter();
+		if ( parentWriter != null ) {
 			final Object parent =
 					determineParentInstance( determineOwningInitializer(), data.getRowProcessingState() );
 			if ( parent != null ) {
-				final Setter setter = parentInjectionAccess.getSetter();
-				assert setter != null;
-				setter.set( data.getInstance(), parent );
+				parentWriter.set( data.getInstance(), parent );
 			}
 		}
 		// else embeddable defined no parent injection

@@ -20,7 +20,9 @@ import org.hibernate.metamodel.mapping.ModelPart;
 import org.hibernate.metamodel.mapping.PluralAttributeMapping;
 import org.hibernate.metamodel.model.domain.NavigableRole;
 import org.hibernate.persister.collection.CollectionPersister;
-import org.hibernate.property.access.spi.PropertyAccess;
+import org.hibernate.models.accessor.HibernateAccessorValueReader;
+import org.hibernate.models.accessor.HibernateAccessorValueWriter;
+import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.query.sqm.sql.SqmToSqlAstConverter;
 import org.hibernate.spi.NavigablePath;
 import org.hibernate.sql.ast.Clause;
@@ -49,7 +51,6 @@ import org.hibernate.type.descriptor.java.JavaType;
 import jakarta.annotation.Nullable;
 
 import static java.util.Objects.requireNonNullElse;
-import static org.hibernate.metamodel.mapping.internal.ParentPropertyAccessHelper.parentPropertyAccess;
 
 /**
  * @author Steve Ebersole
@@ -62,21 +63,22 @@ public class EmbeddedCollectionPart implements CollectionPart, EmbeddableValuedF
 
 	private final String containingTableExpression;
 
-	private final PropertyAccess parentInjectionAttributePropertyAccess;
+	private final HibernateAccessorValueReader<?> parentInjectionReader;
+	private final HibernateAccessorValueWriter parentInjectionWriter;
 	private final String sqlAliasStem;
 
 	public EmbeddedCollectionPart(
 			CollectionPersister collectionDescriptor,
 			Nature nature,
 			EmbeddableMappingType embeddableMappingType,
-			String parentInjectionAttributeName,
+			@Nullable MemberDetails parentMemberDetails,
 			String containingTableExpression,
 			String sqlAliasStem) {
 		this.navigableRole = collectionDescriptor.getNavigableRole().appendContainer( nature.getName() );
 		this.collectionDescriptor = collectionDescriptor;
 		this.nature = nature;
-		this.parentInjectionAttributePropertyAccess =
-				parentPropertyAccess( parentInjectionAttributeName, embeddableMappingType );
+		this.parentInjectionReader = parentMemberDetails != null ? parentMemberDetails.resolveValueReader() : null;
+		this.parentInjectionWriter = parentMemberDetails != null ? parentMemberDetails.resolveValueWriter() : null;
 		this.embeddableMappingType = embeddableMappingType;
 
 		this.containingTableExpression = containingTableExpression;
@@ -125,8 +127,13 @@ public class EmbeddedCollectionPart implements CollectionPart, EmbeddableValuedF
 	}
 
 	@Override
-	public PropertyAccess getParentInjectionAttributePropertyAccess() {
-		return parentInjectionAttributePropertyAccess;
+	public HibernateAccessorValueReader<?> getParentInjectionAttributeReader() {
+		return parentInjectionReader;
+	}
+
+	@Override
+	public HibernateAccessorValueWriter getParentInjectionAttributeWriter() {
+		return parentInjectionWriter;
 	}
 
 	@Override

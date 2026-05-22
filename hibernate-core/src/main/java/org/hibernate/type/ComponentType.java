@@ -509,9 +509,10 @@ public class ComponentType extends AbstractType
 
 			//not absolutely necessary, but helps for some
 			//equals()/hashCode() implementations
-			final var parentAccess = mappingModelPart().getParentInjectionAttributePropertyAccess();
-			if ( parentAccess != null ) {
-				parentAccess.getSetter().set( result, parentAccess.getGetter().get( component ) );
+			final var parentReader = mappingModelPart().getParentInjectionAttributeReader();
+			final var parentWriter = mappingModelPart().getParentInjectionAttributeWriter();
+			if ( parentReader != null && parentWriter != null ) {
+				parentWriter.set( result, parentReader.get( component ) );
 			}
 
 			return result;
@@ -671,9 +672,9 @@ public class ComponentType extends AbstractType
 					: representation.getInstantiator();
 			final Object instance = instantiator.instantiate( () -> assembled );
 
-			final var parentInjectionAccess = mappingModelPart.getParentInjectionAttributePropertyAccess();
-			if ( parentInjectionAccess != null ) {
-				parentInjectionAccess.getSetter().set( instance, owner );
+			final var parentWriter = mappingModelPart.getParentInjectionAttributeWriter();
+			if ( parentWriter != null ) {
+				parentWriter.set( instance, owner );
 			}
 
 			return instance;
