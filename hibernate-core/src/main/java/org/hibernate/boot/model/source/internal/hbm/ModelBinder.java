@@ -2492,7 +2492,7 @@ public class ModelBinder {
 				BOOT_LOGGER.unableToDetermineComponentClassByReflection( role );
 			}
 			else {
-				componentBinding.setComponentClassName( member.getType().determineRawClass().getClassName() );
+				componentBinding.setComponentClassDetails( member.getType().determineRawClass() );
 			}
 		}
 		else {

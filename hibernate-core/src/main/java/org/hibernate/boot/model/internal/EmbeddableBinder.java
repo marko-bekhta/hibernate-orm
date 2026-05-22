@@ -1011,7 +1011,8 @@ public class EmbeddableBinder {
 			embeddable.setComponentClassName( embeddable.getOwner().getClassName() );
 		}
 		else {
-			embeddable.setComponentClassName( type.getName() );
+			final var type = inferredData.getClassOrElementType();
+			embeddable.setComponentClassDetails( type.determineRawClass() );
 			checkEmbeddableRecursiveHierarchy( type, inferredData, propertyHolder );
 		}
 		embeddable.setCustomInstantiator( customInstantiatorImpl );
@@ -1280,7 +1281,7 @@ public class EmbeddableBinder {
 			final var referencedValue = (Component) referencedProperty.getValue();
 			value.setTypeName( referencedValue.getTypeName() );
 			value.setTypeParameters( referencedValue.getTypeParameters() );
-			value.setComponentClassName( referencedValue.getComponentClassName() );
+			value.setComponentClassDetails( referencedValue.getComponentClassDetails() );
 
 
 			for ( var referencedComponentProperty : referencedValue.getProperties() ) {

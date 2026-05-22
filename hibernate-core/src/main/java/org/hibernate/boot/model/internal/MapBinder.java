@@ -538,7 +538,7 @@ public class MapBinder extends CollectionBinder {
 
 	private Component createIndexComponent(Collection collection, PersistentClass associatedClass, Component component) {
 		final var indexComponent = new Component( getBuildingContext(), collection );
-		indexComponent.setComponentClassName( component.getComponentClassName() );
+		indexComponent.setComponentClassDetails( component.getComponentClassDetails() );
 		for ( var property : component.getProperties() ) {
 			final var newProperty = new Property();
 			newProperty.setCascade( property.getCascade() );
