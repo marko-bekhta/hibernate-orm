@@ -46,8 +46,9 @@ import org.hibernate.mapping.RootClass;
 import org.hibernate.mapping.SimpleValue;
 import org.hibernate.mapping.Value;
 import org.hibernate.models.spi.AnnotationTarget;
+import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
-import org.hibernate.property.access.spi.Setter;
+import org.hibernate.models.accessor.HibernateAccessorValueWriter;
 import org.hibernate.resource.beans.container.spi.BeanContainer;
 import org.hibernate.resource.beans.internal.Helper;
 import org.hibernate.type.ComponentType;
@@ -895,43 +896,36 @@ public class GeneratorBinder {
 		}
 	}
 
-	private static Setter injector(Property property, Class<?> attributeDeclarer) {
-		return property.getPropertyAccessStrategy( attributeDeclarer )
-				.buildPropertyAccess( attributeDeclarer, property.getName(), true )
-				.getSetter();
+	private static HibernateAccessorValueWriter injector(Property property, Component component) {
+		// The component class may be an @IdClass, @EmbeddedId, or the entity class
+		// We need to resolve the writer for the property on that specific class
+		final var classDetails = component.getComponentClassDetails();
+		final var memberDetails = findMemberByName( classDetails, property.getName() );
+		return memberDetails.resolveValueWriter();
 	}
 
-	/**
-	 * Return the class that declares the composite pk attributes,
-	 * which might be an {@code @IdClass}, an {@code @EmbeddedId},
-	 * of the entity class itself.
-	 */
-	private static Class<?> getAttributeDeclarer(RootClass rootClass, Component component) {
-		// See the javadoc discussion on CompositeNestedGeneratedValueGenerator
-		// for the various scenarios we need to account for here
-		if ( rootClass.getIdentifierMapper() != null ) {
-			// we have the @IdClass / <composite-id mapped="true"/> case
-			return resolveComponentClass( component );
+	private static MemberDetails findMemberByName(ClassDetails classDetails, String propertyName) {
+		// Try fields first
+		final var field = classDetails.findInHierarchy( current -> current.findFieldByName( propertyName ) );
+		if ( field != null ) {
+			return field;
 		}
-		else if ( rootClass.getIdentifierProperty() != null ) {
-			// we have the "@EmbeddedId" / <composite-id name="idName"/> case
-			return resolveComponentClass( component );
+
+		// Try methods (getters)
+		final var methods = classDetails.findAllInHierarchy( current ->
+			current.findMethods( method ->
+				method.getMethodKind() == org.hibernate.models.spi.MethodDetails.MethodKind.GETTER
+						&& propertyName.equals( method.resolveAttributeName() )
+			)
+		);
+
+		if ( !methods.isEmpty() ) {
+			return methods.get( 0 );
 		}
-		else {
-			// we have the "straight up" embedded (again the Hibernate term)
-			// component identifier: the entity class itself is the id class
-			return rootClass.getMappedClass();
-		}
+
+		throw new AssertionFailure( "Could not find member '" + propertyName + "' on class " + classDetails.getName() );
 	}
 
-	private static Class<?> resolveComponentClass(Component component) {
-		try {
-			return component.getComponentClass();
-		}
-		catch ( Exception e ) {
-			return null;
-		}
-	}
 
 	public static Generator buildIdentifierGenerator(
 			Component component,
@@ -1036,7 +1030,7 @@ public class GeneratorBinder {
 					generationPlans.add( new Component.ValueGenerationPlan(
 							beforeExecutionGenerator,
 							component.getType().isMutable()
-									? injector( property, getAttributeDeclarer( rootClass, component ) )
+									? injector( property, component )
 									: null,
 							propertyIndex
 					) );

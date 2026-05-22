@@ -371,7 +371,7 @@ public class BinderHelper {
 		if ( property.isComposite() ) {
 			final var component = (Component) property.getValue();
 			final var copy = new Component( context, component );
-			copy.setComponentClassName( component.getComponentClassName() );
+			copy.setComponentClassDetails( component.getComponentClassDetails() );
 			copy.setEmbedded( component.isEmbedded() );
 			for ( Property subproperty : component.getProperties() ) {
 				copy.addProperty( cloneProperty( ownerEntity, context, subproperty ) );

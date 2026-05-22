@@ -321,12 +321,12 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 			context.getMetadataCollector().addSecondPass( persistentClasses -> {
 				final var initializedCollection = (Collection) originalValue;
 				final var element = initializedCollection.getElement().copy();
-				setTypeName( element, memberDetails.getElementType().getName() );
+				setType( element, memberDetails.getElementType() );
 				if ( initializedCollection instanceof IndexedCollection indexedCollection ) {
 					final var index = indexedCollection.getIndex().copy();
 					final var mapKeyType = memberDetails.getMapKeyType();
 					if ( mapKeyType != null ) {
-						setTypeName( index, mapKeyType.getName() );
+						setType( index, mapKeyType );
 					}
 					( (IndexedCollection) collection ).setIndex( index );
 				}
@@ -334,7 +334,7 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 			} );
 		}
 		else {
-			setTypeName( value, memberDetails.getType().getName() );
+			setType( value, memberDetails.getType() );
 		}
 
 		if ( value instanceof Component component ) {
@@ -397,25 +397,6 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 		}
 	}
 
-	private static void setTypeName(Value value, String typeName) {
-		if ( value instanceof ToOne toOne ) {
-			toOne.setReferencedEntityName( typeName );
-			toOne.setTypeName( typeName );
-		}
-		else if ( value instanceof Component component ) {
-			// Avoid setting type name for generic components
-			if ( !component.isGeneric() ) {
-				component.setComponentClassName( typeName );
-			}
-			if ( component.getTypeName() != null ) {
-				component.setTypeName( typeName );
-			}
-		}
-		else if ( value instanceof SimpleValue simpleValue ) {
-			simpleValue.setTypeName( typeName );
-		}
-	}
-
 	static void setType(Value value, TypeDetails type) {
 		final var typeName = type.getName();
 		if ( value instanceof ToOne toOne ) {
@@ -425,22 +406,25 @@ public class ClassPropertyHolder extends AbstractPropertyHolder {
 		else if ( value instanceof Component component ) {
 			// Avoid setting type name for generic components
 			if ( !component.isGeneric() ) {
-				component.setComponentClassName( typeName );
+				component.setComponentClassDetails( type.determineRawClass() );
 			}
 			if ( component.getTypeName() != null ) {
 				component.setTypeName( typeName );
 			}
 		}
+		else if ( value instanceof BasicValue basicValue ) {
+			// For unresolved type variables (generic MappedSuperclass properties),
+			// use Object as placeholder — the concrete type will be resolved later
+			// via EntityBinder.addGenericProperties for each concrete subclass
+			basicValue.setImplicitJavaTypeAccess( typeConfiguration ->
+					type.isResolved()
+					? type.getTypeKind() == TypeDetails.Kind.PARAMETERIZED_TYPE
+							? ParameterizedTypeImpl.from( type.asParameterizedType() )
+							: type.determineRawClass().toJavaClass()
+					: Object.class );
+		}
 		else if ( value instanceof SimpleValue simpleValue ) {
-			if ( value instanceof BasicValue basicValue ) {
-				basicValue.setImplicitJavaTypeAccess( typeConfiguration ->
-						type.getTypeKind() == TypeDetails.Kind.PARAMETERIZED_TYPE
-						? ParameterizedTypeImpl.from( type.asParameterizedType() )
-						: type.determineRawClass().toJavaClass() );
-			}
-			else {
-				simpleValue.setTypeName( typeName );
-			}
+			simpleValue.setTypeName( typeName );
 		}
 	}
 
