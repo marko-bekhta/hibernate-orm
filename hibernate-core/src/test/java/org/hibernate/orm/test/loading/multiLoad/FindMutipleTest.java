@@ -70,6 +70,15 @@ public class FindMutipleTest {
 						() -> s.findMultiple( Record.class, Arrays.asList( 123L, null ) ) ) );
 	}
 
+	@Test void testInvalidKeyType(SessionFactoryScope scope) {
+		scope.inTransaction( s ->
+				assertThrows( IllegalArgumentException.class,
+						() -> s.findMultiple( Record.class, List.of( "one", "two" ) ) ) );
+		scope.inTransaction( s ->
+				assertThrows( IllegalArgumentException.class,
+						() -> s.getMultiple( Record.class, List.of( "one", "two" ) ) ) );
+	}
+
 	@Entity(name = "Record")
 	static class Record {
 		@Id Long id;

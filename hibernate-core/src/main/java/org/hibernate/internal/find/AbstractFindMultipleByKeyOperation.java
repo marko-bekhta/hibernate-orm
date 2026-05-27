@@ -32,7 +32,9 @@ import org.hibernate.jpa.internal.util.LockModeTypeHelper;
 import org.hibernate.loader.ast.spi.MultiIdLoadOptions;
 import org.hibernate.loader.ast.spi.MultiNaturalIdLoadOptions;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.type.descriptor.java.JavaType;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -48,6 +50,7 @@ import static org.hibernate.jpa.SpecHints.HINT_SPEC_LOCK_TIMEOUT;
 /// @author Steve Ebersole
 public abstract class AbstractFindMultipleByKeyOperation<T> implements MultiIdLoadOptions, MultiNaturalIdLoadOptions {
 	private final EntityPersister entityDescriptor;
+	private final boolean idCoercionEnabled;
 
 	private KeyType keyType = KeyType.IDENTIFIER;
 
@@ -81,6 +84,10 @@ public abstract class AbstractFindMultipleByKeyOperation<T> implements MultiIdLo
 			@NonNull SessionFactoryImplementor sessionFactory,
 			FindOption... findOptions) {
 		this.entityDescriptor = entityDescriptor;
+		this.idCoercionEnabled =
+				!sessionFactory.getSessionFactoryOptions()
+						.getJpaCompliance().isLoadByIdComplianceEnabled()
+				&& !entityDescriptor.getIdentifierMapping().isVirtual();
 
 		if ( defaultCacheMode != null ) {
 			setCacheMode( defaultCacheMode );
@@ -164,20 +171,58 @@ public abstract class AbstractFindMultipleByKeyOperation<T> implements MultiIdLo
 		enabledFetchProfiles.add( profileName );
 	}
 
-	protected void checkKeys(List<?> keys) {
+	protected List<?> checkKeys(List<?> keys) {
 		if ( keys == null ) {
 			throw new IllegalArgumentException( "Null keys" );
 		}
-		for ( Object key : keys ) {
+		final JavaType<?> idType =
+				keyType == KeyType.IDENTIFIER && !entityDescriptor.getIdentifierMapping().isVirtual()
+						? entityDescriptor.getIdentifierMapping().getJavaType()
+						: null;
+
+		List<Object> result = null;
+		for ( int i = 0; i < keys.size(); i++ ) {
+			final Object key = keys.get( i );
 			if ( key == null ) {
 				throw new IllegalArgumentException( "Null key" );
 			}
+			if ( idType == null || idType.isInstance( key ) ) {
+				if ( result != null ) {
+					result.add( key );
+				}
+			}
+			else if ( idCoercionEnabled ) {
+				try {
+					if ( result == null ) {
+						result = new ArrayList<>( keys.size() );
+						for ( int j = 0; j < i; j++ ) {
+							result.add( keys.get( j ) );
+						}
+					}
+					result.add( idType.coerce( key ) );
+				}
+				catch (Exception e) {
+					throw new IllegalArgumentException(
+							"Key type mismatch: expected " + idType.getJavaTypeClass().getName()
+							+ " but got " + key.getClass().getName(),
+							e
+					);
+				}
+			}
+			else {
+				throw new IllegalArgumentException(
+						"Key type mismatch: expected " + idType.getJavaTypeClass().getName()
+						+ " but got " + key.getClass().getName()
+				);
+			}
 		}
+		return result != null ? result : keys;
 	}
 
-	protected void checkFindRequirements(List<?> keys, SharedSessionContractImplementor session) {
-		checkKeys( keys );
+	protected List<?> checkFindRequirements(List<?> keys, SharedSessionContractImplementor session) {
+		final List<?> result = checkKeys( keys );
 		checkTransactionNeededForLock( session, getLockMode() );
+		return result;
 	}
 
 	private void setCacheMode(CacheMode cacheMode) {
@@ -289,6 +334,7 @@ public abstract class AbstractFindMultipleByKeyOperation<T> implements MultiIdLo
 	@Deprecated
 	public AbstractFindMultipleByKeyOperation(
 			EntityPersister entityDescriptor,
+			SessionFactoryImplementor sessionFactory,
 			KeyType keyType,
 			BatchSize batchSize,
 			SessionCheckMode sessionCheckMode,
@@ -307,6 +353,10 @@ public abstract class AbstractFindMultipleByKeyOperation<T> implements MultiIdLo
 			lockOptions = LockOptions.NONE;
 		}
 		this.entityDescriptor = entityDescriptor;
+		this.idCoercionEnabled =
+				!sessionFactory.getSessionFactoryOptions()
+						.getJpaCompliance().isLoadByIdComplianceEnabled()
+				&& !entityDescriptor.getIdentifierMapping().isVirtual();
 		this.keyType = keyType;
 		this.batchSize = batchSize;
 		this.sessionCheckMode = sessionCheckMode;

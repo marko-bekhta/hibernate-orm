@@ -54,13 +54,13 @@ public class StatefulFindMultipleByKeyOperation<T> extends AbstractFindMultipleB
 			List<?> keys,
 			@Nullable GraphSemantic graphSemantic,
 			@Nullable RootGraphImplementor<T> rootGraph) {
-		checkFindRequirements( keys, loadAccessContext.getSession() );
+		final List<?> coercedKeys = checkFindRequirements( keys, loadAccessContext.getSession() );
 
 		// todo (natural-id-class) : these impls are temporary
 		//		longer term, move the logic here as much of it can be shared
 		return getKeyType() == KeyType.NATURAL
-				? findByNaturalIds( keys, graphSemantic, rootGraph, loadAccessContext )
-				: findByIds( keys, graphSemantic, rootGraph, loadAccessContext );
+				? findByNaturalIds( coercedKeys, graphSemantic, rootGraph, loadAccessContext )
+				: findByIds( coercedKeys, graphSemantic, rootGraph, loadAccessContext );
 	}
 
 	private List<T> findByNaturalIds(List<?> keys, GraphSemantic graphSemantic, RootGraphImplementor<T> rootGraph, StatefulLoadAccessContext loadAccessContext) {
@@ -164,6 +164,7 @@ public class StatefulFindMultipleByKeyOperation<T> extends AbstractFindMultipleB
 			NaturalIdSynchronization naturalIdSynchronization) {
 		super(
 				entityDescriptor,
+				loadAccessContext.getSession().getFactory(),
 				keyType,
 				batchSize,
 				sessionCheckMode,
