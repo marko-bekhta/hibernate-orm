@@ -3028,7 +3028,7 @@ public class AnnotationMetaEntity extends AnnotationMeta {
 	}
 
 	private static String addSelectClause(String queryString, ResultSelection selection) {
-		return "select " + String.join( ", ", selection.paths() ) + " " + queryString;
+		return HqlHelper.addSelectClauseIfNecessary( queryString, selection.paths() );
 	}
 
 	private static boolean hasSelectClause(String hql) {
