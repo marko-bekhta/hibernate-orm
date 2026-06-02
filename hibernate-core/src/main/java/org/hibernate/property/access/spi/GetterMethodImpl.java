@@ -91,11 +91,6 @@ public class GetterMethodImpl implements Getter {
 	}
 
 	@Override
-	public String getMethodName() {
-		return getterMethod.getName();
-	}
-
-	@Override
 	public Method getMethod() {
 		return getterMethod;
 	}

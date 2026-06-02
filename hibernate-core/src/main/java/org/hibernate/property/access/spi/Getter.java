@@ -59,15 +59,6 @@ public interface Getter {
 	@Nullable Member getMember();
 
 	/**
-	 * Retrieve the getter-method name.
-	 * <p>
-	 * Optional operation (may return {@code null})
-	 *
-	 * @return The name of the getter method, or {@code null}.
-	 */
-	@Nullable String getMethodName();
-
-	/**
 	 * Retrieve the getter-method.
 	 * <p>
 	 * Optional operation (may return {@code null})

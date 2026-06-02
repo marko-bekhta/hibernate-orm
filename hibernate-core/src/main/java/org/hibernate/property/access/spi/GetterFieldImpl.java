@@ -80,11 +80,6 @@ public class GetterFieldImpl implements Getter {
 	}
 
 	@Override
-	public @Nullable String getMethodName() {
-		return getterMethod != null ? getterMethod.getName() : null;
-	}
-
-	@Override
 	public @Nullable Method getMethod() {
 		return getterMethod;
 	}

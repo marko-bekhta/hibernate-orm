@@ -81,11 +81,6 @@ public class ChainedPropertyAccessImpl implements PropertyAccess, Getter, Setter
 	}
 
 	@Override
-	public @Nullable String getMethodName() {
-		return null;
-	}
-
-	@Override
 	public @Nullable Method getMethod() {
 		return null;
 	}
