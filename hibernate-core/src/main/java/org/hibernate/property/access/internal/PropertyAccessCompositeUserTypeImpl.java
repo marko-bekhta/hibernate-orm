@@ -66,11 +66,6 @@ public class PropertyAccessCompositeUserTypeImpl implements PropertyAccess, Gett
 	}
 
 	@Override
-	public Type getReturnType() {
-		return strategy.sortedPropertyTypes.get(propertyIndex);
-	}
-
-	@Override
 	public @Nullable Member getMember() {
 		return null;
 	}
