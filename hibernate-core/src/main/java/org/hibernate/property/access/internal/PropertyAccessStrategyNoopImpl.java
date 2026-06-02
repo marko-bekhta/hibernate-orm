@@ -81,11 +81,6 @@ public class PropertyAccessStrategyNoopImpl implements PropertyAccessStrategy {
 		}
 
 		@Override
-		public @Nullable String getMethodName() {
-			return null;
-		}
-
-		@Override
 		public @Nullable Method getMethod() {
 			return null;
 		}
@@ -99,11 +94,6 @@ public class PropertyAccessStrategyNoopImpl implements PropertyAccessStrategy {
 
 		@Override
 		public void set(Object target, @Nullable Object value) {
-		}
-
-		@Override
-		public @Nullable String getMethodName() {
-			return null;
 		}
 
 		@Override
