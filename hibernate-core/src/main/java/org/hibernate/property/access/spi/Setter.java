@@ -21,10 +21,5 @@ public interface Setter {
 	/**
 	 * Optional operation (may return {@code null})
 	 */
-	@Nullable String getMethodName();
-
-	/**
-	 * Optional operation (may return {@code null})
-	 */
 	@Nullable Method getMethod();
 }

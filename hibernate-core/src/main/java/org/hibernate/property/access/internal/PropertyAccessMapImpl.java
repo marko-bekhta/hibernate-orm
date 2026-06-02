@@ -79,11 +79,6 @@ public class PropertyAccessMapImpl implements PropertyAccess {
 		}
 
 		@Override
-		public @Nullable String getMethodName() {
-			return null;
-		}
-
-		@Override
 		public @Nullable Method getMethod() {
 			return null;
 		}
@@ -100,11 +95,6 @@ public class PropertyAccessMapImpl implements PropertyAccess {
 		@SuppressWarnings({"unchecked", "rawtypes"})
 		public void set(Object target, @Nullable Object value) {
 			( (Map) target ).put( propertyName, value );
-		}
-
-		@Override
-		public @Nullable String getMethodName() {
-			return null;
 		}
 
 		@Override

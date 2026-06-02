@@ -82,11 +82,6 @@ public class PropertyAccessEmbeddedImpl implements PropertyAccess {
 		}
 
 		@Override
-		public @Nullable String getMethodName() {
-			return null;
-		}
-
-		@Override
 		public @Nullable Method getMethod() {
 			return null;
 		}
@@ -101,11 +96,6 @@ public class PropertyAccessEmbeddedImpl implements PropertyAccess {
 		@Override
 		public void set(Object target, @Nullable Object value) {
 			// nothing to do
-		}
-
-		@Override
-		public @Nullable String getMethodName() {
-			return null;
 		}
 
 		@Override

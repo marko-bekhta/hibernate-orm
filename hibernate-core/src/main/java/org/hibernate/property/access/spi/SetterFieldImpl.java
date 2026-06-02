@@ -97,11 +97,6 @@ public class SetterFieldImpl implements Setter {
 	}
 
 	@Override
-	public @Nullable String getMethodName() {
-		return setterMethod != null ? setterMethod.getName() : null;
-	}
-
-	@Override
 	public @Nullable Method getMethod() {
 		return setterMethod;
 	}

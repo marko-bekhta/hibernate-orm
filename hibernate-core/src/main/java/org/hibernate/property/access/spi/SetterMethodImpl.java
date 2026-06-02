@@ -114,11 +114,6 @@ public class SetterMethodImpl implements Setter {
 	}
 
 	@Override
-	public String getMethodName() {
-		return setterMethod.getName();
-	}
-
-	@Override
 	public Method getMethod() {
 		return setterMethod;
 	}
