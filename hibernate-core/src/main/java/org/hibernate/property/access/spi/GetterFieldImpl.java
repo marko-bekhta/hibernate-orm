@@ -7,7 +7,6 @@ package org.hibernate.property.access.spi;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.lang.reflect.Type;
 import java.util.Locale;
 import java.util.Map;
 
@@ -69,11 +68,6 @@ public class GetterFieldImpl implements Getter {
 	@Override
 	public Class<?> getReturnTypeClass() {
 		return field.getType();
-	}
-
-	@Override
-	public Type getReturnType() {
-		return field.getGenericType();
 	}
 
 	public Field getField() {

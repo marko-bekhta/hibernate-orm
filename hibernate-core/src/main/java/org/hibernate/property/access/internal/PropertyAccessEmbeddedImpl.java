@@ -6,7 +6,6 @@ package org.hibernate.property.access.internal;
 
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.lang.reflect.Type;
 import java.util.Map;
 
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
@@ -74,11 +73,6 @@ public class PropertyAccessEmbeddedImpl implements PropertyAccess {
 
 		@Override
 		public Class<?> getReturnTypeClass() {
-			return containerType;
-		}
-
-		@Override
-		public Type getReturnType() {
 			return containerType;
 		}
 

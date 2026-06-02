@@ -6,7 +6,6 @@ package org.hibernate.property.access.internal;
 
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.lang.reflect.Type;
 import java.util.Map;
 
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
@@ -74,11 +73,6 @@ public class ChainedPropertyAccessImpl implements PropertyAccess, Getter, Setter
 	@Override
 	public Class<?> getReturnTypeClass() {
 		return propertyAccesses[propertyAccesses.length - 1].getGetter().getReturnTypeClass();
-	}
-
-	@Override
-	public Type getReturnType() {
-		return propertyAccesses[propertyAccesses.length - 1].getGetter().getReturnType();
 	}
 
 	@Override
