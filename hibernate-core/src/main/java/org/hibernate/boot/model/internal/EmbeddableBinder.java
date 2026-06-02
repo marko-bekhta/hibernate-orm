@@ -44,12 +44,13 @@ import org.hibernate.models.spi.ClassDetails;
 import org.hibernate.models.spi.MemberDetails;
 import org.hibernate.models.spi.TypeDetails;
 import org.hibernate.property.access.internal.PropertyAccessStrategyCompositeUserTypeImpl;
-import org.hibernate.property.access.internal.PropertyAccessStrategyGetterImpl;
 import org.hibernate.resource.beans.internal.FallbackBeanInstanceProducer;
 import org.hibernate.type.BasicType;
 import org.hibernate.usertype.CompositeUserType;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -882,14 +883,18 @@ public class EmbeddableBinder {
 		for ( var property : embeddable.getProperties() ) {
 			final String propertyName = property.getName();
 			sortedPropertyNames.add( propertyName );
-			sortedPropertyTypes.add(
-					PropertyAccessStrategyGetterImpl.INSTANCE.buildPropertyAccess(
-							compositeUserType.embeddable(),
-							propertyName,
-							false
-					).getGetter().getReturnType()
-			);
+			sortedPropertyTypes.add( resolveGenericType( property ) );
 			property.setPropertyAccessStrategy( strategy );
+		}
+	}
+
+	private static Type resolveGenericType(Property property) {
+		final var member = property.getMemberDetails().toJavaMember();
+		if ( member instanceof Field field ) {
+			return field.getGenericType();
+		}
+		else {
+			return ( (Method) member ).getGenericReturnType();
 		}
 	}
 
