@@ -6,7 +6,6 @@ package org.hibernate.property.access.spi;
 
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.lang.reflect.Type;
 import java.util.Map;
 
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
@@ -46,13 +45,6 @@ public interface Getter {
 	 * @return The declared java type class.
 	 */
 	Class<?> getReturnTypeClass();
-
-	/**
-	 * Retrieve the declared Java type
-	 *
-	 * @return The declared java type.
-	 */
-	Type getReturnType();
 
 	/**
 	 * Retrieve the member to which this property maps.  This might be the

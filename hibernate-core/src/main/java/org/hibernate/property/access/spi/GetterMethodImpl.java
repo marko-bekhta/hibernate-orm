@@ -7,7 +7,6 @@ package org.hibernate.property.access.spi;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.lang.reflect.Type;
 import java.util.Map;
 
 import org.hibernate.Internal;
@@ -84,11 +83,6 @@ public class GetterMethodImpl implements Getter {
 	@Override
 	public Class<?> getReturnTypeClass() {
 		return getterMethod.getReturnType();
-	}
-
-	@Override
-	public Type getReturnType() {
-		return getterMethod.getGenericReturnType();
 	}
 
 	@Override

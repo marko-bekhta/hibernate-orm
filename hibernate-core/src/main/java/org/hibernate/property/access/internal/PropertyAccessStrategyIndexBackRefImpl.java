@@ -6,7 +6,6 @@ package org.hibernate.property.access.internal;
 
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.lang.reflect.Type;
 import java.util.Map;
 
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
@@ -81,11 +80,6 @@ public class PropertyAccessStrategyIndexBackRefImpl implements PropertyAccessStr
 
 		@Override
 		public Class<?> getReturnTypeClass() {
-			return Object.class;
-		}
-
-		@Override
-		public Type getReturnType() {
 			return Object.class;
 		}
 
