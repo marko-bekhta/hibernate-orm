@@ -27,6 +27,7 @@ import org.hibernate.query.sqm.function.SqmFunctionDescriptor;
 import org.hibernate.query.sqm.function.SqmFunctionRegistry;
 import org.hibernate.resource.beans.spi.BeanInstanceProducer;
 import org.hibernate.resource.beans.spi.ManagedBeanRegistry;
+import org.hibernate.property.access.spi.PropertyAccessorService;
 import org.hibernate.type.BasicType;
 import org.hibernate.type.descriptor.java.JavaType;
 import org.hibernate.type.descriptor.jdbc.JdbcType;
@@ -107,7 +108,11 @@ public class BootstrapContextTesting implements BootstrapContext {
 		this.managedBeanRegistry = serviceRegistry.requireService( ManagedBeanRegistry.class );
 		this.configurationService = serviceRegistry.requireService( ConfigurationService.class );
 
-		this.modelsContext = createModelBuildingContext( classLoaderService, configService );
+		this.modelsContext = createModelBuildingContext(
+				classLoaderService,
+				configService,
+				serviceRegistry.requireService( PropertyAccessorService.class )
+		);
 	}
 
 	@Override
