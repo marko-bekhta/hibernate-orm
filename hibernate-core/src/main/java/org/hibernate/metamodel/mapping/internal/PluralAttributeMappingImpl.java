@@ -19,12 +19,14 @@ import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.List;
 import org.hibernate.mapping.Map;
 import org.hibernate.mapping.Property;
+import org.hibernate.metamodel.RepresentationMode;
 import org.hibernate.metamodel.mapping.AuditMapping;
 import org.hibernate.metamodel.mapping.AttributeMetadata;
 import org.hibernate.metamodel.mapping.AuxiliaryMapping;
 import org.hibernate.metamodel.mapping.CollectionIdentifierDescriptor;
 import org.hibernate.metamodel.mapping.CollectionMappingType;
 import org.hibernate.metamodel.mapping.CollectionPart;
+import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.ForeignKeyDescriptor;
 import org.hibernate.metamodel.mapping.JdbcMapping;
@@ -202,10 +204,9 @@ public class PluralAttributeMappingImpl
 			ManagedMappingType declaringType,
 			String attributeName,
 			MemberDetails memberDetails) {
-		if ( memberDetails != null ) {
-			final var elementType =
-					memberDetails.getElementType()
-							.determineRawClass().toJavaClass();
+		if ( memberDetails != null
+			&& RepresentationMode.POJO.equals( typeRepresentationStrategy( declaringType ) ) ) {
+			final var elementType = memberDetails.getElementType().determineRawClass().toJavaClass();
 			if ( !Object.class.equals( elementType ) ) {
 				final var targetType = elementPart.getJavaType().getJavaTypeClass();
 				if ( !elementType.isAssignableFrom( targetType ) ) {
@@ -213,7 +214,7 @@ public class PluralAttributeMappingImpl
 							String.format(
 									ROOT,
 									"Plural attribute [%s.%s] was mapped with targetEntity=`%s`,"
-											+ " but the attribute is declared as `%s`",
+									+ " but the attribute is declared as `%s`",
 									declaringType.getNavigableRole().getFullPath(),
 									attributeName,
 									targetType.getName(),
@@ -222,6 +223,19 @@ public class PluralAttributeMappingImpl
 					);
 				}
 			}
+		}
+	}
+
+	private static @Nullable RepresentationMode typeRepresentationStrategy(ManagedMappingType declaringType) {
+		if ( declaringType instanceof EntityMappingType declaringEntityType ) {
+			return declaringEntityType.getRepresentationStrategy().getMode();
+		}
+		else if ( declaringType instanceof EmbeddableMappingType declaringEmbeddableType ) {
+			return declaringEmbeddableType.getRepresentationStrategy().getMode();
+		}
+		else {
+			// should never happen, but be lenient
+			return null;
 		}
 	}
 
