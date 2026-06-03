@@ -33,7 +33,7 @@ import org.hibernate.graph.internal.RootGraphImpl;
 import org.hibernate.graph.spi.RootGraphImplementor;
 import org.hibernate.jpa.internal.util.FlushModeTypeHelper;
 import org.hibernate.metamodel.spi.MappingMetamodelImplementor;
-import org.hibernate.property.access.spi.BuiltInPropertyAccessStrategies;
+import org.hibernate.property.access.spi.PropertyAccessorService;
 import org.hibernate.query.QueryArgumentException;
 import jakarta.persistence.QueryFlushMode;
 import org.hibernate.query.QueryParameter;
@@ -66,6 +66,7 @@ import java.util.Set;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Locale.ROOT;
 import static org.hibernate.internal.log.DeprecationLogger.DEPRECATION_LOGGER;
+import static org.hibernate.internal.util.ReflectHelper.findGetterMethod;
 import static org.hibernate.internal.util.StringHelper.isNotEmpty;
 import static org.hibernate.jpa.HibernateHints.HINT_CACHEABLE;
 import static org.hibernate.jpa.HibernateHints.HINT_CACHE_MODE;
@@ -1598,14 +1599,15 @@ public abstract class AbstractCommonQueryContract implements CommonQueryContract
 	@Nonnull
 	public CommonQueryContractImplementor setProperties(@Nonnull Object bean) {
 		final var beanClass = bean.getClass();
+		final var accessorFactory = getSessionFactory().getServiceRegistry()
+				.requireService( PropertyAccessorService.class )
+				.hibernateAccessorFactory();
 		for ( String paramName : getParameterMetadata().getNamedParameterNames() ) {
 			try {
-				final var getter =
-						BuiltInPropertyAccessStrategies.BASIC.getStrategy()
-								.buildPropertyAccess( beanClass, paramName, true )
-								.getGetter();
-				final var returnType = getter.getReturnTypeClass();
-				final Object object = getter.get( bean );
+				final var getterMethod = findGetterMethod( beanClass, paramName );
+				final var returnType = getterMethod.getReturnType();
+				final var reader = accessorFactory.valueReader( getterMethod );
+				final Object object = reader.get( bean );
 				if ( Collection.class.isAssignableFrom( returnType ) ) {
 					setParameterList( paramName, (Collection<?>) object );
 				}
