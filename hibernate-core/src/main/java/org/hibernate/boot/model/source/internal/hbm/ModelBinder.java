@@ -615,6 +615,7 @@ public class ModelBinder {
 		);
 
 		final String propertyName = idSource.getIdentifierAttributeSource().getName();
+		MemberDetails member = null;
 		if ( propertyName == null || !rootEntityDescriptor.hasPojoRepresentation() ) {
 			if ( !idValue.isTypeSpecified() ) {
 				throw new MappingException(
@@ -624,7 +625,7 @@ public class ModelBinder {
 			}
 		}
 		else {
-			final var member = findMemberDetails( sourceDocument, rootEntityDescriptor.getClassName(), propertyName );
+			member = findMemberDetails( sourceDocument, rootEntityDescriptor.getClassName(), propertyName );
 			if ( member != null ) {
 				idValue.setMemberDetails( member );
 			}
@@ -665,6 +666,7 @@ public class ModelBinder {
 		if ( propertyName != null ) {
 			final var property = new Property();
 			property.setValue( idValue );
+			property.setMemberDetails( member );
 			bindProperty( sourceDocument, idSource.getIdentifierAttributeSource(), property );
 			rootEntityDescriptor.setIdentifierProperty( property );
 			rootEntityDescriptor.setDeclaredIdentifierProperty( property );
@@ -861,7 +863,7 @@ public class ModelBinder {
 
 		final var property = new Property();
 		property.setValue( versionValue );
-		bindProperty( sourceDocument, versionAttributeSource, property );
+		bindProperty( sourceDocument, versionAttributeSource, property, rootEntityDescriptor.getClassName() );
 
 		final String unsavedValue = versionAttributeSource.getUnsavedValue();
 		if ( unsavedValue != null ) {
@@ -949,7 +951,8 @@ public class ModelBinder {
 			if ( attributeSource instanceof PluralAttributeSource pluralAttributeSource ) {
 				// plural attribute
 				final var attribute =
-						createPluralAttribute( mappingDocument, pluralAttributeSource, entityDescriptor );
+						createPluralAttribute( mappingDocument, pluralAttributeSource, entityDescriptor,
+								entityDescriptor.getClassName() );
 				attribute.setOptional( true );
 				entityDescriptor.addProperty( attribute );
 			}
@@ -1060,7 +1063,8 @@ public class ModelBinder {
 							mappingDocument,
 							anyAttributeSource,
 							new Any( mappingDocument, table ),
-							entityDescriptor.getEntityName()
+							entityDescriptor.getEntityName(),
+							entityDescriptor.getClassName()
 					);
 
 					handleAttribute(
@@ -1118,7 +1122,8 @@ public class ModelBinder {
 	private Property createPluralAttribute(
 			MappingDocument sourceDocument,
 			PluralAttributeSource attributeSource,
-			PersistentClass entityDescriptor) {
+			PersistentClass entityDescriptor,
+			String containingClassName) {
 		final Collection collectionBinding;
 		if ( attributeSource instanceof PluralAttributeSourceListImpl pluralAttributeSourceList ) {
 			final var list = new org.hibernate.mapping.List( sourceDocument, entityDescriptor );
@@ -1196,7 +1201,7 @@ public class ModelBinder {
 
 		final var attribute = new Property();
 		attribute.setValue( collectionBinding );
-		bindProperty( sourceDocument, attributeSource, attribute );
+		bindProperty( sourceDocument, attributeSource, attribute, containingClassName );
 		return attribute;
 	}
 
@@ -1560,7 +1565,7 @@ public class ModelBinder {
 
 		final var attribute = new Property();
 		attribute.setValue( componentBinding );
-		bindProperty( sourceDocument, embeddedSource, attribute );
+		bindProperty( sourceDocument, embeddedSource, attribute, containingClassName );
 		if ( embeddedSource.isVirtualAttribute() ) {
 			attribute.setPropertyAccessorName( EMBEDDED.getExternalName() );
 		}
@@ -1599,7 +1604,7 @@ public class ModelBinder {
 		final var property = new Property();
 		property.setValue( value );
 		property.setLob( value.isLob() );
-		bindProperty( sourceDocument, attributeSource, property );
+		bindProperty( sourceDocument, attributeSource, property, containingClassName );
 		return property;
 	}
 
@@ -1679,7 +1684,7 @@ public class ModelBinder {
 
 		final var property = new Property();
 		property.setValue( oneToOneBinding );
-		bindProperty( sourceDocument, oneToOneSource, property );
+		bindProperty( sourceDocument, oneToOneSource, property, containingClassName );
 		return property;
 	}
 
@@ -1839,7 +1844,7 @@ public class ModelBinder {
 
 		final var property = new Property();
 		property.setValue( manyToOneBinding );
-		bindProperty( sourceDocument, manyToOneSource, property );
+		bindProperty( sourceDocument, manyToOneSource, property, containingClassName );
 
 		checkManyToOneOrphanDelete( sourceDocument, manyToOneSource, manyToOneBinding );
 
@@ -1997,7 +2002,8 @@ public class ModelBinder {
 			MappingDocument sourceDocument,
 			SingularAttributeSourceAny anyMapping,
 			Any anyBinding,
-			String entityName) {
+			String entityName,
+			String containingClassName) {
 		final var attributeRole = anyMapping.getAttributeRole();
 		bindAny( sourceDocument, anyMapping, anyBinding, attributeRole );
 		prepareValueTypeViaReflection( sourceDocument, anyBinding, entityName, anyMapping.getName(), attributeRole );
@@ -2005,7 +2011,7 @@ public class ModelBinder {
 
 		final var property = new Property();
 		property.setValue( anyBinding );
-		bindProperty( sourceDocument, anyMapping, property );
+		bindProperty( sourceDocument, anyMapping, property, containingClassName );
 		return property;
 	}
 
@@ -2256,7 +2262,18 @@ public class ModelBinder {
 	private void bindProperty(
 			MappingDocument mappingDocument,
 			AttributeSource propertySource,
+			Property property,
+			String containingClassName) {
+
+		property.setMemberDetails( findMemberDetails( mappingDocument, containingClassName, propertySource.getName() ) );
+		bindProperty( mappingDocument, propertySource, property );
+	}
+
+	private void bindProperty(
+			MappingDocument mappingDocument,
+			AttributeSource propertySource,
 			Property property) {
+
 		property.setName( propertySource.getName() );
 
 		final String propertyAccessorName = propertySource.getPropertyAccessorName();
@@ -2553,6 +2570,7 @@ public class ModelBinder {
 						sourceDocument,
 						singularAttributeSourceAny,
 						new Any( sourceDocument, component.getTable() ),
+						component.getComponentClassName(),
 						component.getComponentClassName()
 				);
 			}
@@ -2560,7 +2578,8 @@ public class ModelBinder {
 				attribute = createPluralAttribute(
 						sourceDocument,
 						pluralAttributeSource,
-						component.getOwner()
+						component.getOwner(),
+						component.getComponentClassName()
 				);
 			}
 			else {

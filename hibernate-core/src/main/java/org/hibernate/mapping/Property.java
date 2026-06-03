@@ -582,6 +582,7 @@ public class Property implements Serializable, MetaAttributable {
 		property.setGenericSpecialization( isGenericSpecialization() );
 		property.setLob( isLob() );
 		property.setReturnedClassName( getReturnedClassName() );
+		property.setMemberDetails( getMemberDetails() );
 		return property;
 	}
 
