@@ -19,14 +19,12 @@ import org.hibernate.mapping.Collection;
 import org.hibernate.mapping.List;
 import org.hibernate.mapping.Map;
 import org.hibernate.mapping.Property;
-import org.hibernate.metamodel.RepresentationMode;
 import org.hibernate.metamodel.mapping.AuditMapping;
 import org.hibernate.metamodel.mapping.AttributeMetadata;
 import org.hibernate.metamodel.mapping.AuxiliaryMapping;
 import org.hibernate.metamodel.mapping.CollectionIdentifierDescriptor;
 import org.hibernate.metamodel.mapping.CollectionMappingType;
 import org.hibernate.metamodel.mapping.CollectionPart;
-import org.hibernate.metamodel.mapping.EmbeddableMappingType;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.metamodel.mapping.ForeignKeyDescriptor;
 import org.hibernate.metamodel.mapping.JdbcMapping;
@@ -43,11 +41,7 @@ import org.hibernate.metamodel.mapping.ordering.OrderByFragment;
 import org.hibernate.metamodel.mapping.ordering.OrderByFragmentTranslator;
 import org.hibernate.metamodel.mapping.ordering.TranslationContext;
 import org.hibernate.metamodel.model.domain.NavigableRole;
-import org.hibernate.metamodel.spi.ManagedTypeRepresentationStrategy;
-import org.hibernate.models.spi.ClassDetails;
-import org.hibernate.models.spi.FieldDetails;
 import org.hibernate.models.spi.MemberDetails;
-import org.hibernate.models.spi.MethodDetails;
 import org.hibernate.persister.collection.CollectionPersister;
 import org.hibernate.action.queue.spi.decompose.collection.CollectionMutationTarget;
 import org.hibernate.property.access.spi.PropertyAccess;
@@ -77,8 +71,6 @@ import org.hibernate.sql.results.graph.collection.internal.DelayedCollectionFetc
 import org.hibernate.sql.results.graph.collection.internal.EagerCollectionFetch;
 import org.hibernate.sql.results.graph.collection.internal.SelectEagerCollectionFetch;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -137,6 +129,7 @@ public class PluralAttributeMappingImpl
 			String attributeName,
 			Collection bootDescriptor,
 			PropertyAccess propertyAccess,
+			MemberDetails memberDetails,
 			AttributeMetadata attributeMetadata,
 			CollectionMappingType<?> collectionMappingType,
 			int stateArrayPosition,
@@ -193,7 +186,7 @@ public class PluralAttributeMappingImpl
 		injectAttributeMapping( elementDescriptor, indexDescriptor, collectionDescriptor, this );
 
 		if ( elementDescriptor instanceof EntityCollectionPart elementMapping ) {
-			validateTargetEntity( elementMapping, declaringType, attributeName, propertyAccess, creationProcess );
+			validateTargetEntity( elementMapping, declaringType, attributeName, memberDetails );
 		}
 	}
 
@@ -208,128 +201,28 @@ public class PluralAttributeMappingImpl
 			EntityCollectionPart elementPart,
 			ManagedMappingType declaringType,
 			String attributeName,
-			PropertyAccess propertyAccess,
-			MappingModelCreationProcess creationProcess) {
-		final var representationStrategy = typeRepresentationStrategy( declaringType );
-		if ( representationStrategy != null
-				// nothing to check against with dynamic models
-				&& representationStrategy.getMode() == RepresentationMode.POJO ) {
-			final var attributeMemberDetails =
-					getMemberDetails( attributeName, propertyAccess,
-							declaringClassDetails( declaringType, creationProcess ) );
-			if ( attributeMemberDetails != null ) {
-				checkElementType( elementPart, declaringType, attributeName, attributeMemberDetails );
-			}
-			// else usually indicates the case of embeddable
-			// inheritance mentioned in the @implNote
-		}
-	}
-
-	private static ClassDetails declaringClassDetails(
-			ManagedMappingType declaringType,
-			MappingModelCreationProcess creationProcess) {
-		return creationProcess.getCreationContext().getBootstrapContext()
-				.getModelsContext().getClassDetailsRegistry()
-				.resolveClassDetails( declaringType.getJavaType().getTypeName() );
-	}
-
-	private static void checkElementType(
-			EntityCollectionPart elementPart,
-			ManagedMappingType declaringType,
-			String attributeName,
-			MemberDetails attributeMemberDetails) {
-		final var elementType =
-				attributeMemberDetails.getElementType()
-						.determineRawClass().toJavaClass();
-		if ( !Object.class.equals( elementType ) ) {
-			final var targetType = elementPart.getJavaType().getJavaTypeClass();
-			if ( !elementType.isAssignableFrom( targetType ) ) {
-				throw new MappingException(
-						String.format(
-								ROOT,
-								"Plural attribute [%s.%s] was mapped with targetEntity=`%s`,"
-										+ " but the attribute is declared as `%s`",
-								declaringType.getNavigableRole().getFullPath(),
-								attributeName,
-								targetType.getName(),
-								elementType.getName()
-						)
-				);
-			}
-		}
-	}
-
-	private static @Nullable MemberDetails getMemberDetails(
-			String attributeName, PropertyAccess propertyAccess, ClassDetails declaringClassDetails) {
-		final var member = propertyAccess.getGetter().getMember();
-		if ( member instanceof Field ) {
-			return locateField( declaringClassDetails, attributeName );
-		}
-		else if ( member instanceof Method method ) {
-			return locateGetter( declaringClassDetails, method );
-		}
-		else {
-			// we need access to the field or getter...
-			return null;
-		}
-	}
-
-	private static @Nullable ManagedTypeRepresentationStrategy typeRepresentationStrategy(ManagedMappingType declaringType) {
-		if ( declaringType instanceof EntityMappingType declaringEntityType ) {
-			return declaringEntityType.getRepresentationStrategy();
-		}
-		else if ( declaringType instanceof EmbeddableMappingType declaringEmbeddableType ) {
-			return declaringEmbeddableType.getRepresentationStrategy();
-		}
-		else {
-			// should never happen, but be lenient
-			return null;
-		}
-	}
-
-	/**
-	 * Locate the corresponding field details.
-	 *
-	 * @return The field details, or {@code null} if we cannot locate it.
-	 *
-	 * @implNote See `implNote` on {@linkplain #validateTargetEntity} for details
-	 * about why we return {@code null} instead of throwing an exception.
-	 */
-	private static FieldDetails locateField(ClassDetails declaringClassDetails, String attributeName) {
-		assert declaringClassDetails != null;
-		var classDetails = declaringClassDetails;
-		while ( classDetails != null && classDetails != ClassDetails.OBJECT_CLASS_DETAILS ) {
-			final var fieldDetails = classDetails.findFieldByName( attributeName );
-			if ( fieldDetails != null ) {
-				return fieldDetails;
-			}
-			classDetails = classDetails.getSuperClass();
-		}
-		return null;
-	}
-
-	/**
-	 * Locate the corresponding getter method details.
-	 *
-	 * @return The getter method details, or {@code null} if we cannot locate it.
-	 *
-	 * @implNote See `implNote` on {@linkplain #validateTargetEntity} for details
-	 * about why we return {@code null} instead of throwing an exception.
-	 */
-	private static MethodDetails locateGetter(ClassDetails declaringClassDetails, Method method) {
-		assert declaringClassDetails != null;
-		var classDetails = declaringClassDetails;
-		while ( classDetails != null && classDetails != ClassDetails.OBJECT_CLASS_DETAILS ) {
-			for ( int i = 0; i < classDetails.getMethods().size(); i++ ) {
-				final var methodDetails = classDetails.getMethods().get(i);
-				if ( methodDetails.getName().equals( method.getName() )
-						&& methodDetails.getMethodKind() == MethodDetails.MethodKind.GETTER ) {
-					return methodDetails;
+			MemberDetails memberDetails) {
+		if ( memberDetails != null ) {
+			final var elementType =
+					memberDetails.getElementType()
+							.determineRawClass().toJavaClass();
+			if ( !Object.class.equals( elementType ) ) {
+				final var targetType = elementPart.getJavaType().getJavaTypeClass();
+				if ( !elementType.isAssignableFrom( targetType ) ) {
+					throw new MappingException(
+							String.format(
+									ROOT,
+									"Plural attribute [%s.%s] was mapped with targetEntity=`%s`,"
+											+ " but the attribute is declared as `%s`",
+									declaringType.getNavigableRole().getFullPath(),
+									attributeName,
+									targetType.getName(),
+									elementType.getName()
+							)
+					);
 				}
 			}
-			classDetails = classDetails.getSuperClass();
 		}
-		return null;
 	}
 
 

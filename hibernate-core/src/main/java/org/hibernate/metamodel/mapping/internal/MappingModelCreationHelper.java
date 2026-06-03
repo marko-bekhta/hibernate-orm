@@ -643,6 +643,7 @@ public class MappingModelCreationHelper {
 				attrName,
 				bootValueMapping,
 				propertyAccess,
+				bootProperty.getMemberDetails(),
 				attributeMetadata,
 				collectionMappingType,
 				stateArrayPosition,
