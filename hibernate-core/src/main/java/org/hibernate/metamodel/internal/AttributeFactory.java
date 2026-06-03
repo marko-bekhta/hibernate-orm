@@ -47,8 +47,6 @@ import org.hibernate.metamodel.model.domain.internal.PluralAttributeBuilder;
 import org.hibernate.metamodel.model.domain.internal.SingularAttributeImpl;
 import org.hibernate.metamodel.spi.EmbeddableRepresentationStrategy;
 import org.hibernate.persister.entity.EntityPersister;
-import org.hibernate.property.access.internal.PropertyAccessMapImpl;
-import org.hibernate.property.access.spi.Getter;
 import org.hibernate.query.sqm.tree.domain.SqmDomainType;
 import org.hibernate.query.sqm.tree.domain.SqmMappedSuperclassDomainType;
 import org.hibernate.type.AnyType;
@@ -630,7 +628,7 @@ public class AttributeFactory {
 		final var ownerRepStrategy = ownerRepresentationStrategy( metadataContext, ownerMappingModel, embeddable );
 		return ownerRepStrategy.getMode() == RepresentationMode.MAP
 				? new MapMember( property.getName(), property.getType().getReturnedClass() )
-				: ownerRepStrategy.resolvePropertyAccess( property ).getGetter().getMember();
+				: property.getMemberDetails().toJavaMember();
 	}
 
 	private static EmbeddableRepresentationStrategy ownerRepresentationStrategy(
@@ -676,10 +674,9 @@ public class AttributeFactory {
 			);
 		}
 
-		final Getter getter = attributeMapping.getPropertyAccess().getGetter();
-		return getter instanceof PropertyAccessMapImpl.GetterImpl
+		return entityPersister.getRepresentationStrategy().getMode() == RepresentationMode.MAP
 				? new MapMember( attributeName, property.getType().getReturnedClass() )
-				: getter.getMember();
+				: property.getMemberDetails().toJavaMember();
 	}
 
 	/**
@@ -707,14 +704,14 @@ public class AttributeFactory {
 			&& declaringEntity.findAttributeMapping( propertyName ) == null && !property.isGeneric()
 				// just like in #determineIdentifierJavaMember , this *should* indicate we have an IdClass mapping
 				? resolveVirtualIdentifierMember( property, declaringEntity )
-				: getter( declaringEntity, property, propertyName, property.getType().getReturnedClass() );
+				: member( declaringEntity, property, propertyName, property.getType().getReturnedClass() );
 	}
 
 	private static Member resolveMappedSuperclassMember(
 			Property property,
 			MappedSuperclassDomainType<?> ownerType,
 			MetadataContext context) {
-		return property.getGetter( ownerType.getJavaType() ).getMember();
+		return property.getMemberDetails().toJavaMember();
 //		final EntityPersister declaringEntity =
 //				getDeclaringEntity( (AbstractIdentifiableType<?>) ownerType, context );
 //		if ( declaringEntity != null ) {
@@ -740,8 +737,7 @@ public class AttributeFactory {
 		final var identifiableType = (AbstractIdentifiableType<?>) attributeContext.getOwnerType();
 		if ( identifiableType instanceof SqmMappedSuperclassDomainType<?> ) {
 			return attributeContext.getPropertyMapping()
-					.getGetter( identifiableType.getJavaType() )
-					.getMember();
+					.getMemberDetails().toJavaMember();
 		}
 		else {
 			final var declaringEntityMapping = getDeclaringEntity( identifiableType, metadataContext );
@@ -750,7 +746,7 @@ public class AttributeFactory {
 			return !propertyMapping.getName().equals( identifierMapping.getAttributeName() )
 					// this *should* indicate processing part of an IdClass
 					? virtualIdentifierMemberResolver.resolveMember( attributeContext, metadataContext )
-					: getter( declaringEntityMapping, propertyMapping,
+					: member( declaringEntityMapping, propertyMapping,
 							identifierMapping.getAttributeName(), identifierMapping.getJavaType().getJavaTypeClass() );
 		}
 	};
@@ -759,8 +755,7 @@ public class AttributeFactory {
 		final var identifiableType = (AbstractIdentifiableType<?>) attributeContext.getOwnerType();
 		if ( identifiableType instanceof SqmMappedSuperclassDomainType<?> ) {
 			return attributeContext.getPropertyMapping()
-					.getGetter( identifiableType.getJavaType() )
-					.getMember();
+					.getMemberDetails().toJavaMember();
 		}
 		else {
 			final var entityPersister = getDeclaringEntity( identifiableType, metadataContext );
@@ -773,21 +768,14 @@ public class AttributeFactory {
 				// this should never happen but check it to be safe
 				throw new IllegalArgumentException( "Given property did not match declared version property" );
 			}
-			return getter( entityPersister, attributeContext.getPropertyMapping(),
+			return member( entityPersister, attributeContext.getPropertyMapping(),
 					versionPropertyName, versionMapping.getJavaType().getJavaTypeClass() );
 		}
 	};
 
-	private static Member getter(EntityPersister persister, Property property, String name, Class<?> type) {
-		final Getter getter = getter( persister, property );
-		return getter instanceof PropertyAccessMapImpl.GetterImpl
+	private static Member member(EntityPersister persister, Property property, String name, Class<?> type) {
+		return persister.getRepresentationStrategy().getMode() == RepresentationMode.MAP
 				? new MapMember( name, type )
-				: getter.getMember();
-	}
-
-	private static Getter getter(EntityPersister persister, Property property) {
-		return persister.getRepresentationStrategy()
-				.resolvePropertyAccess( property )
-				.getGetter();
+				: (property.getMemberDetails() != null ? property.getMemberDetails().toJavaMember() : null);
 	}
 }

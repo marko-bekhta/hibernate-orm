@@ -24,13 +24,13 @@ public class MavenMirror {
 	 * @param contentFilter optional content filter, e.g. {@code c -> c.includeGroup("jakarta.persistence")}
 	 */
 	public static void maybeAddMavenLocal(RepositoryHandler repositories, Action<RepositoryContentDescriptor> contentFilter) {
-		if ( "true".equalsIgnoreCase( resolve( "enableMavenLocalRepo" ) ) ) {
+//		if ( "true".equalsIgnoreCase( resolve( "enableMavenLocalRepo" ) ) ) {
 			repositories.mavenLocal( repo -> {
 				if ( contentFilter != null ) {
 					repo.content( contentFilter );
 				}
 			} );
-		}
+//		}
 	}
 
 	public static void maybeAddMavenLocal(RepositoryHandler repositories) {
