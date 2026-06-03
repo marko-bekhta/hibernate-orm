@@ -27,6 +27,7 @@ import org.hibernate.models.spi.ModelsConfiguration;
 import org.hibernate.models.spi.ModelsContext;
 import org.hibernate.query.sqm.function.SqmFunctionDescriptor;
 import org.hibernate.query.sqm.function.SqmFunctionRegistry;
+import org.hibernate.property.access.spi.PropertyAccessorService;
 import org.hibernate.resource.beans.spi.BeanInstanceProducer;
 import org.hibernate.resource.beans.spi.ManagedBeanRegistry;
 import org.hibernate.type.BasicType;
@@ -107,7 +108,11 @@ public class BootstrapContextImpl implements BootstrapContext {
 		managedBeanRegistry = serviceRegistry.requireService( ManagedBeanRegistry.class );
 		configurationService = serviceRegistry.requireService( ConfigurationService.class );
 
-		modelsContext = createModelBuildingContext( classLoaderService, configService );
+		modelsContext = createModelBuildingContext(
+				classLoaderService,
+				configService,
+				serviceRegistry.requireService( PropertyAccessorService.class )
+		);
 	}
 
 	@Override
@@ -340,11 +345,13 @@ public class BootstrapContextImpl implements BootstrapContext {
 
 	public static ModelsContext createModelBuildingContext(
 			ClassLoaderService classLoaderService,
-			ConfigurationService configService) {
+			ConfigurationService configService,
+			PropertyAccessorService propertyAccessorService) {
 		final var classLoading = new ClassLoaderServiceLoading( classLoaderService );
 		final var modelsConfiguration = new ModelsConfiguration();
 		modelsConfiguration.setClassLoading( classLoading );
 		modelsConfiguration.setRegistryPrimer( ModelsHelper::preFillRegistries );
+		modelsConfiguration.setAccessorFactory( propertyAccessorService.hibernateAccessorFactory() );
 		configService.getSettings().forEach( (key, value) -> {
 			if ( key.startsWith( "hibernate.models." ) ) {
 				modelsConfiguration.configValue( key, value );

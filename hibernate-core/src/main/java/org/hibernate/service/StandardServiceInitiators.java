@@ -33,6 +33,7 @@ import org.hibernate.internal.util.cache.InternalCacheFactoryInitiator;
 import org.hibernate.loader.ast.internal.BatchLoaderFactoryInitiator;
 import org.hibernate.persister.internal.PersisterClassResolverInitiator;
 import org.hibernate.persister.internal.PersisterFactoryInitiator;
+import org.hibernate.property.access.internal.PropertyAccessorServiceInitiator;
 import org.hibernate.property.access.internal.PropertyAccessStrategyResolverInitiator;
 import org.hibernate.query.sqm.mutation.internal.SqmMultiTableMutationStrategyProviderInitiator;
 import org.hibernate.resource.beans.spi.ManagedBeanRegistryInitiator;
@@ -79,6 +80,9 @@ public final class StandardServiceInitiators {
 
 		// ConfigurationService
 		serviceInitiators.add( ConfigurationServiceInitiator.INSTANCE );
+
+		// PropertyAccessorService
+		serviceInitiators.add( PropertyAccessorServiceInitiator.INSTANCE );
 
 		// PropertyAccessStrategyResolver
 		serviceInitiators.add( PropertyAccessStrategyResolverInitiator.INSTANCE );
