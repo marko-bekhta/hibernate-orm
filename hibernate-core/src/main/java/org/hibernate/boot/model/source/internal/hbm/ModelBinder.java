@@ -625,7 +625,12 @@ public class ModelBinder {
 			}
 		}
 		else {
-			member = findMemberDetails( sourceDocument, rootEntityDescriptor.getClassName(), propertyName );
+
+			member = findMemberDetails(
+					sourceDocument,
+					rootEntityDescriptor.getClassName(),
+					propertyName,
+					idSource.getIdentifierAttributeSource().getPropertyAccessorName() );
 			if ( member != null ) {
 				idValue.setMemberDetails( member );
 			}
@@ -1558,7 +1563,8 @@ public class ModelBinder {
 				componentBinding,
 				componentBinding.getComponentClassName(),
 				attributeName,
-				embeddedSource.getAttributeRole()
+				embeddedSource.getAttributeRole(),
+				embeddedSource.getPropertyAccessorName()
 		);
 
 		componentBinding.createForeignKey();
@@ -1594,7 +1600,8 @@ public class ModelBinder {
 				value,
 				containingClassName,
 				attributeSource.getName(),
-				attributeSource.getAttributeRole()
+				attributeSource.getAttributeRole(),
+				attributeSource.getPropertyAccessorName()
 		);
 
 		markAsLobIfNecessary( attributeSource, value );
@@ -1669,7 +1676,8 @@ public class ModelBinder {
 				oneToOneBinding,
 				containingClassName,
 				oneToOneSource.getName(),
-				oneToOneSource.getAttributeRole()
+				oneToOneSource.getAttributeRole(),
+				oneToOneSource.getPropertyAccessorName()
 		);
 
 		handlePropertyRef( sourceDocument, oneToOneBinding,
@@ -1862,7 +1870,7 @@ public class ModelBinder {
 		}
 		else {
 			final String attributeName = manyToOneSource.getName();
-			final var member = findMemberDetails( sourceDocument, containingClassName, attributeName );
+			final var member = findMemberDetails( sourceDocument, containingClassName, attributeName, manyToOneSource.getPropertyAccessorName() );
 			if ( member != null ) {
 				return member.getType().determineRawClass().getClassName();
 			}
@@ -1872,7 +1880,8 @@ public class ModelBinder {
 						manyToOneBinding,
 						containingClassName,
 						attributeName,
-						manyToOneSource.getAttributeRole()
+						manyToOneSource.getAttributeRole(),
+						manyToOneSource.getPropertyAccessorName()
 				);
 				return manyToOneBinding.getTypeName();
 			}
@@ -2006,7 +2015,7 @@ public class ModelBinder {
 			String containingClassName) {
 		final var attributeRole = anyMapping.getAttributeRole();
 		bindAny( sourceDocument, anyMapping, anyBinding, attributeRole );
-		prepareValueTypeViaReflection( sourceDocument, anyBinding, entityName, anyMapping.getName(), attributeRole );
+		prepareValueTypeViaReflection( sourceDocument, anyBinding, entityName, anyMapping.getName(), attributeRole, anyMapping.getPropertyAccessorName() );
 		anyBinding.createForeignKey();
 
 		final var property = new Property();
@@ -2176,7 +2185,13 @@ public class ModelBinder {
 	private static MemberDetails findMemberDetails(
 			MappingDocument sourceDocument,
 			String containingClassName,
-			String propertyName) {
+			String propertyName,
+			String propertyAccessorName) {
+
+		final var accessorName = isNotEmpty( propertyAccessorName )
+				? propertyAccessorName
+				: sourceDocument.getEffectiveDefaults().getDefaultAccessStrategyName();
+
 		if ( containingClassName == null || propertyName == null ) {
 			return null;
 		}
@@ -2192,35 +2207,47 @@ public class ModelBinder {
 		}
 
 		// This is a bit verbose, but we want to see if there are any "duplicating" getters for what seems the same attribute (is/get)
-		final var getters = classDetails.findAllInHierarchy( current ->
-				current.findMethods( method -> {
-					if ( method.getMethodKind() != MethodDetails.MethodKind.GETTER ) {
-						return false;
-					}
-					final var attrName = method.resolveAttributeName();
-					return propertyName.equals( attrName )
-						|| propertyName.equals( StringHelper.capitalize( attrName ) );
-				} )
-		);
-		if ( getters.size() == 1 ) {
-			return getters.get( 0 );
-		}
-		if ( getters.size() > 1 ) {
-			final var first = getters.get( 0 );
-			for ( int i = 1; i < getters.size(); i++ ) {
-				final var other = getters.get( i );
-				if ( !first.getName().equals( other.getName() )
-					&& !first.getType().equals( other.getType() ) ) {
-					throw new org.hibernate.MappingException(
-							"Class '%s' declares both '%s %s' and '%s %s' variants of getter for property '%s'".formatted(
-									classDetails.getClassName(), first.getType(), first.getName(), other.getType(),
-									other.getName(), propertyName
-							) );
-				}
+		if ( accessorName.toLowerCase( Locale.ROOT ).equals( "property" ) ) {
+			final var getters = classDetails.findAllInHierarchy( current ->
+					current.findMethods( method -> {
+						if ( method.getMethodKind() != MethodDetails.MethodKind.GETTER ) {
+							return false;
+						}
+						final var attrName = method.resolveAttributeName();
+						return propertyName.equals( attrName )
+							|| propertyName.equals( StringHelper.capitalize( attrName ) );
+					} )
+			);
+			if ( getters.size() == 1 ) {
+				return getters.get( 0 );
 			}
-			return first;
+			if ( getters.size() > 1 ) {
+				final var first = getters.get( 0 );
+				for ( int i = 1; i < getters.size(); i++ ) {
+					final var other = getters.get( i );
+					if ( !first.getName().equals( other.getName() )
+						&& !first.getType().equals( other.getType() ) ) {
+						throw new org.hibernate.MappingException(
+								"Class '%s' declares both '%s %s' and '%s %s' variants of getter for property '%s'".formatted(
+										classDetails.getClassName(), first.getType(), first.getName(), other.getType(),
+										other.getName(), propertyName
+								) );
+					}
+				}
+				return first;
+			}
+			// may be better to throw a PropertyNotFoundException: Could not locate getter method for property ... of class ...
+			assert classDetails.findInHierarchy( current -> current.findFieldByName( propertyName ) ) == null : "no getter method found for :" + propertyName;
+			return null;
 		}
-		return classDetails.findInHierarchy( current -> current.findFieldByName( propertyName ) );
+		else if ( accessorName.toLowerCase( Locale.ROOT ).equals( "field" ) ) {
+			return classDetails.findInHierarchy( current -> current.findFieldByName( propertyName ) );
+		}
+		else {
+			// todo: this is is trhe case where a PropertyAccessStrategy is specified
+			throw new MappingException( accessorName + "not yet supported", sourceDocument.getOrigin() );
+		}
+
 	}
 
 	private void prepareValueTypeViaReflection(
@@ -2228,7 +2255,8 @@ public class ModelBinder {
 			SimpleValue value,
 			String containingClassName,
 			String propertyName,
-			AttributeRole attributeRole) {
+			AttributeRole attributeRole,
+			String propertyAccessorName) {
 		if ( StringHelper.isEmpty( propertyName ) ) {
 			throw new MappingException(
 					"Attribute mapping must define a name attribute:"
@@ -2239,7 +2267,7 @@ public class ModelBinder {
 			);
 		}
 
-		final var member = findMemberDetails( sourceDocument, containingClassName, propertyName );
+		final var member = findMemberDetails( sourceDocument, containingClassName, propertyName, propertyAccessorName );
 		if ( member != null ) {
 			value.setMemberDetails( member );
 		}
@@ -2265,7 +2293,7 @@ public class ModelBinder {
 			Property property,
 			String containingClassName) {
 
-		property.setMemberDetails( findMemberDetails( mappingDocument, containingClassName, propertySource.getName() ) );
+		property.setMemberDetails( findMemberDetails( mappingDocument, containingClassName, propertySource.getName(), propertySource.getPropertyAccessorName() ) );
 		bindProperty( mappingDocument, propertySource, property );
 	}
 
@@ -2425,7 +2453,8 @@ public class ModelBinder {
 			final var parentMember = findMemberDetails(
 					sourceDocument,
 					componentBinding.getComponentClassName(),
-					parentReferenceAttributeName
+					parentReferenceAttributeName,
+					null
 			);
 			if ( parentMember != null ) {
 				componentBinding.setParentMemberDetails( parentMember );
@@ -2503,7 +2532,7 @@ public class ModelBinder {
 			BOOT_LOGGER.attemptingToDetermineComponentClassByReflection( role );
 			final var member =
 					isNotEmpty( containingClassName ) && isNotEmpty( propertyName )
-							? findMemberDetails( sourceDocument, containingClassName, propertyName )
+							? findMemberDetails( sourceDocument, containingClassName, propertyName, null )
 							: null;
 			if ( member == null ) {
 				BOOT_LOGGER.unableToDetermineComponentClassByReflection( role );

@@ -11,7 +11,7 @@
 
     <class name="DynamicEntity">
         <synchronize table="table_a"/>
-        <id name="id" type="long">
+        <id name="id" type="long" access="field">
             <generator class="native" />
         </id>
     </class>
