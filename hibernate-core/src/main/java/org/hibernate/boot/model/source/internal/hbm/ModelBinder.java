@@ -2236,9 +2236,7 @@ public class ModelBinder {
 				}
 				return first;
 			}
-			// may be better to throw a PropertyNotFoundException: Could not locate getter method for property ... of class ...
-			assert classDetails.findInHierarchy( current -> current.findFieldByName( propertyName ) ) == null : "no getter method found for :" + propertyName;
-			return null;
+			return classDetails.findInHierarchy( current -> current.findFieldByName( propertyName ) );
 		}
 		else if ( accessorName.toLowerCase( Locale.ROOT ).equals( "field" ) ) {
 			return classDetails.findInHierarchy( current -> current.findFieldByName( propertyName ) );
