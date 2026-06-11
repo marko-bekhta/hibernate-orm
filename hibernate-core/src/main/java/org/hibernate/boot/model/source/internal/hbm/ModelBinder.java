@@ -73,6 +73,7 @@ import org.hibernate.boot.model.source.spi.Sortable;
 import org.hibernate.boot.model.source.spi.TableSource;
 import org.hibernate.boot.model.source.spi.TableSpecificationSource;
 import org.hibernate.boot.registry.classloading.spi.ClassLoadingException;
+import org.hibernate.boot.spi.BootstrapContext;
 import org.hibernate.boot.spi.InFlightMetadataCollector;
 import org.hibernate.boot.spi.InFlightMetadataCollector.EntityTableXref;
 import org.hibernate.boot.spi.MetadataBuildingContext;
@@ -2182,7 +2183,7 @@ public class ModelBinder {
 		}
 	}
 
-	private static MemberDetails findMemberDetails(
+	public static MemberDetails findMemberDetails(
 			MappingDocument sourceDocument,
 			String containingClassName,
 			String propertyName,
@@ -2192,10 +2193,26 @@ public class ModelBinder {
 				? propertyAccessorName
 				: sourceDocument.getEffectiveDefaults().getDefaultAccessStrategyName();
 
+		return findMemberDetails(
+				sourceDocument.getBootstrapContext(),
+				containingClassName,
+				propertyName,
+				accessorName,
+				sourceDocument.getOrigin()
+		);
+	}
+
+	public static MemberDetails findMemberDetails(
+			BootstrapContext bootstrapContext,
+			String containingClassName,
+			String propertyName,
+			String accessorName,
+			Origin origin) {
+
 		if ( containingClassName == null || propertyName == null ) {
 			return null;
 		}
-		final var classDetailsRegistry = sourceDocument.getBootstrapContext()
+		final var classDetailsRegistry = bootstrapContext
 				.getModelsContext().getClassDetailsRegistry();
 		final ClassDetails classDetails;
 		try {
@@ -2243,7 +2260,7 @@ public class ModelBinder {
 		}
 		else {
 			// todo: this is is trhe case where a PropertyAccessStrategy is specified
-			throw new MappingException( accessorName + "not yet supported", sourceDocument.getOrigin() );
+			throw new MappingException( accessorName + "not yet supported", origin );
 		}
 
 	}

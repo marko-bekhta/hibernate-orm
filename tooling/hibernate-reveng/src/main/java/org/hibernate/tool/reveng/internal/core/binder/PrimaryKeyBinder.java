@@ -57,17 +57,19 @@ class PrimaryKeyBinder extends AbstractBinder {
 			Table table,
 			RootClass rc,
 			Set<Column> processed,
-			RevengMetadataCollector revengMetadataCollector) {
+			RevengMetadataCollector revengMetadataCollector,
+			String className) {
 		List<Column> keyColumns = getKeyColumns(table);
 		final TableIdentifier tableIdentifier = TableIdentifier.create(table);
 		PrimaryKeyInfo pki = createPrimaryKeyInfo(tableIdentifier, keyColumns);
-		EnhancedValue id = createKeyValue(rc, keyColumns, pki.suggestedStrategy, table, revengMetadataCollector, processed);
+		EnhancedValue id = createKeyValue(rc, keyColumns, pki.suggestedStrategy, table, revengMetadataCollector, processed, className);
 		id.setIdentifierGeneratorProperties(pki.suggestedProperties);
 		Property property = propertyBinder.bind(
 				table,
 				BinderUtils.makeUnique(rc,getIdPropertyName(tableIdentifier, keyColumns)),
 				id,
-				RevengUtils.createAssociationInfo(null, null, true, true));
+				RevengUtils.createAssociationInfo(null, null, true, true),
+				className);
 		rc.setIdentifierProperty(property);
 		rc.setDeclaredIdentifierProperty(property);
 		rc.setIdentifier(id);
@@ -95,10 +97,11 @@ class PrimaryKeyBinder extends AbstractBinder {
 			String suggestedStrategyName,
 			Table table,
 			RevengMetadataCollector revengMetadataCollector,
-			Set<Column> processed) {
+			Set<Column> processed,
+			String className) {
 		if (keyColumns.size()>1) {
 			LOGGER.log(Level.INFO, "id strategy for " + rc.getEntityName() + " since it has a multiple column primary key");
-			return handleCompositeKey(rc, processed, keyColumns);
+			return handleCompositeKey(rc, processed, keyColumns, className);
 		}
 		else {
 			String tableIdentifierStrategyName =
@@ -197,12 +200,14 @@ class PrimaryKeyBinder extends AbstractBinder {
 	private EnhancedComponent handleCompositeKey(
 			PersistentClass rc,
 			Set<Column> processedColumns,
-			List<Column> keyColumns) {
+			List<Column> keyColumns,
+			String className) {
 		EnhancedComponent result = new EnhancedComponent(getMetadataBuildingContext(), rc);
 		result.setMetaAttributes(Collections.emptyMap());
 		result.setEmbedded(false);
-		result.setComponentClassName(getCompositeIdName(rc));
-		addKeyColumns(result, rc.getTable(), getKeyColumns(rc.getTable(), keyColumns), processedColumns);
+		String compositeIdClassName = getCompositeIdName(rc);
+		result.setComponentClassName(compositeIdClassName);
+		addKeyColumns(result, rc.getTable(), getKeyColumns(rc.getTable(), keyColumns), processedColumns, compositeIdClassName);
 		result.setNullValue("undefined");
 		result.setIdentifierGeneratorStrategy("assigned");
 		return result;
@@ -231,14 +236,16 @@ class PrimaryKeyBinder extends AbstractBinder {
 			Component pkc,
 			ForeignKeyForColumns fkfc,
 			Table table, Set<Column>
-			processedColumns) {
+			processedColumns,
+			String owningClassName) {
 		ForeignKey foreignKey = fkfc.key;
 		Property property = manyToOneBinder.bind(
 				BinderUtils.makeUnique(pkc, getForeignKeyToEntityName(foreignKey)),
 				true,
 				table,
 				foreignKey,
-				processedColumns);
+				processedColumns,
+				owningClassName);
 		processedColumns.addAll(fkfc.columns);
 		return property;
 	}
@@ -247,7 +254,8 @@ class PrimaryKeyBinder extends AbstractBinder {
 			Component pkc,
 			Column column,
 			Table table,
-			Set<Column> processedColumns) {
+			Set<Column> processedColumns,
+			String owningClassName) {
 		Property result;
 		if ( processedColumns.contains(column) ) {
 			throw new RuntimeException("Binding column twice for primary key should not happen: " + column);
@@ -257,7 +265,8 @@ class PrimaryKeyBinder extends AbstractBinder {
 			result = basicPropertyBinder.bind(
 					BinderUtils.makeUnique(pkc, getColumnToPropertyName(table, column)),
 					table,
-					column);
+					column,
+					owningClassName);
 			processedColumns.add(column);
 		}
 		return result;
@@ -284,14 +293,15 @@ class PrimaryKeyBinder extends AbstractBinder {
 			Component pkc,
 			Table table,
 			List<?> list,
-			Set<Column> processedColumns) {
+			Set<Column> processedColumns,
+			String owningClassName) {
 		for ( Object element : list ) {
 			Property property;
 			if ( element instanceof Column ) {
-				property = bindBasicProperty( pkc, (Column) element, table, processedColumns );
+				property = bindBasicProperty( pkc, (Column) element, table, processedColumns, owningClassName );
 			}
 			else if ( element instanceof ForeignKeyForColumns ) {
-				property = bindManyToOneProperty( pkc, (ForeignKeyForColumns) element, table, processedColumns );
+				property = bindManyToOneProperty( pkc, (ForeignKeyForColumns) element, table, processedColumns, owningClassName );
 			}
 			else {
 				throw new RuntimeException( "unknown thing" );

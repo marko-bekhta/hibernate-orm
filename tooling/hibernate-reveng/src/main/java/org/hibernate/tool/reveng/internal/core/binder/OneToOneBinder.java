@@ -35,7 +35,8 @@ class OneToOneBinder extends AbstractBinder {
 			ForeignKey fk,
 			Set<Column> processedColumns,
 			boolean constrained,
-			boolean inverseProperty) {
+			boolean inverseProperty,
+			String owningClassName) {
 		OneToOne value = new OneToOne(getMetadataBuildingContext(), targetTable, rc);
 		value.setReferencedEntityName(
 				getRevengStrategy().tableToClassName(TableIdentifier.create(targetTable)));
@@ -53,7 +54,8 @@ class OneToOneBinder extends AbstractBinder {
 						targetTable,
 						fk,
 						value,
-						inverseProperty);
+						inverseProperty,
+						owningClassName);
 	}
 
 	private void addColumns(ForeignKey foreignKey, OneToOne oneToOne, Set<Column> processedColumns) {

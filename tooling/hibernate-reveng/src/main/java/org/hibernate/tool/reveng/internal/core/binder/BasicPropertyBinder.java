@@ -25,12 +25,13 @@ class BasicPropertyBinder extends AbstractBinder {
 	}
 
 
-	Property bind(String propertyName, Table table, Column column) {
+	Property bind(String propertyName, Table table, Column column, String owningClassName) {
 		return propertyBinder.bind(
 				table,
 				propertyName,
 				simpleValueBinder.bind(table, column, false),
-				RevengUtils.createAssociationInfo(null, null, true, true));
+				RevengUtils.createAssociationInfo(null, null, true, true),
+				owningClassName);
 	}
 
 }

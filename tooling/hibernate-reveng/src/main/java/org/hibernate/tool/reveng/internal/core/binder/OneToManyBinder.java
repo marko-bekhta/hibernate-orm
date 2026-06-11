@@ -35,7 +35,7 @@ class OneToManyBinder extends AbstractBinder {
 		this.collectionPropertyBinder = CollectionPropertyBinder.create(binderContext);
 	}
 
-	Property bind(PersistentClass rc, ForeignKey foreignKey) {
+	Property bind(PersistentClass rc, ForeignKey foreignKey, String owningClassName) {
 		Collection collection = bindCollection(rc, foreignKey);
 		getMetadataCollector().addCollectionBinding(collection);
 		return collectionPropertyBinder
@@ -43,7 +43,8 @@ class OneToManyBinder extends AbstractBinder {
 						StringHelper.unqualify(collection.getRole()),
 						rc.getTable(),
 						foreignKey,
-						collection);
+						collection,
+						owningClassName);
 	}
 
 	private Collection bindCollection(PersistentClass pc, ForeignKey foreignKey) {
