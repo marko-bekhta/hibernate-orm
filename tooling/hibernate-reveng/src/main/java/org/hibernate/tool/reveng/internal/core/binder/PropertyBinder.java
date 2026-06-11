@@ -5,6 +5,7 @@
 package org.hibernate.tool.reveng.internal.core.binder;
 
 import org.hibernate.engine.FetchStyle;
+import org.hibernate.boot.model.source.internal.hbm.ModelBinder;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Fetchable;
 import org.hibernate.mapping.MetaAttribute;
@@ -31,18 +32,27 @@ class PropertyBinder extends AbstractBinder {
 			Table table,
 			String propertyName,
 			Value value,
-			AssociationInfo associationInfo) {
+			AssociationInfo associationInfo,
+			String owningClassName) {
 		return bindMetaAttributes(
-				createProperty(propertyName, value, associationInfo),
+				createProperty(propertyName, value, associationInfo, owningClassName),
 				table);
 	}
 
 	private Property createProperty(
 			String propertyName,
 			Value value,
-			AssociationInfo associationInfo) {
+			AssociationInfo associationInfo,
+			String owningClassName) {
 		Property result = new Property();
 		result.setName(propertyName);
+		final var accessorName = "property";
+		result.setMemberDetails( ModelBinder.findMemberDetails(
+				getMetadataBuildingContext().getBootstrapContext(),
+				owningClassName,
+				propertyName,
+				accessorName,
+				null) );
 		result.setValue(value);
 		result.setInsertable(associationInfo.getInsert());
 		result.setUpdatable(associationInfo.getUpdate());
@@ -54,7 +64,7 @@ class PropertyBinder extends AbstractBinder {
 			lazy = ((Fetchable)value).getFetchStyle() != FetchStyle.JOIN;
 		}
 		result.setLazy(lazy);
-		result.setPropertyAccessorName("property");
+		result.setPropertyAccessorName( accessorName );
 		return result;
 	}
 

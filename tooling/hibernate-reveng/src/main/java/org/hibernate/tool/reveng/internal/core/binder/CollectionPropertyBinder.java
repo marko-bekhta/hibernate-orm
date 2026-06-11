@@ -28,10 +28,11 @@ class CollectionPropertyBinder extends AbstractBinder {
 			String propertyName,
 			Table table,
 			ForeignKey fk,
-			Collection value) {
+			Collection value,
+			String owningClassName) {
 		AssociationInfo associationInfo = determineAssociationInfo(fk);
 		BinderUtils.updateFetchMode(value, associationInfo.getFetch());
-		return propertyBinder.bind(table, propertyName, value, associationInfo);
+		return propertyBinder.bind(table, propertyName, value, associationInfo, owningClassName);
 	}
 
 	private AssociationInfo determineAssociationInfo(

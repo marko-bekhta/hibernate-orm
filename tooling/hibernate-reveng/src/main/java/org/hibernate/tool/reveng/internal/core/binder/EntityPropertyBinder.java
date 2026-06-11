@@ -30,10 +30,11 @@ class EntityPropertyBinder extends AbstractBinder {
 			Table table,
 			ForeignKey fk,
 			ToOne value,
-			boolean inverseProperty) {
+			boolean inverseProperty,
+			String owningClassName) {
 		AssociationInfo associationInfo = determineAssociationInfo(fk, inverseProperty, mutable);
 		BinderUtils.updateFetchMode(value, associationInfo.getFetch());
-		return propertyBinder.bind(table, propertyName, value, associationInfo);
+		return propertyBinder.bind(table, propertyName, value, associationInfo, owningClassName);
 	}
 
 	private AssociationInfo determineAssociationInfo(

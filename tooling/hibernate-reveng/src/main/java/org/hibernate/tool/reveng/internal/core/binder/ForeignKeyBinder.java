@@ -37,15 +37,16 @@ class ForeignKeyBinder extends AbstractBinder {
 	void bindIncoming(
 			ForeignKey foreignKey,
 			PersistentClass persistentClass,
-			Set<Column> processed) {
+			Set<Column> processed,
+			String owningClassName) {
 		if(excludeForeignKeyAsCollection(foreignKey)) {
 			LOGGER.log(Level.INFO, "Rev.eng excluded one-to-many or one-to-one for foreignkey " + foreignKey.getName());
 		}
 		else if (getRevengStrategy().isOneToOne(foreignKey)){
-			addOneToOne(foreignKey, persistentClass, processed, false);
+			addOneToOne(foreignKey, persistentClass, processed, false, owningClassName);
 		}
 		else {
-			addOneToMany(foreignKey, persistentClass);
+			addOneToMany(foreignKey, persistentClass, owningClassName);
 		}
 	}
 
@@ -54,16 +55,17 @@ class ForeignKeyBinder extends AbstractBinder {
 			Table table,
 			PersistentClass rc,
 			Set<Column> processedColumns,
-			boolean mutable) {
+			boolean mutable,
+			String owningClassName) {
 		if(excludeForeignKeyAsManyToOne(foreignKey)) {
 			// TODO: if many-to-one is excluded should the column be marked as processed so it won't show up at all ?
 			LOGGER.log(Level.INFO, "Rev.eng excluded *-to-one for foreignkey " + foreignKey.getName());
 		}
 		else if (isOneToOne(foreignKey)){
-			addOneToOne(foreignKey, rc, processedColumns, true);
+			addOneToOne(foreignKey, rc, processedColumns, true, owningClassName);
 		}
 		else {
-			addManyToOne(foreignKey, table, rc, processedColumns, mutable);
+			addManyToOne(foreignKey, table, rc, processedColumns, mutable, owningClassName);
 		}
 	}
 
@@ -82,13 +84,15 @@ class ForeignKeyBinder extends AbstractBinder {
 			Table table,
 			PersistentClass rc,
 			Set<Column> processedColumns,
-			boolean mutable) {
+			boolean mutable,
+			String owningClassName) {
 		Property property = manyToOneBinder.bind(
 				BinderUtils.makeUnique(rc, getForeignKeyToEntityName(foreignKey)),
 				mutable,
 				table,
 				foreignKey,
-				processedColumns);
+				processedColumns,
+				owningClassName);
 		rc.addProperty(property);
 	}
 
@@ -96,7 +100,8 @@ class ForeignKeyBinder extends AbstractBinder {
 			ForeignKey foreignKey,
 			PersistentClass rc,
 			Set<Column> processedColumns,
-			boolean outgoing) {
+			boolean outgoing,
+			String owningClassName) {
 		Table table = outgoing ? foreignKey.getReferencedTable() : foreignKey.getTable();
 		Property property = oneToOneBinder.bind(
 				rc,
@@ -104,12 +109,13 @@ class ForeignKeyBinder extends AbstractBinder {
 				foreignKey,
 				processedColumns,
 				outgoing,
-				!outgoing);
+				!outgoing,
+				owningClassName);
 		rc.addProperty(property);
 	}
 
-	private void addOneToMany(ForeignKey foreignKey, PersistentClass persistentClass) {
-		persistentClass.addProperty(oneToManyBinder.bind(persistentClass, foreignKey));
+	private void addOneToMany(ForeignKey foreignKey, PersistentClass persistentClass, String owningClassName) {
+		persistentClass.addProperty(oneToManyBinder.bind(persistentClass, foreignKey, owningClassName));
 	}
 
 	private boolean excludeForeignKeyAsCollection(ForeignKey foreignKey) {

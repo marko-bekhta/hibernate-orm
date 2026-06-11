@@ -33,27 +33,29 @@ class VersionPropertyBinder extends AbstractBinder {
 	void bind(
 			Table table,
 			RootClass rc,
-			Set<Column> processed) {
+			Set<Column> processed,
+			String className) {
 		String optimisticLockColumnName = getRevengStrategy()
 				.getOptimisticLockColumnName(TableIdentifier.create(table));
 		if(optimisticLockColumnName!=null) {
-			handleSpecifiedVersionColumn(table, optimisticLockColumnName, rc, processed);
+			handleSpecifiedVersionColumn(table, optimisticLockColumnName, rc, processed, className);
 		}
 		else {
-			scanForAppropriateVersionColumn(table, rc, processed);
+			scanForAppropriateVersionColumn(table, rc, processed, className);
 		}
 	}
 
 	private void scanForAppropriateVersionColumn(
 			Table table,
 			RootClass rc,
-			Set<Column> processed) {
+			Set<Column> processed,
+			String className) {
 		TableIdentifier identifier = TableIdentifier.create(table);
 		LOGGER.log(Level.INFO, "Scanning " + identifier + " for <version>/<timestamp> columns.");
 		for (Column column : table.getColumns()) {
 			boolean useIt = getRevengStrategy().useColumnForOptimisticLock(identifier, column.getName());
 			if(useIt && !processed.contains(column)) {
-				bindVersionProperty(table, column, rc, processed);
+				bindVersionProperty(table, column, rc, processed, className);
 				return;
 			}
 		}
@@ -64,14 +66,15 @@ class VersionPropertyBinder extends AbstractBinder {
 			Table table,
 			String optimisticLockColumnName,
 			RootClass rc,
-			Set<Column> processed) {
+			Set<Column> processed,
+			String className) {
 		TableIdentifier identifier = TableIdentifier.create(table);
 		Column column = table.getColumn(new Column(optimisticLockColumnName));
 		if(column==null) {
 			LOGGER.log(Level.WARNING, "Column " + optimisticLockColumnName + " wanted for <version>/<timestamp> not found in " + identifier);
 		}
 		else {
-			bindVersionProperty(table, column, rc, processed);
+			bindVersionProperty(table, column, rc, processed, className);
 		}
 	}
 
@@ -79,14 +82,16 @@ class VersionPropertyBinder extends AbstractBinder {
 			Table table,
 			Column column,
 			RootClass rc,
-			Set<Column> processed) {
+			Set<Column> processed,
+			String className) {
 		TableIdentifier identifier = TableIdentifier.create(table);
 		processed.add(column);
 		String propertyName = getRevengStrategy().columnToPropertyName( identifier, column.getName() );
 		Property property = basicPropertyBinder.bind(
 				BinderUtils.makeUnique(rc, propertyName),
 				table,
-				column);
+				column,
+				className);
 		rc.addProperty(property);
 		rc.setVersion(property);
 		rc.setOptimisticLockStyle(OptimisticLockStyle.VERSION);

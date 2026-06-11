@@ -31,7 +31,8 @@ class ManyToOneBinder extends AbstractBinder {
 			boolean mutable,
 			Table table,
 			ForeignKey fk,
-			Set<Column> processedColumns) {
+			Set<Column> processedColumns,
+			String owningClassName) {
 		ManyToOne value = new ManyToOne(getMetadataBuildingContext(), table);
 		value.setReferencedEntityName( fk.getReferencedEntityName() );
 		addColumns(value, fk, processedColumns);
@@ -43,7 +44,8 @@ class ManyToOneBinder extends AbstractBinder {
 						table,
 						fk,
 						value,
-						false);
+						false,
+						owningClassName);
 	}
 
 	private void addColumns(

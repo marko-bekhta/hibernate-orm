@@ -53,12 +53,13 @@ public class RootClassBinder extends AbstractBinder {
 		Set<Column> processed = new HashSet<>();
 		nullifyDefaultCatalogAndSchema(table);
 		RootClass rc = createRootClass(table);
+		String className = rc.getClassName();
 		addToMetadataCollector(rc, table);
-		PrimaryKeyInfo pki = bindPrimaryKey(table, rc, processed, revengMetadataCollector);
-		bindVersionProperty(table, rc, processed);
-		bindOutgoingForeignKeys(table, rc, processed);
-		bindColumnsToProperties(table, rc, processed);
-		bindIncomingForeignKeys(rc, processed, revengMetadataCollector);
+		PrimaryKeyInfo pki = bindPrimaryKey(table, rc, processed, revengMetadataCollector, className);
+		bindVersionProperty(table, rc, processed, className);
+		bindOutgoingForeignKeys(table, rc, processed, className);
+		bindColumnsToProperties(table, rc, processed, className);
+		bindIncomingForeignKeys(rc, processed, revengMetadataCollector, className);
 		updatePrimaryKey(rc, pki);
 	}
 
@@ -66,8 +67,9 @@ public class RootClassBinder extends AbstractBinder {
 			Table table,
 			RootClass rc,
 			Set<Column> processed,
-			RevengMetadataCollector revengMetadataCollector) {
-		return primaryKeyBinder.bind(table, rc, processed, revengMetadataCollector);
+			RevengMetadataCollector revengMetadataCollector,
+			String className) {
+		return primaryKeyBinder.bind(table, rc, processed, revengMetadataCollector, className);
 	}
 
 	private void updatePrimaryKey(RootClass rc, PrimaryKeyInfo pki) {
@@ -116,24 +118,26 @@ public class RootClassBinder extends AbstractBinder {
 	private void bindVersionProperty(
 			Table table,
 			RootClass rc,
-			Set<Column> processed) {
-		versionPropertyBinder.bind(table, rc, processed);
+			Set<Column> processed,
+			String className) {
+		versionPropertyBinder.bind(table, rc, processed, className);
 	}
 
 	private void bindIncomingForeignKeys(
 			PersistentClass rc,
 			Set<Column> processed,
-			RevengMetadataCollector revengMetadataCollector) {
+			RevengMetadataCollector revengMetadataCollector,
+			String className) {
 		List<ForeignKey> foreignKeys = revengMetadataCollector.getOneToManyCandidates().get(rc.getEntityName());
 		if(foreignKeys!=null) {
 			for ( ForeignKey foreignKey : foreignKeys ) {
-				foreignKeyBinder.bindIncoming( foreignKey, rc, processed );
+				foreignKeyBinder.bindIncoming( foreignKey, rc, processed, className );
 			}
 		}
 	}
 
 
-	private void bindOutgoingForeignKeys(Table table, RootClass rc, Set<Column> processedColumns) {
+	private void bindOutgoingForeignKeys(Table table, RootClass rc, Set<Column> processedColumns, String className) {
 		// Iterate the outgoing foreign keys and create many-to-one's
 		for (ForeignKey foreignKey : table.getForeignKeyCollection()) {
 			boolean mutable = true;
@@ -141,11 +145,11 @@ public class RootClassBinder extends AbstractBinder {
 				if ( !preferBasicCompositeIds() ) continue; //it's in the pk, so skip this one
 				mutable = false;
 			}
-			foreignKeyBinder.bindOutgoing(foreignKey, table, rc, processedColumns, mutable);
+			foreignKeyBinder.bindOutgoing(foreignKey, table, rc, processedColumns, mutable, className);
 		}
 	}
 
-	private void bindColumnsToProperties(Table table, RootClass rc, Set<Column> processedColumns) {
+	private void bindColumnsToProperties(Table table, RootClass rc, Set<Column> processedColumns, String className) {
 		for (Column column : table.getColumns()) {
 			if ( !processedColumns.contains(column) ) {
 				BinderUtils.checkColumnForMultipleBinding(column);
@@ -153,7 +157,8 @@ public class RootClassBinder extends AbstractBinder {
 				Property property = basicPropertyBinder.bind(
 						BinderUtils.makeUnique(rc,propertyName),
 						table,
-						column);
+						column,
+						className);
 				rc.addProperty(property);
 			}
 		}
