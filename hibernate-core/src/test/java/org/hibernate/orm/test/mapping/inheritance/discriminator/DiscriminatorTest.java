@@ -35,7 +35,6 @@ import static org.junit.jupiter.api.Assertions.fail;
 		xmlMappings = "org/hibernate/orm/test/mapping/inheritance/discriminator/Person.hbm.xml"
 )
 @SessionFactory
-@SuppressWarnings("deprecation")
 public class DiscriminatorTest {
 
 	@AfterEach
@@ -73,46 +72,45 @@ public class DiscriminatorTest {
 					s.persist( joe );
 
 					try {
-						s.createQuery( "from java.io.Serializable" ).list();
+						s.createQuery( "from java.io.Serializable", Object.class ).list();
 						fail( "Expected IllegalAccessException" );
 					}
 					catch (Exception e) {
 						assertThat( e, instanceOf( IllegalArgumentException.class ) );
 					}
 
-					assertThat( s.createQuery( "from Person" ).list().size(), is( 3 ) );
-					assertThat( s.createQuery( "from Person p where p.class = Person" ).list().size(), is( 1 ) );
-					assertThat( s.createQuery( "from Person p where p.class = Customer" ).list().size(), is( 1 ) );
+					assertThat( s.createQuery( "from Person", Person.class ).list().size(), is( 3 ) );
+					assertThat( s.createQuery( "from Person p where p.class = Person", Person.class ).list().size(), is( 1 ) );
+					assertThat( s.createQuery( "from Person p where p.class = Customer", Person.class ).list().size(), is( 1 ) );
 					s.clear();
 
-					var customers = s.createQuery( "from Customer c left join fetch c.salesperson" ).list();
+					var customers = s.createQuery( "from Customer c left join fetch c.salesperson", Customer.class ).list();
 					for ( var customer : customers ) {
-						var c = (Customer) customer;
-						assertTrue( Hibernate.isInitialized( c.getSalesperson() ) );
-						assertThat( c.getSalesperson().getName(), is( "Mark" ) );
+						assertTrue( Hibernate.isInitialized( customer.getSalesperson() ) );
+						assertThat( customer.getSalesperson().getName(), is( "Mark" ) );
 					}
 					assertThat( customers.size(), is( 1 ) );
 					s.clear();
 
-					customers = s.createQuery( "from Customer" ).list();
+					customers = s.createQuery( "from Customer", Customer.class ).list();
 					for ( var customer : customers ) {
-						var c = (Customer) customer;
-						assertFalse( Hibernate.isInitialized( c.getSalesperson() ) );
-						assertThat( c.getSalesperson().getName(), is( "Mark" ) );
+						assertFalse( Hibernate.isInitialized( customer.getSalesperson() ) );
+						assertThat( customer.getSalesperson().getName(), is( "Mark" ) );
 					}
 					assertThat( customers.size(), is( 1 ) );
 					s.clear();
 
 
-					mark = s.get( Employee.class, mark.getId() );
-					joe = s.get( Customer.class, joe.getId() );
+					mark = s.find( Employee.class, mark.getId() );
+					joe = s.find( Customer.class, joe.getId() );
 
 					mark.setZip( "30306" );
-					assertThat( s.createQuery( "from Person p where p.address.zip = '30306'" ).list().size(), is( 1 ) );
+					assertThat(
+							s.createQuery( "from Person p where p.address.zip = '30306'", Person.class ).list().size(), is( 1 ) );
 					s.remove( mark );
 					s.remove( joe );
 					s.remove( yomomma );
-					assertTrue( s.createQuery( "from Person" ).list().isEmpty() );
+					assertTrue( s.createQuery( "from Person", Person.class ).list().isEmpty() );
 				}
 		);
 	}
@@ -131,14 +129,14 @@ public class DiscriminatorTest {
 
 		Customer c = null;
 		scope.fromTransaction(
-				s -> s.get( Customer.class, employee.getId() )
+				s -> s.find( Customer.class, employee.getId() )
 		);
 		assertNull( c );
 
 		scope.inTransaction(
 				s -> {
-					Employee e = s.get( Employee.class, employee.getId() );
-					Customer customer = s.get( Customer.class, employee.getId() );
+					Employee e = s.find( Employee.class, employee.getId() );
+					Customer customer = s.find( Customer.class, employee.getId() );
 					assertNotNull( e );
 					assertNull( customer );
 				}
@@ -164,11 +162,11 @@ public class DiscriminatorTest {
 					q.setSalary( new BigDecimal( 1000 ) );
 					s.persist( q );
 
-					var result = s.createQuery( "from Person where salary > 100" ).list();
+					var result = s.createQuery( "from Person where salary > 100", Person.class ).list();
 					assertEquals( 1, result.size() );
 					assertSame( result.get( 0 ), q );
 
-					result = s.createQuery( "from Person where salary > 100 or name like 'E%'" ).list();
+					result = s.createQuery( "from Person where salary > 100 or name like 'E%'", Person.class ).list();
 					assertEquals( 2, result.size() );
 
 					var criteriaBuilder = s.getCriteriaBuilder();
@@ -211,8 +209,8 @@ public class DiscriminatorTest {
 					// load the superclass proxy.
 					Person pLoad = s.getReference( Person.class, e.getId() );
 					assertInstanceOf( HibernateProxy.class, pLoad );
-					Person pGet = s.get( Person.class, e.getId() );
-					Person pQuery = (Person) s.createQuery( "from Person where id = :id" )
+					Person pGet = s.find( Person.class, e.getId() );
+					Person pQuery = s.createQuery( "from Person where id = :id", Person.class )
 							.setParameter( "id", e.getId() )
 							.uniqueResult();
 					var criteriaBuilder = s.getCriteriaBuilder();
@@ -238,8 +236,8 @@ public class DiscriminatorTest {
 					// load the superclass proxy.
 					Person pLoad = s.getReference( Person.class, e.getId() );
 					assertInstanceOf( HibernateProxy.class, pLoad );
-					Person pGet = s.get( Person.class, e.getId() );
-					Person pQuery = (Person) s.createQuery( "from Person where id = :id" )
+					Person pGet = s.find( Person.class, e.getId() );
+					Person pQuery = s.createQuery( "from Person where id = :id", Person.class )
 							.setParameter( "id", e.getId() )
 							.uniqueResult();
 					var criteriaBuilder = s.getCriteriaBuilder();
@@ -284,7 +282,7 @@ public class DiscriminatorTest {
 					assertInstanceOf( HibernateProxy.class, pLoad );
 					// evict the proxy
 					s.evict( pLoad );
-					Employee pGet = (Employee) s.get( Person.class, e.getId() );
+					Employee pGet = (Employee) s.find( Person.class, e.getId() );
 					Employee pQuery = (Employee) s.createQuery( "from Person where id = :id" )
 							.setParameter( "id", e.getId() )
 							.uniqueResult();

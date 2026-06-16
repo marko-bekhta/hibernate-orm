@@ -4,19 +4,18 @@
  */
 package org.hibernate.orm.test.mapping.inheritance.discriminator;
 
-import java.math.BigDecimal;
-import java.util.List;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
-
 import org.hibernate.proxy.HibernateProxy;
-
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.util.List;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -66,7 +65,7 @@ public class SimpleInheritanceTest {
 					s.persist( joe );
 
 					try {
-						s.createQuery( "from java.io.Serializable" ).list();
+						s.createQuery( "from java.io.Serializable", Object.class ).list();
 						fail( "Expected IllegalAccessException" );
 					}
 					catch (Exception e) {
@@ -74,28 +73,28 @@ public class SimpleInheritanceTest {
 					}
 
 					assertThat(
-							s.createQuery( "from Person" ).list().size(),
+							s.createQuery( "from Person", Person.class ).list().size(),
 							is( 3 )
 					);
 					assertThat( s.createQuery(
-							"from Person p where p.class = Person" )
+							"from Person p where p.class = Person", Person.class )
 										.list()
 										.size(), is( 1 ) );
 					assertThat( s.createQuery(
-							"from Person p where p.class = Customer" )
+							"from Person p where p.class = Customer", Person.class )
 										.list()
 										.size(), is( 1 ) );
-					assertThat( s.createQuery( "from Person p where type(p) = :who" )
+					assertThat( s.createQuery( "from Person p where type(p) = :who", Person.class )
 										.setParameter( "who", Person.class )
 										.list()
 										.size(), is( 1 ) );
-					assertThat( s.createQuery( "from Person p where type(p) in :who" )
+					assertThat( s.createQuery( "from Person p where type(p) in :who", Person.class )
 										.setParameterList( "who", new Class[] { Customer.class, Person.class } )
 										.list()
 										.size(), is( 2 ) );
 					s.clear();
 
-					List<Customer> customers = s.createQuery( "from Customer" ).list();
+					List<Customer> customers = s.createQuery( "from Customer", Customer.class ).list();
 					for ( Customer c : customers ) {
 						assertThat( c.getComments(), is( "Very demanding" ) );
 					}
@@ -108,7 +107,7 @@ public class SimpleInheritanceTest {
 					s.remove( mark );
 					s.remove( joe );
 					s.remove( yomomma );
-					assertTrue( s.createQuery( "from Person" ).list().isEmpty() );
+					assertTrue( s.createQuery( "from Person", Person.class ).list().isEmpty() );
 
 				}
 		);
@@ -127,26 +126,20 @@ public class SimpleInheritanceTest {
 				}
 		);
 
-		Customer c = scope.fromTransaction(
-				s ->
-						s.get( Customer.class, employee.getId() )
-
-		);
+		Customer c = scope.fromTransaction( s -> s.find( Customer.class, employee.getId() ) );
 
 		assertNull( c );
 
 		scope.inTransaction(
 				s -> {
-					Employee e = s.get( Employee.class, employee.getId() );
-					Customer c1 = s.get( Customer.class, e.getId() );
+					Employee e = s.find( Employee.class, employee.getId() );
+					Customer c1 = s.find( Customer.class, e.getId() );
 					assertNotNull( e );
 					assertNull( c1 );
 				}
 		);
 
-		scope.inTransaction(
-				session -> session.remove( employee )
-		);
+		scope.inTransaction(session -> session.remove( employee ) );
 	}
 
 	@Test
@@ -166,13 +159,13 @@ public class SimpleInheritanceTest {
 					q.setSalary( new BigDecimal( 1000 ) );
 					s.persist( q );
 
-					List result = s.createQuery( "from Person where salary > 100" )
+					List result = s.createQuery( "from Person where salary > 100", Person.class )
 							.list();
 					assertThat( result.size(), is( 1 ) );
 					assertSame( result.get( 0 ), q );
 
 					result = s.createQuery(
-							"from Person where salary > 100 or name like 'E%'" )
+							"from Person where salary > 100 or name like 'E%'", Person.class )
 							.list();
 					assertThat( result.size(), is( 2 ) );
 
@@ -218,8 +211,8 @@ public class SimpleInheritanceTest {
 					Person pLoad = s.getReference( Person.class, employee.getId() );
 					assertTrue( pLoad instanceof HibernateProxy );
 					Person pGet = s.get( Person.class, employee.getId() );
-					Person pQuery = (Person) s.createQuery(
-							"from Person where id = :id" )
+					Person pQuery = s.createQuery(
+							"from Person where id = :id", Person.class )
 							.setParameter( "id", employee.getId() )
 							.uniqueResult();
 

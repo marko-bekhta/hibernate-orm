@@ -114,4 +114,13 @@ public interface PropertyHolder {
 	 * @return The ConverterDescriptor
 	 */
 	ConverterDescriptor<?,?> resolveAttributeConverterDescriptor(MemberDetails property, boolean autoApply);
+
+	/**
+	 * Is this container modifiable within the entity it belongs to?
+	 * For example, an embeddable class might be immutable (all final
+	 * fields), but the properties that belong to it are still
+	 * modifiable if the embedded field referring to the embeddable
+	 * object is non-final.
+	 */
+	boolean isModifiable();
 }
