@@ -4,7 +4,6 @@
  */
 package org.hibernate.orm.test.ops;
 
-import java.util.List;
 
 import org.hibernate.Hibernate;
 import org.hibernate.cfg.AvailableSettings;
@@ -194,7 +193,7 @@ public class MergeMultipleEntityCopiesAllowedOrphanDeleteTest {
 					Item item = session.get( Item.class, item1.getId() );
 					assertThat( item.getSubItemsBackref().size(), is( 1 ) );
 					// because cascade includes "delete-orphan" the removed SubItem should have been deleted.
-					SubItem subItem = session.get( SubItem.class, subItem1.getId() );
+					SubItem subItem = session.find( SubItem.class, subItem1.getId() );
 					assertNull( subItem );
 				}
 		);
@@ -402,7 +401,7 @@ public class MergeMultipleEntityCopiesAllowedOrphanDeleteTest {
 					Category category = session.get( Category.class, category1.getId() );
 					assertThat( category.getSubCategories().size(), is( 1 ) );
 					assertTrue( category.getSubCategories().contains( subCategory2 ) );
-					SubCategory subCategory = session.get( SubCategory.class, subCategory1.getId() );
+					SubCategory subCategory = session.find( SubCategory.class, subCategory1.getId() );
 					assertNull( subCategory );
 				}
 		);
@@ -464,29 +463,28 @@ public class MergeMultipleEntityCopiesAllowedOrphanDeleteTest {
 		cleanup( scope );
 	}
 
-	@SuppressWarnings("unchecked")
 	private void cleanup(SessionFactoryScope scope) {
 		scope.inTransaction(
 				session -> {
-					session.createQuery( "delete from SubItem" ).executeUpdate();
-					for ( Hoarder hoarder : (List<Hoarder>) session.createQuery( "from Hoarder" ).list() ) {
+					session.createMutationQuery( "delete from SubItem" ).executeUpdate();
+					for ( Hoarder hoarder : session.createQuery( "from Hoarder", Hoarder.class ).list() ) {
 						hoarder.getItems().clear();
 						session.remove( hoarder );
 					}
 
-					for ( Category category : (List<Category>) session.createQuery( "from Category" ).list() ) {
+					for ( Category category : session.createQuery( "from Category", Category.class ).list() ) {
 						if ( category.getExampleItem() != null ) {
 							category.setExampleItem( null );
 							session.remove( category );
 						}
 					}
 
-					for ( Item item : (List<Item>) session.createQuery( "from Item" ).list() ) {
+					for ( Item item : session.createQuery( "from Item", Item.class ).list() ) {
 						item.setCategory( null );
 						session.remove( item );
 					}
 
-					session.createQuery( "delete from Item" ).executeUpdate();
+					session.createMutationQuery( "delete from Item" ).executeUpdate();
 				}
 		);
 	}

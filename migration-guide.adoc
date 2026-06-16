@@ -1,8 +1,9 @@
+:version: 8.0
+
 = {version} Migration Guide
 :toc2:
 :sectanchors:
 :toclevels: 4
-:version: 7.4
 :docsBase: https://docs.jboss.org/hibernate/orm
 :versionDocBase: {docsBase}/{version}
 :userGuideBase: {versionDocBase}/userguide/html_single/Hibernate_User_Guide.html
@@ -23,6 +24,12 @@ earlier versions, see any other pertinent migration guides as well.
 See the link:{releaseSeriesBase}[website] for the list of requirements for the {version} series.
 
 
+[[jpa4]]
+=== Jakarta Persistence 4.0
+
+One specific requirement change that is important to call out is the move to from Jakarta Persistence version 3.2 to 4.0 which has a number of impacts, many of which are discussed below.
+
+See https://hibernate.atlassian.net/browse/HHH-20028[this issue] for more details.
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // New Features
@@ -44,6 +51,81 @@ See the link:{releaseSeriesBase}#whats-new[website] for the list of new features
 This section describes changes to contracts (classes, interfaces, methods, etc.) which are considered https://hibernate.org/community/compatibility-policy/#api[API].
 
 
+[[stateless]]
+=== StatelessSession
+
+Jakarta Persistence now defines a contract for "stateless" processing, named `EntityAgent`, similar to Hibernate's `StatelessSession`.
+Hibernate's `StatelessSession` now implements `EntityAgent`.
+2 methods on `EntityAgent` clash with methods already defined on `StatelessSession` -
+
+* `insert()` - `EntityAgent` defines a `void` return type, whereas Hibernate has historically returned the identifier of the inserted entity.
+* `fetch()` - `EntityAgent` defines that the fetched value be returned, whereas `StatelessSession` has historically defined a `void` return type.
+
+In both cases, `StatelessSession` has been changed to match the `EntityAgent` signatures.
+
+
+
+
+[[query-api]]
+=== Query API
+
+One of the biggest changes in Jakarta Persistence 4.0 is the better modeling of "queries" into selections (`TypedQuery`) and mutations (its new `Statement` contract),
+aligning closely with Hibernate's already existing `SelectionQuery` and `MutationQuery` contracts.
+At the same time, it deprecated all "operation methods" from its "raw" `Query` contract.
+
+Hibernate's Query contracts implement the Jakarta Persistence ones, so changes were needed here.
+
+:fn_selectionquery: footnote:[Unfortunately that means `SelectionQuery` now inherits the `executeUpdate()` method from JPA's `Query`, but as mentioned that method is deprecated.]
+:fn_mutationquery: footnote:[Unfortunately that means `MutationQuery` now inherits `getResultList()`, and other such methods from JPA's `Query`, but as mentioned these methods are all deprecated.]
+
+* Hibernate's `Query` interface is still typed, but it now extends from JPA's `Query` rather than `TypedQuery`.
+* Hibernate's `SelectionQuery` now implements `TypedQuery`{fn_selectionquery}.
+* Hibernate's `MutationQuery` now implements the new `Statement` contract{fn_mutationquery}.
+
+Another impact is that `@NamedQuery` and `@NamedNativeQuery` (as well as Hibernate's variants) may no longer be used to define mutation queries -
+
+* `@NamedQuery` - A `SelectionQuery` defined using HQL/JPQL
+* `@NamedStatement` - A `MutationQuery` defined using HQL/JPQL
+* `@NamedNativeQuery` - A `SelectionQuery` defined using native SQL
+* `@NamedNativeStatement` - A `MutationQuery` defined using native SQL
+
+
+[[timeout]]
+=== Query and Transaction Timeouts
+
+Historically, both Hibernate and Jakarta Persistence have defined timeouts as integer values.
+Confusingly, Hibernate generally used second precision while Jakarta Persistence used millisecond precision.
+Starting in 3.2, Jakarta Persistence added a new `Timeout` class which helps alleviate this potential confusion.
+Originally this new `Timeout` type was not exposed on any API directly, so there was no impact from an API perspective.
+However, this has changed a bit in 4.0 where `Timeout` *is* now exposed on certain APIs.
+This causes a signature conflict with a few of Hibernate API methods; as part of fixing those conflicts, it was decided to change all exposures of timeout in Hibernate APIs to use `Timeout` as this helps clarify these confusions.
+
+
+[[graph-attr-node]]
+=== AttributeNode Subgraphs
+
+As part of its support for "entity graphs", Hibernate's `org.hibernate.graph.AttributeNode` contract extends fropm the Jakarta Persistence `jakarta.persistence.AttributeNode`.
+Starting in version 4.0, Jakarta Persistence has "fixed" the use of raw types for the `AttributeNode#getSubgraphs` and `AttributeNode#getKeySubgraphs` methods.
+Hibernate has therefore needed to do the same in its `org.hibernate.graph.AttributeNode`.
+
+
+[[criteria-join-fetch]]
+=== Join and Fetch in Criteria
+
+Jakarta Persistence has changed/fixed the type signature of methods in the Criteria API which return Join and Fetch based on the String name of attributes.  This can lead to compilation issues if an application uses these methods in certain ways.
+
+[[procedure-api]]
+=== ProcedureCall and ProcedureOutputs
+
+The API for `ProcedureCall` and `ProcedureOutputs` has been redesigned for a number of reasons, mostly -
+
+* Fix a https://hibernate.atlassian.net/browse/HHH-9912[long-standing bug] where multiple result mappings were not handled properly.
+* Better handling of `ProcedureOutputs` to avoid casts and, even worse, often untyped casts.  This is achieved by the new methods added to `Output`.  See link:{whatsNewBase}#procedure-outputs-casting.
+* Clean up leakage of various SPI contracts into these API contracts.
+* Align with changes in Jakarta Persistence 4.0.
+
+
+
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // SPI changes
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -52,6 +134,50 @@ This section describes changes to contracts (classes, interfaces, methods, etc.)
 == Changes to SPI
 
 This section describes changes to contracts (classes, interfaces, methods, etc.) which are considered https://hibernate.org/community/compatibility-policy/#spi[SPI].
+
+=== Classmate removal
+
+The dependency on Classmate was removed, which had a minor impact on certain SPIs.
+In particular, `ClassmateContext` was completely removed.
+
+=== Raw types in JPA `Bootstrap`
+
+Raw `Map` types were eliminated from the signatures of methods of the class
+`org.hibernate.jpa.boot.spi.Bootstrap`.
+
+[[query-memento]]
+=== Query Memento
+
+Hibernate uses a number of implementations of its `NamedQueryMemento` contract to
+model "named queries".  Starting in version 3.2, Jakarta Persistence added the
+`TypedQueryReference` contract intended to serve the much the same goal.
+Hibernate's `NamedQueryMemento` implementations were changed to extend from
+`TypedQueryReference`.
+
+In version 4.0, Jakarta Persistence has added some additional methods to
+`TypedQueryReference` which now conflict with some of Hibernate's existing methods
+requiring a rename.  Notably, the addition of `TypedQueryReference#getParameterTypes`
+caused conflict's with Hibernate's `NamedSqmQueryMemento#getParameterTypes`.  To
+address this conflict, we've renamed the `NamedSqmQueryMemento` method to
+`#getAnticipatedParameterTypes`.
+
+
+[[scanning]]
+=== Scanning
+
+Jakarta Persistence clarifies that scanning is the responsibility of the
+container, rather than the provider.  To that effect, the scanning SPI, and
+related ArchiveDescriptor SPI, have been rewritten.  During "EE bootstrap",
+Hibernate no longer performs scanning.  Instead the `jakarta.persistence.spi.PersistenceUnitInfo`
+has been augmented to make it clear that the container passes in any classes
+discovered during scanning.
+
+Hibernate does still provide this SPI for use by containers - Wild Fly for example takes
+advantage of this.
+
+Hibernate also uses this scanning SPI when applications use `HibernatePersistenceConfiguration`
+bootstrapping and supply the root and/or non-root URLs.
+
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Changes in Behavior
@@ -62,46 +188,163 @@ This section describes changes to contracts (classes, interfaces, methods, etc.)
 
 This section describes changes in behavior that applications should be aware of.
 
-=== HQL `current date` and `local date` on Oracle
+[[procedure-results]]
 
-Oracle has no true support for dates.
-Its `current_date` function produces a datetime.
-Starting with this release, the HQL expressions `current date` and `local date` translate to `trunc(current_date)`, which zeros out the time part.
+The behavior of Hibernate's handling for creating a `ProcedureCall` / `StoredProcedureQuery` with multiple result set mappings has been changed to fix a https://hibernate.atlassian.net/browse/HHH-9912[long-standing bug] and comply with the Jakarta Persistence specification.
+Hibernate now interprets the multiple mappings as one per result available from the procedure.  E.g.
 
-=== MySQL default max fetch depth
+[source,java]
+----
+var call = session.createProcedureCall("the_proc",
+        Region.class, Initiative.class);
+var outputs = call.getOutputs();
 
-Previously, `MySQLDialect` defined a dialect-level default value of `2` for the
-`hibernate.max_fetch_depth` configuration property.
+// old approach with casts still works -
+List<Region> regions = ( (ResultSetOutput<Region>) outputs.getCurrent() ).getResultList();
 
-As of Hibernate ORM {version}, this dialect-specific default has been removed.
-MySQL now behaves consistently with other dialects and relies on Hibernate’s
-general defaults or explicit user configuration.
+outputs.gotToNext();
 
-Applications that relied on the previous implicit default should explicitly set
-`hibernate.max_fetch_depth` if required.
+// but consider this instead -
+List<Initiative> initiatives =  outputs.getCurrent()
+        .asResultSetOutput(Initiative.class)
+        .getResultList();
+----
 
-=== Join fetching for eager @Any mappings
 
-An `@Any` discriminated association mapping defaults to `fetch=EAGER`.
-Previously, such eager `@Any` associations were always fetched using a separate
-`SELECT` statement, which was inefficient. Eager `@Any` associations are now
-join fetched by default when an entity is loaded by id.
 
-=== Limits and fetch joins
+=== Collections belonging to read-only entities
 
-When pagination or a limit is used with a query which fetches a collection, the limit is now processed as part of the SQL query.
-To recover the previous behavior, set the query hint `org.hibernate.limitInMemory`.
+Previously, collections belonging to an entity loaded in read-only mode were not
+marked as read-only and could be modified. This behavior was surprising and
+significantly undermined the benefits of the read-only mode. A collection is now
+set to read-only when its owning entity is read-only, and modifications to the
+collection result in an error.
 
-=== Schema actions now executed even without mapped entities
+=== Result deduplication
 
-Previously, if a persistence unit had no `@Entity` classes, all schema management
-actions (including `import.sql` execution) were silently skipped, even when explicitly
-configured via `hbm2ddl.auto` or `jakarta.persistence.schema-generation.database.action`.
+In Hibernate 6.x query result lists with duplicate results were handled in an
+ad hoc and inconsistent way by `getSingleResult()` and `getSingleResultOrNull()`.
+As of Hibernate 7.3, these methods _always_ throw when the result list contains
+more than one element (which is faithful to the documented semantics of these
+methods). If automatic deduplication is required, use:
 
-As of Hibernate {version}, schema actions are now processed regardless of whether any entities
-are mapped. This is the correct behavior, but it means that applications which have an
-`import.sql` file on the classpath by accident may now see it executed when it was
-previously ignored.
+[source,java]
+query.setResultListTransformer(ResultListTransformer.uniqueResultTransformer())
+
+which collapses duplicate results according to value equality.
+
+=== Final fields of entities
+
+A `final` field of an entity is now treated as if it were annotated `@Immutable`,
+that is, it is excluded from dirty checking and from SQL `UPDATE` statements.
+In order to eliminate the possibility of "silent" changes in behavior, attempts
+to modify the value of a `final` fields using the `merge()` method are rejected.
+If a field of an entity can actually be updated via `merge()`, the field must be
+declared non-`final`.
+
+[[session-get]]
+=== Session.get
+
+Jakarta Persistence now defines a series of overloaded `EntityHandler.get()` methods as corollaries to `EntityHandler.find()`.
+These methods are defined to throw an `EntityNotFoundException` rather than return null.
+This operates quite differently from the older Hibernate `Session.get()` methods which
+
+* still returned null if no entity with that is was found
+* force initialized the entity, if there was one and it was previously uninitialized.
+
+Applications which use(d) `Session.get()` should be aware of this change in behavior.
+
+=== Scanning
+
+As discussed in <<scanning>> above, Hibernate no longer performs scanning during "EE bootstrap".
+It is expected by Jakarta Persistence that the container perform the scanning prior to
+bootstrapping Hibernate.
+
+
+[[graph-remove-attribute-node]]
+=== Remove AttributeNode from EntityGraph
+
+Calls to `EntityGraph.removeAttributeNode()` and `EntityGraph.removeAttributeNodes()` now behave in specification compliant way -
+when the graph is used as a "load graph", removing an attribute "suppresses inclusion of an attribute mapped for eager fetching".
+
+
+[[listener-target]]
+=== Entity Listener Callbacks
+
+Jakarta Persistence has clarified that listener-style callback classes (`@EntityListeners`) may define multiple
+methods for a given event type -
+
+> An entity listener class may have multiple callback methods for a given type of lifecycle event, but at most one callback method for a given type of event and given parameter type.
+
+Using `<E>` as a generic type for the signatures, it says -
+
+> where `E` is an entity class, a mapped superclass, or a supertype of the entity class or mapped superclass to which the entity listener applies. If multiple entity classes are assignable to the type `E`, the callback method is invoked for any such class to which the entity listener applies.
+
+[source,java]
+----
+@Entity
+@EntityListeners( AnimalWatcher.class )
+public class Cat implements Animal { ... }
+
+@Entity
+@EntityListeners( AnimalWatcher.class )
+public class Dog implements Animal { ... }
+
+public class AnimalWatcher {
+    @PostInsert
+    public void postInsert(Animal animal) { ... }
+
+    @PostInsert
+    public void postInsert(Cat animal) { ... }
+
+    @PostInsert
+    public void postInsert(Dog animal) { ... }
+}
+----
+
+_Be aware that creating a Cat, with the above model, will result in calls to both `postInsert(Animal)` and `postInsert(Cat)`; and
+that creating a Dog, both `postInsert(Animal)` and `postInsert(Dog)`._
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// XSD changes
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+[[xsd-changes]]
+== Changes in XSD
+
+This section describes changes in XML Schema Descriptors
+
+[[xsd-comments]
+=== Table and Column Comments
+
+Previous versions of the `mapping.xsd` defined table and column comments (for schema export)
+using XSD attributes.  This was a decision made at the time to facilitate users migrating
+from `hbm.xml` mapping format.  In the intervening period, Jakarta Persistence has
+also added comments to its table and column XSD types, but using dedicated element.
+
+We now align with the Jakarta Persistence approach of using elements.  This will require
+changes any `mapping.xml` documents which define table or column comments.  E.g.,
+
+[source,xml]
+----
+<entity ...>
+    <table ... comment="some comment"/>
+</entity>
+----
+
+would need to be changed to
+
+[source,xml]
+----
+<entity ...>
+    <table>
+         <comment>some comment</comment>
+    </table>
+</entity>
+----
+
+
 
 === Migration of Spanner PostgreSQL Dialect to core
 
@@ -119,13 +362,10 @@ Users currently using the community dialect must update their dialect configurat
 This section describes changes to DDL generated by the schema export tooling.
 Such changes typically do not impact programs using a relational schema managed externally to Hibernate.
 
-=== Unique constraints for `@ElementCollection` sets
 
-A unique constraint is now added to the table mapped by an `@ElementCollection` set where appropriate.
-
-=== `@CreationTimestamp` and `@UpdateTimestamp` columns inferred not-null
-
-A column mapped by a `@CreationTimestamp` or `@UpdateTimestamp` generator now has a `NOT NULL` constraint added automatically.
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// Dependency changes
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 [[envers-migration]]
 == Optional: Migrating from Hibernate Envers to core `@Audited`
@@ -211,3 +451,4 @@ No DDL changes are needed. The default `REV`/`REVTYPE` column names and encoding
 == Changes in Dependencies
 
 This section describes changes to dependencies used by Hibernate ORM.
+

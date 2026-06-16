@@ -435,4 +435,12 @@ public class CollectionPropertyHolder extends AbstractPropertyHolder {
 				.getConverterRegistry()
 				.getAttributeConverterAutoApplyHandler();
 	}
+
+	/**
+	 * A collection is always a modifiable container.
+	 */
+	@Override
+	public boolean isModifiable() {
+		return true; //TODO: is this correct?
+	}
 }

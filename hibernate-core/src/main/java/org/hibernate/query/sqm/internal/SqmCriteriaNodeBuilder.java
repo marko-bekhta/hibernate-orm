@@ -33,6 +33,13 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.criteria.BooleanExpression;
+import jakarta.persistence.criteria.CriteriaDelete;
+import jakarta.persistence.criteria.CriteriaUpdate;
+import jakarta.persistence.criteria.ParameterExpression;
+import jakarta.persistence.criteria.TemporalExpression;
+import jakarta.persistence.criteria.TextExpression;
 import org.hibernate.SessionFactory;
 import org.hibernate.dialect.function.AvgFunction;
 import org.hibernate.dialect.function.SumReturnTypeResolver;
@@ -55,7 +62,6 @@ import org.hibernate.query.SemanticException;
 import org.hibernate.query.SortDirection;
 import org.hibernate.query.criteria.HibernateCriteriaBuilder;
 import org.hibernate.query.criteria.JpaCastTarget;
-import org.hibernate.query.criteria.JpaCoalesce;
 import org.hibernate.query.criteria.JpaCompoundSelection;
 import org.hibernate.query.criteria.JpaCriteriaQuery;
 import org.hibernate.query.criteria.JpaCriteriaSelect;
@@ -151,7 +157,6 @@ import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.ListJoin;
 import jakarta.persistence.criteria.MapJoin;
 import jakarta.persistence.criteria.Nulls;
-import jakarta.persistence.criteria.Order;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -361,6 +366,22 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
+	public CriteriaQuery<?> createQuery(String jpql) {
+		if ( queryEngine.getHqlTranslator().translate( jpql, null )
+				instanceof SqmSelectStatement<?> selectStatement ) {
+			return new SqmSelectStatement<>( selectStatement );
+		}
+		else {
+			throw new IllegalArgumentException("Not a 'select' statement");
+		}
+	}
+
+	@Override
+	public <T> CriteriaQuery<T> createQuery(Class<T> resultClass, String jpql) {
+		return createQuery( jpql, resultClass );
+	}
+
+	@Override
 	public SqmSelectStatement<Tuple> createTupleQuery() {
 		return new SqmSelectStatement<>( Tuple.class, this );
 	}
@@ -371,8 +392,52 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
+	public <T> CriteriaUpdate<T> createCriteriaUpdate(Class<T> targetEntity, String jpql) {
+		if ( queryEngine.getHqlTranslator().translate( jpql, targetEntity )
+				instanceof SqmUpdateStatement<?> updateStatement ) {
+			return new SqmUpdateStatement<>( updateStatement );
+		}
+		else {
+			throw new IllegalArgumentException("Not an 'update' statement");
+		}
+	}
+
+	@Override
+	public CriteriaUpdate<?> createCriteriaUpdate(String jpql) {
+		if ( queryEngine.getHqlTranslator().translate( jpql, null )
+				instanceof SqmUpdateStatement<?> updateStatement ) {
+			return new SqmUpdateStatement<>( updateStatement );
+		}
+		else {
+			throw new IllegalArgumentException("Not an 'update' statement");
+		}
+	}
+
+	@Override
 	public <T> SqmDeleteStatement<T> createCriteriaDelete(Class<T> targetEntity) {
 		return new SqmDeleteStatement<>( targetEntity, this );
+	}
+
+	@Override
+	public <T> CriteriaDelete<T> createCriteriaDelete(Class<T> targetEntity, String jpql) {
+		if ( queryEngine.getHqlTranslator().translate( jpql, targetEntity )
+				instanceof SqmDeleteStatement<?> deleteStatement ) {
+			return new SqmDeleteStatement<>( deleteStatement );
+		}
+		else {
+			throw new IllegalArgumentException("Not a 'delete' statement");
+		}
+	}
+
+	@Override
+	public CriteriaDelete<?> createCriteriaDelete(String jpql) {
+		if ( queryEngine.getHqlTranslator().translate( jpql, null )
+				instanceof SqmDeleteStatement<?> deleteStatement ) {
+			return new SqmDeleteStatement<>( deleteStatement );
+		}
+		else {
+			throw new IllegalArgumentException("Not a 'delete' statement");
+		}
 	}
 
 	@Override
@@ -608,6 +673,20 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	@Override
 	@SafeVarargs
 	public final SqmPredicate wrap(Expression<Boolean>... expressions) {
+		if ( expressions.length == 1 ) {
+			return wrap( expressions[0] );
+		}
+		else {
+			final List<SqmPredicate> predicates = new ArrayList<>( expressions.length );
+			for ( var expression : expressions ) {
+				predicates.add( wrap( expression ) );
+			}
+			return new SqmJunctionPredicate( Predicate.BooleanOperator.AND, predicates, this );
+		}
+	}
+
+	@Override
+	public SqmPredicate wrap(BooleanExpression... expressions) {
 		if ( expressions.length == 1 ) {
 			return wrap( expressions[0] );
 		}
@@ -863,17 +942,17 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public Order asc(Expression<?> expression, Nulls nullPrecedence) {
+	public SqmSortSpecification asc(Expression<?> expression, Nulls nullPrecedence) {
 		return new SqmSortSpecification( (SqmExpression<?>) expression, SortDirection.ASCENDING, nullPrecedence );
 	}
 
 	@Override
-	public Order desc(Expression<?> expression, Nulls nullPrecedence) {
+	public SqmSortSpecification desc(Expression<?> expression, Nulls nullPrecedence) {
 		return new SqmSortSpecification( (SqmExpression<?>) expression, SortDirection.DESCENDING, nullPrecedence );
 	}
 
 	@Override
-	public JpaOrder asc(Expression<?> x, boolean nullsFirst) {
+	public SqmSortSpecification asc(Expression<?> x, boolean nullsFirst) {
 		return new SqmSortSpecification(
 				(SqmExpression<?>) x,
 				SortDirection.ASCENDING,
@@ -882,7 +961,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public JpaOrder desc(Expression<?> x, boolean nullsFirst) {
+	public SqmSortSpecification desc(Expression<?> x, boolean nullsFirst) {
 		return new SqmSortSpecification(
 				(SqmExpression<?>) x,
 				SortDirection.DESCENDING,
@@ -1164,7 +1243,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public JpaExpression<Integer> sign(Expression<? extends Number> x) {
+	public SqmExpression<Integer> sign(Expression<? extends Number> x) {
 		return getFunctionDescriptor( "sign" ).generateSqmExpression(
 				(SqmExpression<?>) x,
 				null,
@@ -1173,7 +1252,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public <N extends Number> JpaExpression<N> ceiling(Expression<N> x) {
+	public <N extends Number> SqmExpression<N> ceiling(Expression<N> x) {
 		return getFunctionDescriptor( "ceiling" ).generateSqmExpression(
 				(SqmExpression<?>) x,
 				null,
@@ -1182,7 +1261,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public <N extends Number> JpaExpression<N> floor(Expression<N> x) {
+	public <N extends Number> SqmExpression<N> floor(Expression<N> x) {
 		return getFunctionDescriptor( "floor" ).generateSqmExpression(
 				(SqmExpression<?>) x,
 				null,
@@ -1191,7 +1270,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public JpaExpression<Double> exp(Expression<? extends Number> x) {
+	public SqmExpression<Double> exp(Expression<? extends Number> x) {
 		return getFunctionDescriptor( "exp" ).generateSqmExpression(
 				(SqmExpression<?>) x,
 				null,
@@ -1200,7 +1279,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public JpaExpression<Double> ln(Expression<? extends Number> x) {
+	public SqmExpression<Double> ln(Expression<? extends Number> x) {
 		return getFunctionDescriptor( "ln" ).generateSqmExpression(
 				(SqmExpression<?>) x,
 				null,
@@ -1209,7 +1288,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public JpaExpression<Double> power(Expression<? extends Number> x, Expression<? extends Number> y) {
+	public SqmExpression<Double> power(Expression<? extends Number> x, Expression<? extends Number> y) {
 		return getFunctionDescriptor( "power" ).generateSqmExpression(
 				asList( (SqmExpression<?>) x, (SqmExpression<?>) y),
 				null,
@@ -1218,7 +1297,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public JpaExpression<Double> power(Expression<? extends Number> x, Number y) {
+	public SqmExpression<Double> power(Expression<? extends Number> x, Number y) {
 		return getFunctionDescriptor( "power" ).generateSqmExpression(
 				asList( (SqmExpression<?>) x, value( y ) ),
 				null,
@@ -1227,7 +1306,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public <T extends Number> JpaExpression<T> round(Expression<T> x, Integer n) {
+	public <T extends Number> SqmExpression<T> round(Expression<T> x, Integer n) {
 		return getFunctionDescriptor( "round" ).generateSqmExpression(
 				asList( (SqmExpression<?>) x, value( n ) ),
 				null,
@@ -1236,7 +1315,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public <T extends Number> JpaExpression<T> truncate(Expression<T> x, Integer n) {
+	public <T extends Number> SqmExpression<T> truncate(Expression<T> x, Integer n) {
 		return getFunctionDescriptor( "truncate" ).generateSqmExpression(
 				asList( (SqmExpression<?>) x, value( n ) ),
 				null,
@@ -1263,7 +1342,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public JpaExpression<Duration> duration(long magnitude, TemporalUnit unit) {
+	public SqmExpression<Duration> duration(long magnitude, TemporalUnit unit) {
 		return new SqmToDuration<>(
 				literal( magnitude ),
 				new SqmDurationUnit<>( unit, getLongType(), this ),
@@ -1273,7 +1352,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public JpaExpression<Long> durationByUnit(TemporalUnit unit, Expression<Duration> duration) {
+	public SqmExpression<Long> durationByUnit(TemporalUnit unit, Expression<Duration> duration) {
 		return new SqmByUnit(
 				new SqmDurationUnit<>( unit, getLongType(), this ),
 				(SqmExpression<Duration>) duration,
@@ -1283,91 +1362,91 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public JpaExpression<Duration> durationSum(Expression<Duration> x, Expression<Duration> y) {
+	public SqmExpression<Duration> durationSum(Expression<Duration> x, Expression<Duration> y) {
 		return createSqmArithmeticNode( BinaryArithmeticOperator.ADD,
 				(SqmExpression<Duration>) x, (SqmExpression<Duration>) y );
 	}
 
 	@Override
-	public JpaExpression<Duration> durationSum(Expression<Duration> x, Duration y) {
+	public SqmExpression<Duration> durationSum(Expression<Duration> x, Duration y) {
 		return createSqmArithmeticNode( BinaryArithmeticOperator.ADD,
 				(SqmExpression<Duration>) x, value( y ) );
 	}
 
 	@Override
-	public JpaExpression<Duration> durationDiff(Expression<Duration> x, Expression<Duration> y) {
+	public SqmExpression<Duration> durationDiff(Expression<Duration> x, Expression<Duration> y) {
 		return createSqmArithmeticNode( BinaryArithmeticOperator.SUBTRACT,
 				(SqmExpression<Duration>) x, (SqmExpression<Duration>) y );
 	}
 
 	@Override
-	public JpaExpression<Duration> durationDiff(Expression<Duration> x, Duration y) {
+	public SqmExpression<Duration> durationDiff(Expression<Duration> x, Duration y) {
 		return createSqmArithmeticNode( BinaryArithmeticOperator.SUBTRACT,
 				(SqmExpression<Duration>) x, value( y ) );
 	}
 
 	@Override
-	public JpaExpression<Duration> durationScaled(Expression<? extends Number> number, Expression<Duration> duration) {
+	public SqmExpression<Duration> durationScaled(Expression<? extends Number> number, Expression<Duration> duration) {
 		return createSqmArithmeticNode( BinaryArithmeticOperator.MULTIPLY,
 				(SqmExpression<? extends Number>) number, (SqmExpression<Duration>) duration );
 	}
 
 	@Override
-	public JpaExpression<Duration> durationScaled(Number number, Expression<Duration> duration) {
+	public SqmExpression<Duration> durationScaled(Number number, Expression<Duration> duration) {
 		return createSqmArithmeticNode( BinaryArithmeticOperator.MULTIPLY,
 				value( number ), (SqmExpression<Duration>) duration );
 	}
 
 	@Override
-	public JpaExpression<Duration> durationScaled(Expression<? extends Number> number, Duration duration) {
+	public SqmExpression<Duration> durationScaled(Expression<? extends Number> number, Duration duration) {
 		return createSqmArithmeticNode( BinaryArithmeticOperator.MULTIPLY,
 				(SqmExpression<? extends Number>) number, value( duration ) );
 	}
 
 	@Override
-	public <T extends Temporal> JpaExpression<Duration> durationBetween(Expression<T> x, Expression<T> y) {
+	public <T extends Temporal> SqmExpression<Duration> durationBetween(Expression<T> x, Expression<T> y) {
 		return createSqmArithmeticNode( BinaryArithmeticOperator.SUBTRACT,
 				(SqmExpression<T>) x, (SqmExpression<T>) y );
 	}
 
 	@Override
-	public <T extends Temporal> JpaExpression<Duration> durationBetween(Expression<T> x, T y) {
+	public <T extends Temporal> SqmExpression<Duration> durationBetween(Expression<T> x, T y) {
 		return createSqmArithmeticNode( BinaryArithmeticOperator.SUBTRACT,
 				(SqmExpression<T>) x, value( y ) );
 	}
 
 	@Override
-	public <T extends Temporal> JpaExpression<T> addDuration(Expression<T> datetime, Expression<Duration> duration) {
+	public <T extends Temporal> SqmExpression<T> addDuration(Expression<T> datetime, Expression<Duration> duration) {
 		return createSqmArithmeticNode( BinaryArithmeticOperator.ADD,
 				(SqmExpression<T>) datetime, (SqmExpression<Duration>) duration );
 	}
 
 	@Override
-	public <T extends Temporal> JpaExpression<T> addDuration(Expression<T> datetime, Duration duration) {
+	public <T extends Temporal> SqmExpression<T> addDuration(Expression<T> datetime, Duration duration) {
 		return createSqmArithmeticNode( BinaryArithmeticOperator.ADD,
 				(SqmExpression<T>) datetime, value( duration ) );
 	}
 
 	@Override
-	public <T extends Temporal> JpaExpression<T> addDuration(T datetime, Expression<Duration> duration) {
+	public <T extends Temporal> SqmExpression<T> addDuration(T datetime, Expression<Duration> duration) {
 		return createSqmArithmeticNode( BinaryArithmeticOperator.ADD,
 				value( datetime ), (SqmExpression<Duration>) duration );
 	}
 
 	@Override
-	public <T extends Temporal> JpaExpression<T> subtractDuration(Expression<T> datetime, Expression<Duration> duration) {
+	public <T extends Temporal> SqmExpression<T> subtractDuration(Expression<T> datetime, Expression<Duration> duration) {
 		return createSqmArithmeticNode( BinaryArithmeticOperator.SUBTRACT,
 				(SqmExpression<T>) datetime, (SqmExpression<Duration>) duration );
 	}
 
 	@Override
-	public <T extends Temporal> JpaExpression<T> subtractDuration(Expression<T> datetime, Duration duration) {
+	public <T extends Temporal> SqmExpression<T> subtractDuration(Expression<T> datetime, Duration duration) {
 		return createSqmArithmeticNode( BinaryArithmeticOperator.SUBTRACT,
 				(SqmExpression<T>) datetime, value( duration ) );
 	}
 
 	@Override
-	public <T extends Temporal> JpaExpression<T> subtractDuration(T datetime, Expression<Duration> duration) {
+	public <T extends Temporal> SqmExpression<T> subtractDuration(T datetime, Expression<Duration> duration) {
 		return createSqmArithmeticNode( BinaryArithmeticOperator.SUBTRACT,
 				value( datetime ), (SqmExpression<Duration>) duration );
 	}
@@ -1637,6 +1716,26 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
+	public <N extends Number & Comparable<N>> SqmNumericExpression<N> numericLiteral(N value) {
+		return new SqmNumericExpressionWrapper<>( literal( value ) );
+	}
+
+	@Override
+	public TextExpression stringLiteral(String value) {
+		return null;
+	}
+
+	@Override
+	public <T extends Temporal & Comparable<? super T>> TemporalExpression<T> temporalLiteral(T value) {
+		return null;
+	}
+
+	@Override
+	public BooleanExpression booleanLiteral(boolean value) {
+		return null;
+	}
+
+	@Override
 	public MappingMetamodelImplementor getMappingMetamodel() {
 		return (MappingMetamodelImplementor) bindingContext.getMappingMetamodel();
 	}
@@ -1730,6 +1829,11 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 						? new MultiValueParameterType<>( (Class<T>) Collection.class )
 						: basicType;
 		return new JpaCriteriaParameter<>( name, parameterType, notBasic, this );
+	}
+
+	@Override
+	public <T> ParameterExpression<T> convertedParameter(Class<? extends AttributeConverter<T, ?>> converter) {
+		throw new UnsupportedOperationException( "Not implemented yet" );
 	}
 
 	@Override
@@ -2007,7 +2111,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public JpaExpression<LocalDate> localDate() {
+	public SqmExpression<LocalDate> localDate() {
 		return getFunctionDescriptor("local_date")
 				.generateSqmExpression(
 						null,
@@ -2016,7 +2120,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public JpaExpression<LocalDateTime> localDateTime() {
+	public SqmExpression<LocalDateTime> localDateTime() {
 		return getFunctionDescriptor("local_datetime")
 				.generateSqmExpression(
 						null,
@@ -2025,7 +2129,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public JpaExpression<LocalTime> localTime() {
+	public SqmExpression<LocalTime> localTime() {
 		return getFunctionDescriptor("local_time")
 				.generateSqmExpression(
 						null,
@@ -2144,7 +2248,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	@Override
 	public <T> SqmExpression<T> value(@Nullable T value) {
 		if ( value instanceof Duration duration ) {
-			final JpaExpression<Duration> expression = duration.getNano() == 0
+			final SqmExpression<Duration> expression = duration.getNano() == 0
 					? duration( duration.getSeconds(), TemporalUnit.SECOND )
 					: duration( duration.getNano() + duration.getSeconds() * 1_000_000_000, TemporalUnit.NANOSECOND );
 			//noinspection unchecked
@@ -2280,7 +2384,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public <Y> JpaCoalesce<Y> coalesce(Expression<? extends Y> x, Expression<? extends Y> y) {
+	public <Y> SqmCoalesce<Y> coalesce(Expression<? extends Y> x, Expression<? extends Y> y) {
 		@SuppressWarnings("unchecked")
 		final var sqmExpressible = (SqmBindableType<Y>) highestPrecedenceType(
 				( (SqmExpression<? extends Y>) x ).getExpressible(),
@@ -2290,7 +2394,7 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public <Y> JpaCoalesce<Y> coalesce(Expression<? extends Y> x, Y y) {
+	public <Y> SqmCoalesce<Y> coalesce(Expression<? extends Y> x, Y y) {
 		return coalesce( x, value( y, (SqmExpression<? extends Y>) x ) );
 	}
 
@@ -2360,26 +2464,40 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public SqmPredicate and(Predicate... restrictions) {
+	public JpaPredicate and(BooleanExpression... restrictions) {
 		if ( restrictions == null || restrictions.length == 0 ) {
 			return conjunction();
 		}
 		else {
 			final List<SqmPredicate> predicates = new ArrayList<>( restrictions.length );
 			for ( var expression : restrictions ) {
-				predicates.add( (SqmPredicate) expression );
+				predicates.add( wrap( expression ) );
 			}
 			return new SqmJunctionPredicate( Predicate.BooleanOperator.AND, predicates, this );
 		}
 	}
 
 	@Override
-	public SqmPredicate and(List<Predicate> restrictions) {
+	public SqmPredicate and(List<? extends Expression<Boolean>> restrictions) {
 		if ( restrictions == null || restrictions.isEmpty() ) {
 			return conjunction();
 		}
 		else {
 			final List<SqmPredicate> predicates = new ArrayList<>( restrictions.size() );
+			for ( var expression : restrictions ) {
+				predicates.add( wrap( expression ) );
+			}
+			return new SqmJunctionPredicate( Predicate.BooleanOperator.AND, predicates, this );
+		}
+	}
+
+	@Override
+	public SqmPredicate and(Predicate... restrictions) {
+		if ( restrictions == null || restrictions.length == 0 ) {
+			return conjunction();
+		}
+		else {
+			final List<SqmPredicate> predicates = new ArrayList<>( restrictions.length );
 			for ( var expression : restrictions ) {
 				predicates.add( (SqmPredicate) expression );
 			}
@@ -2398,6 +2516,20 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
+	public JpaPredicate or(BooleanExpression... restrictions) {
+		if ( restrictions == null || restrictions.length == 0 ) {
+			return disjunction();
+		}
+		else {
+			final List<SqmPredicate> predicates = new ArrayList<>( restrictions.length );
+			for ( var expression : restrictions ) {
+				predicates.add( wrap( expression ) );
+			}
+			return new SqmJunctionPredicate( Predicate.BooleanOperator.OR, predicates, this );
+		}
+	}
+
+	@Override
 	public SqmPredicate or(Predicate... restrictions) {
 		if ( restrictions == null || restrictions.length == 0 ) {
 			return disjunction();
@@ -2412,14 +2544,14 @@ public class SqmCriteriaNodeBuilder implements NodeBuilder, Serializable {
 	}
 
 	@Override
-	public SqmPredicate or(List<Predicate> restrictions) {
+	public SqmPredicate or(List<? extends Expression<Boolean>> restrictions) {
 		if ( restrictions == null || restrictions.isEmpty() ) {
 			return disjunction();
 		}
 		else {
 			final List<SqmPredicate> predicates = new ArrayList<>( restrictions.size() );
 			for ( var expression : restrictions ) {
-				predicates.add( (SqmPredicate) expression );
+				predicates.add( wrap( expression ) );
 			}
 			return new SqmJunctionPredicate( Predicate.BooleanOperator.OR, predicates, this );
 		}

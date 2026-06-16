@@ -17,7 +17,6 @@ import jakarta.persistence.Table;
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
-import org.hibernate.transform.ResultTransformer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,21 +37,22 @@ public class QueryExecutionTest {
 	public void testCollectionFetch(SessionFactoryScope scope) {
 		scope.inTransaction(
 				session -> {
-					final List nonDistinctResult = session.createQuery( "select c from Customer c join fetch c.orders" ).list();
+					var nonDistinctResult = session.createQuery(Customer.class,
+									"select c from Customer c join fetch c.orders" )
+							.list();
 					// note: this was historically `2` because Hibernate would return a root result for each of its fetched rows.
 					//		- that was confusing behavior for users.  we have changed this in 6 to be more logical
 					assertThat( nonDistinctResult.size(), CoreMatchers.is( 1 ) );
 
-					final List distinctResult = session.createQuery( "select distinct c from Customer c join fetch c.orders" ).list();
+					var distinctResult = session.createQuery(Customer.class,
+									"select distinct c from Customer c join fetch c.orders" )
+							.list();
 					assertThat( distinctResult.size(), CoreMatchers.is( 1 ) );
 
-					final List distinctViaTransformerResult = session.createQuery( "select c from Customer c join fetch c.orders" )
-							.setResultTransformer(new ResultTransformer() {
-								@Override
-								public Object transformTuple(Object[] tuple, String[] aliases) {
-									return tuple[0];
-								}
-							}).list();
+					var distinctViaTransformerResult = session.createQuery( Customer.class,
+									"select c from Customer c join fetch c.orders" )
+							.setTupleTransformer((tuple, aliases) -> tuple[0])
+							.list();
 					assertThat( distinctResult.size(), CoreMatchers.is( 1 ) );
 				}
 		);
