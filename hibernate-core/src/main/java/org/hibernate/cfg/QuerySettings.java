@@ -4,14 +4,14 @@
  */
 package org.hibernate.cfg;
 
+import jakarta.persistence.criteria.CriteriaSelect;
+import jakarta.persistence.criteria.CriteriaStatement;
 import org.hibernate.Incubating;
 import org.hibernate.boot.spi.SessionFactoryOptions;
 import org.hibernate.query.spi.ImmutableEntityUpdateQueryHandlingMode;
 import org.hibernate.query.spi.QueryPlan;
 
-import jakarta.persistence.criteria.CriteriaDelete;
 import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.CriteriaUpdate;
 
 /**
  * @author Steve Ebersole
@@ -151,9 +151,8 @@ public interface QuerySettings {
 
 	/**
 	 * When enabled, specifies that {@linkplain org.hibernate.query.Query queries}
-	 * created via {@link jakarta.persistence.EntityManager#createQuery(CriteriaQuery)},
-	 * {@link jakarta.persistence.EntityManager#createQuery(CriteriaUpdate)} or
-	 * {@link jakarta.persistence.EntityManager#createQuery(CriteriaDelete)} must
+	 * created via {@link jakarta.persistence.EntityManager#createQuery(CriteriaSelect)} or
+	 * {@link jakarta.persistence.EntityManager#createStatement(CriteriaStatement)} must
 	 * create a copy of the passed criteria query object such that the resulting
 	 * {@link jakarta.persistence.Query} object is not affected by mutation of the
 	 * original {@linkplain CriteriaQuery criteria query}.
@@ -176,9 +175,8 @@ public interface QuerySettings {
 
 	/**
 	 * When enabled, specifies that {@linkplain org.hibernate.query.Query queries}
-	 * created via {@link jakarta.persistence.EntityManager#createQuery(CriteriaQuery)},
-	 * {@link jakarta.persistence.EntityManager#createQuery(CriteriaUpdate)} or
-	 * {@link jakarta.persistence.EntityManager#createQuery(CriteriaDelete)} cache
+	 * created via {@link jakarta.persistence.EntityManager#createQuery(CriteriaSelect)} or
+	 * {@link jakarta.persistence.EntityManager#createStatement(CriteriaStatement)} cache
 	 * their interpretations in the query plan cache.
 	 * <p>
 	 * If disabled, queries are interpreted on first access without caching.

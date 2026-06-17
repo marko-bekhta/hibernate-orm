@@ -14,20 +14,18 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.internal.util.ExceptionHelper;
-import org.hibernate.query.Query;
+import org.hibernate.query.SelectionQuery;
 import org.hibernate.query.SemanticException;
-
 import org.hibernate.testing.orm.junit.DomainModel;
 import org.hibernate.testing.orm.junit.SessionFactory;
 import org.hibernate.testing.orm.junit.SessionFactoryScope;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -131,7 +129,8 @@ public class QueryLiteralTest {
 
 		scope.inTransaction(
 				(session) -> {
-					String value = (String) session.createNativeQuery( "select e.same_type_converter from entity_converter e where e.id=:id" )
+					String value = session.createNativeQuery(String.class,
+									"select e.same_type_converter from entity_converter e where e.id=:id" )
 							.setParameter( "id", loaded.getId() )
 							.uniqueResult();
 					assertEquals( "VALUE_HUNDRED", value );
@@ -221,7 +220,7 @@ public class QueryLiteralTest {
 
 	private EntityConverter find(int id, String queryLiteral, SessionImplementor session) {
 		final String qryBase = "select e from EntityConverter e where e.id=:id and ";
-		final Query<EntityConverter> query = session.createQuery(qryBase + queryLiteral, EntityConverter.class );
+		final SelectionQuery<EntityConverter> query = session.createQuery(qryBase + queryLiteral, EntityConverter.class );
 		query.setParameter( "id", id );
 		return query.uniqueResult();
 	}

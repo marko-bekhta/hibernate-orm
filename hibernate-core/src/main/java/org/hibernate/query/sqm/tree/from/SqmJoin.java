@@ -4,9 +4,9 @@
  */
 package org.hibernate.query.sqm.tree.from;
 
+import jakarta.persistence.criteria.BooleanExpression;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Subquery;
 import jakarta.persistence.metamodel.CollectionAttribute;
 import jakarta.persistence.metamodel.EntityType;
@@ -14,7 +14,6 @@ import jakarta.persistence.metamodel.ListAttribute;
 import jakarta.persistence.metamodel.MapAttribute;
 import jakarta.persistence.metamodel.SetAttribute;
 import jakarta.persistence.metamodel.SingularAttribute;
-
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.metamodel.model.domain.EntityDomainType;
 import org.hibernate.query.criteria.JpaCrossJoin;
@@ -64,10 +63,10 @@ public interface SqmJoin<L, R> extends SqmFrom<L, R>, JpaJoin<L,R> {
 	void setJoinPredicate(@Nullable SqmPredicate predicate);
 
 	@Override
-	<X, Y> SqmAttributeJoin<X, Y> join(String attributeName);
+	<Y> SqmAttributeJoin<R, Y> join(String attributeName);
 
 	@Override
-	<X, Y> SqmAttributeJoin<X, Y> join(String attributeName, JoinType jt);
+	<Y> SqmAttributeJoin<R, Y> join(String attributeName, JoinType jt);
 
 	@Override
 	SqmJoin<L, R> copy(SqmCopyContext context);
@@ -108,10 +107,7 @@ public interface SqmJoin<L, R> extends SqmFrom<L, R>, JpaJoin<L,R> {
 	}
 
 	@Override
-	default SqmJoin<L, R> on(Predicate @Nullable... restrictions) {
-		setJoinPredicate( restrictions == null ? null : nodeBuilder().wrap( restrictions ) );
-		return this;
-	}
+	SqmJoin<L, R> on(BooleanExpression... restrictions);
 
 	@Override
 	default <X> JpaEntityJoin<R, X> join(Class<X> entityJavaType, SqmJoinType joinType) {
@@ -188,26 +184,26 @@ public interface SqmJoin<L, R> extends SqmFrom<L, R>, JpaJoin<L,R> {
 	<K, V> SqmMapJoin<R, K, V> join(MapAttribute<? super R, K, V> map, JoinType jt);
 
 	@Override
-	<X, Y> SqmBagJoin<X, Y> joinCollection(String attributeName);
+	<Y> SqmBagJoin<R, Y> joinCollection(String attributeName);
 
 	@Override
-	<X, Y> SqmBagJoin<X, Y> joinCollection(String attributeName, JoinType jt);
+	<Y> SqmBagJoin<R, Y> joinCollection(String attributeName, JoinType jt);
 
 	@Override
-	<X, Y> SqmSetJoin<X, Y> joinSet(String attributeName);
+	<Y> SqmSetJoin<R, Y> joinSet(String attributeName);
 
 	@Override
-	<X, Y> SqmSetJoin<X, Y> joinSet(String attributeName, JoinType jt);
+	<Y> SqmSetJoin<R, Y> joinSet(String attributeName, JoinType jt);
 
 	@Override
-	<X, Y> SqmListJoin<X, Y> joinList(String attributeName);
+	<Y> SqmListJoin<R, Y> joinList(String attributeName);
 
 	@Override
-	<X, Y> SqmListJoin<X, Y> joinList(String attributeName, JoinType jt);
+	<Y> SqmListJoin<R, Y> joinList(String attributeName, JoinType jt);
 
 	@Override
-	<X, K, V> SqmMapJoin<X, K, V> joinMap(String attributeName);
+	<K, V> SqmMapJoin<R, K, V> joinMap(String attributeName);
 
 	@Override
-	<X, K, V> SqmMapJoin<X, K, V> joinMap(String attributeName, JoinType jt);
+	<K, V> SqmMapJoin<R, K, V> joinMap(String attributeName, JoinType jt);
 }

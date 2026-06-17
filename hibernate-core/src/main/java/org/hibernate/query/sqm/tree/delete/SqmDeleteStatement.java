@@ -4,14 +4,17 @@
  */
 package org.hibernate.query.sqm.tree.delete;
 
-import java.util.Map;
-import java.util.Set;
-
+import jakarta.persistence.criteria.BooleanExpression;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Subquery;
+import jakarta.persistence.metamodel.EntityType;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.hibernate.query.criteria.JpaCriteriaDelete;
 import org.hibernate.query.sqm.NodeBuilder;
 import org.hibernate.query.sqm.SemanticQueryWalker;
 import org.hibernate.query.sqm.SqmQuerySource;
 import org.hibernate.query.sqm.internal.SqmUtil;
+import org.hibernate.query.sqm.internal.SimpleSqmCopyContext;
 import org.hibernate.query.sqm.tree.AbstractSqmRestrictedDmlStatement;
 import org.hibernate.query.sqm.tree.SqmCopyContext;
 import org.hibernate.query.sqm.tree.SqmDeleteOrUpdateStatement;
@@ -21,11 +24,10 @@ import org.hibernate.query.sqm.tree.expression.SqmParameter;
 import org.hibernate.query.sqm.tree.from.SqmFromClause;
 import org.hibernate.query.sqm.tree.from.SqmRoot;
 
-import jakarta.persistence.criteria.Expression;
-import jakarta.persistence.criteria.Predicate;
-import org.checkerframework.checker.nullness.qual.Nullable;
-import jakarta.persistence.criteria.Subquery;
-import jakarta.persistence.metamodel.EntityType;
+import java.util.Map;
+import java.util.Set;
+
+import static org.hibernate.query.sqm.SqmQuerySource.CRITERIA;
 
 /**
  * @author Steve Ebersole
@@ -58,6 +60,22 @@ public class SqmDeleteStatement<T>
 			Map<String, SqmCteStatement<?>> cteStatements,
 			SqmRoot<T> target) {
 		super( builder, querySource, parameters, cteStatements, target );
+	}
+
+	/**
+	 * @implNote This form is used when transforming HQL to criteria.
+	 *           All it does is change the SqmQuerySource to CRITERIA
+	 *           in order to allow correct parameter handing.
+	 */
+	public SqmDeleteStatement(SqmDeleteStatement<?> original) {
+		super(
+				original.nodeBuilder(),
+				CRITERIA,
+				original.getSqmParameters(),
+				original.copyCteStatements( new SimpleSqmCopyContext() ),
+				(SqmRoot<T>) original.getTarget()
+		);
+		whereClause = original.copyWhereClause( new SimpleSqmCopyContext() );
 	}
 
 	@Override
@@ -95,7 +113,7 @@ public class SqmDeleteStatement<T>
 	}
 
 	@Override
-	public SqmDeleteStatement<T> where(Predicate @Nullable... restrictions) {
+	public SqmDeleteStatement<T> where(BooleanExpression... restrictions) {
 		setWhere( restrictions );
 		return this;
 	}
