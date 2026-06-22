@@ -15,6 +15,7 @@ import jakarta.persistence.LockModeType;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PessimisticLockScope;
 import jakarta.persistence.QueryHint;
 import jakarta.persistence.Table;
 import org.hibernate.Locking;
@@ -98,7 +99,7 @@ public class OracleFollowOnLockingTest {
 			final List<Customer> customers = session.createSelectionQuery(
 							"select c from Customer c outer join fetch c.purchases", Customer.class )
 					.setHibernateLockMode( PESSIMISTIC_WRITE )
-					.setLockScope( Locking.Scope.ROOT_ONLY )
+					.setLockScope( PessimisticLockScope.NORMAL )
 					.getResultList();
 
 			assertThat( customers ).hasSize( 1 );
@@ -394,8 +395,8 @@ public class OracleFollowOnLockingTest {
 		factoryScope.inTransaction( (session) -> {
 			sqlCollector.clear();
 
-			List<Product> products = session.createQuery( "select distinct p from Product p where p.id > 40" )
-					.setHibernateLockMode( PESSIMISTIC_WRITE )
+			List<Product> products = session.createQuery( "select distinct p from Product p where p.id > 40", Product.class )
+					.setLockMode( LockModeType.PESSIMISTIC_WRITE )
 					.setFollowOnStrategy( Locking.FollowOn.FORCE )
 					.setMaxResults( 10 )
 					.getResultList();

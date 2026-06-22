@@ -15,12 +15,12 @@ import org.hibernate.HibernateException;
 import org.hibernate.IdentifierLoadAccess;
 import org.hibernate.LockMode;
 import org.hibernate.LockOptions;
-import org.hibernate.Locking;
 import org.hibernate.UnknownProfileException;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.engine.spi.Status;
 import org.hibernate.graph.GraphSemantic;
 import org.hibernate.graph.spi.RootGraphImplementor;
+import org.hibernate.internal.find.StatefulLoadAccessContext;
 import org.hibernate.loader.ast.spi.NaturalIdLoadOptions;
 import org.hibernate.metamodel.mapping.EntityMappingType;
 import org.hibernate.persister.entity.EntityPersister;
@@ -35,7 +35,7 @@ import static org.hibernate.internal.NaturalIdHelper.performAnyNeededCrossRefere
  * @author Steve Ebersole
  */
 public abstract class BaseNaturalIdLoadAccessImpl<T> implements NaturalIdLoadOptions {
-	private final LoadAccessContext context;
+	private final StatefulLoadAccessContext context;
 	private final EntityMappingType entityDescriptor;
 
 	private LockOptions lockOptions;
@@ -47,7 +47,7 @@ public abstract class BaseNaturalIdLoadAccessImpl<T> implements NaturalIdLoadOpt
 	private RootGraphImplementor<T> rootGraph;
 	private GraphSemantic graphSemantic;
 
-	protected BaseNaturalIdLoadAccessImpl(LoadAccessContext context, EntityMappingType entityDescriptor) {
+	protected BaseNaturalIdLoadAccessImpl(StatefulLoadAccessContext context, EntityMappingType entityDescriptor) {
 		this.context = context;
 		this.entityDescriptor = entityDescriptor;
 
@@ -71,7 +71,7 @@ public abstract class BaseNaturalIdLoadAccessImpl<T> implements NaturalIdLoadOpt
 		return this;
 	}
 
-	protected Object with(Locking.Scope lockScope) {
+	protected Object with(PessimisticLockScope lockScope) {
 		if ( lockOptions == null ) {
 			lockOptions = new LockOptions();
 		}
@@ -224,7 +224,7 @@ public abstract class BaseNaturalIdLoadAccessImpl<T> implements NaturalIdLoadOpt
 		return loadAccess;
 	}
 
-	protected LoadAccessContext getContext() {
+	protected StatefulLoadAccessContext getContext() {
 		return context;
 	}
 
