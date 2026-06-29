@@ -163,6 +163,7 @@ import org.hibernate.persister.filter.internal.FilterHelper;
 import org.hibernate.persister.internal.SqlFragmentPredicate;
 import org.hibernate.persister.state.spi.StateManagement;
 import org.hibernate.property.access.spi.Getter;
+import org.hibernate.property.access.spi.InsertValueGetter;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.property.access.spi.Setter;
 import org.hibernate.query.PathException;
@@ -449,6 +450,7 @@ public abstract class AbstractEntityPersister
 	// We build a cache for getters and setters to avoid megamorphic calls
 	private Getter[] getterCache;
 	private Setter[] setterCache;
+	private InsertValueGetter[] insertValueGetterCache;
 
 	private final String queryLoaderName;
 
@@ -5064,7 +5066,7 @@ public abstract class AbstractEntityPersister
 		else {
 			final var result = new Object[attributeMappings.size()];
 			for ( int i = 0; i < attributeMappings.size(); i++ ) {
-				result[i] = getterCache[i].getForInsert( entity, mergeMap, session );
+				result[i] = insertValueGetterCache[i].getValue( entity, mergeMap, session );
 			}
 			return result;
 		}
@@ -6422,13 +6424,16 @@ public abstract class AbstractEntityPersister
 		final int size = attributeMappings.size();
 		final var getters = new Getter[size];
 		final var setters = new Setter[size];
+		final var insertGetters = new InsertValueGetter[size];
 		for ( int i = 0; i < size; i++ ) {
 			final var propertyAccess = attributeMappings.get( i ).getAttributeMetadata().getPropertyAccess();
 			getters[i] = propertyAccess.getGetter();
 			setters[i] = propertyAccess.getSetter();
+			insertGetters[i] = propertyAccess.createInsertValueGetter();
 		}
 		getterCache = getters;
 		setterCache = setters;
+		insertValueGetterCache = insertGetters;
 		// subclasses?  it depends on the usage
 	}
 

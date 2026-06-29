@@ -8,10 +8,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.Locale;
-import java.util.Map;
-
 import org.hibernate.Internal;
-import org.hibernate.engine.spi.SharedSessionContractImplementor;
+
 
 import jakarta.annotation.Nullable;
 
@@ -58,11 +56,6 @@ public class GetterFieldImpl implements Getter {
 					e
 			);
 		}
-	}
-
-	@Override
-	public @Nullable Object getForInsert(Object owner, Map<Object, Object> mergeMap, SharedSessionContractImplementor session) {
-		return get( owner );
 	}
 
 	@Override

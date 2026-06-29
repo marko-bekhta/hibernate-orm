@@ -40,4 +40,8 @@ public interface PropertyAccess {
 	 * @return The property setter
 	 */
 	@Nullable Setter getSetter();
+
+	default InsertValueGetter createInsertValueGetter() {
+		return InsertValueGetter.standard( getGetter() );
+	}
 }

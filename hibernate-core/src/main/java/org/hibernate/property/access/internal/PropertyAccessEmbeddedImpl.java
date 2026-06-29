@@ -6,9 +6,6 @@ package org.hibernate.property.access.internal;
 
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.Map;
-
-import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.property.access.spi.Getter;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.property.access.spi.PropertyAccessStrategy;
@@ -63,11 +60,6 @@ public class PropertyAccessEmbeddedImpl implements PropertyAccess {
 
 		@Override
 		public Object get(Object owner) {
-			return owner;
-		}
-
-		@Override
-		public Object getForInsert(Object owner, Map<Object, Object> mergeMap, SharedSessionContractImplementor session) {
 			return owner;
 		}
 

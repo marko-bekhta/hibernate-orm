@@ -6,9 +6,6 @@ package org.hibernate.property.access.internal;
 
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.Map;
-
-import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.property.access.spi.Getter;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.property.access.spi.PropertyAccessStrategy;
@@ -62,11 +59,6 @@ public class PropertyAccessStrategyNoopImpl implements PropertyAccessStrategy {
 
 		@Override
 		public @Nullable Object get(Object owner) {
-			return null;
-		}
-
-		@Override
-		public @Nullable Object getForInsert(Object owner, Map<Object, Object> mergeMap, SharedSessionContractImplementor session) {
 			return null;
 		}
 

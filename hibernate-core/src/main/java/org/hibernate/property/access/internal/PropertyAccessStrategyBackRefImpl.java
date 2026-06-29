@@ -8,10 +8,8 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.Map;
-
-import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.property.access.spi.Getter;
+import org.hibernate.property.access.spi.InsertValueGetter;
 import org.hibernate.property.access.spi.PropertyAccess;
 import org.hibernate.property.access.spi.PropertyAccessStrategy;
 import org.hibernate.property.access.spi.Setter;
@@ -76,6 +74,11 @@ public class PropertyAccessStrategyBackRefImpl implements PropertyAccessStrategy
 		public Setter getSetter() {
 			return SetterImpl.INSTANCE;
 		}
+
+		@Override
+		public InsertValueGetter createInsertValueGetter() {
+			return InsertValueGetter.backRef( strategy.entityName, strategy.propertyName );
+		}
 	}
 
 	private static class GetterImpl implements Getter {
@@ -90,11 +93,6 @@ public class PropertyAccessStrategyBackRefImpl implements PropertyAccessStrategy
 		@Override
 		public Object get(Object owner) {
 			return UNKNOWN;
-		}
-
-		@Override
-		public Object getForInsert(Object owner, Map<Object, Object> mergeMap, SharedSessionContractImplementor session) {
-			return session.getPersistenceContextInternal().getOwnerId( entityName, propertyName, owner, mergeMap );
 		}
 
 		@Override

@@ -6,10 +6,8 @@ package org.hibernate.property.access.spi;
 
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.Map;
 
 import org.hibernate.Remove;
-import org.hibernate.engine.spi.SharedSessionContractImplementor;
 
 import jakarta.annotation.Nullable;
 
@@ -29,17 +27,6 @@ public interface Getter {
 	 * @return The extracted value.
 	 */
 	@Nullable Object get(Object owner);
-
-	/**
-	 * Get the property value from the given owner instance.
-	 *
-	 * @param owner The instance containing the value to be retrieved.
-	 * @param mergeMap a map of merged persistent instances to detached instances
-	 * @param session The session from which this request originated.
-	 *
-	 * @return The extracted value.
-	 */
-	@Nullable Object getForInsert(Object owner, Map<Object, Object> mergeMap, SharedSessionContractImplementor session);
 
 	/**
 	 * Retrieve the declared Java type class

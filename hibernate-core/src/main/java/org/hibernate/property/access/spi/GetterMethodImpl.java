@@ -7,11 +7,8 @@ package org.hibernate.property.access.spi;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.Map;
-
 import org.hibernate.Internal;
 import org.hibernate.PropertyAccessException;
-import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.collections.ArrayHelper;
 
 import jakarta.annotation.Nullable;
@@ -73,11 +70,6 @@ public class GetterMethodImpl implements Getter {
 					propertyName
 			);
 		}
-	}
-
-	@Override
-	public @Nullable Object getForInsert(Object owner, Map<Object, Object> mergeMap, SharedSessionContractImplementor session) {
-		return get( owner );
 	}
 
 	@Override

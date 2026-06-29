@@ -6,9 +6,6 @@ package org.hibernate.property.access.internal;
 
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.Map;
-
-import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.internal.util.ReflectHelper;
 import org.hibernate.property.access.spi.Getter;
 import org.hibernate.property.access.spi.PropertyAccess;
@@ -52,11 +49,6 @@ public class PropertyAccessCompositeUserTypeImpl implements PropertyAccess, Gett
 	@Override
 	public @Nullable Object get(Object owner) {
 		return strategy.compositeUserType.getPropertyValue( owner, propertyIndex );
-	}
-
-	@Override
-	public @Nullable Object getForInsert(Object owner, Map<Object, Object> mergeMap, SharedSessionContractImplementor session) {
-		return get( owner );
 	}
 
 	@Override
